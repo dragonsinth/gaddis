@@ -1,0 +1,9 @@
+Declare Integer wholePizzas, slicesPerPizza, people, leftOverSlices
+Display "How many whole pizzas are there?"
+Input wholePizzas
+Display "How many slices is each pizza cut into?"
+Input slicesPerPizza
+Display "Each person will get 3 slices. How many people are there?"
+Input people
+Set leftOverSlices = (wholePizzas * slicesPerPizza) - (3 * people)
+Display "There will be ", leftOverSlices, " slices left over."

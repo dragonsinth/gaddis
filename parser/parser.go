@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func Parse(input []byte) (ret ast.Block, err error) {
+func Parse(input []byte) (ret *ast.Block, err error) {
 	l := lex.NewLexer(input)
 	p := NewParser(l)
 	defer func() {
@@ -58,7 +58,7 @@ func errCheck(r lex.Result) lex.Result {
 	return r
 }
 
-func (p *Parser) parseBlock(expectToken lex.Token) ast.Block {
+func (p *Parser) parseBlock(expectToken lex.Token) *ast.Block {
 	parentScope := p.currScope
 	defer func() {
 		p.currScope = parentScope
@@ -73,7 +73,7 @@ func (p *Parser) parseBlock(expectToken lex.Token) ast.Block {
 		stmts = append(stmts, p.parseStatement())
 		p.parseTok(lex.EOL)
 	}
-	return ast.Block{Scope: p.currScope, Statements: stmts}
+	return &ast.Block{Scope: p.currScope, Statements: stmts}
 }
 
 func (p *Parser) parseStatement() ast.Statement {
@@ -107,12 +107,20 @@ func (p *Parser) parseStatement() ast.Statement {
 		return &ast.DisplayStmt{exprs}
 	case lex.INPUT:
 		name := p.parseIdentifer()
-		return &ast.InputStmt{name}
+		ref := p.currScope.Lookup(name)
+		if ref == nil {
+			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
+		}
+		return &ast.InputStmt{name, ref}
 	case lex.SET:
 		name := p.parseIdentifer()
+		ref := p.currScope.Lookup(name)
+		if ref == nil {
+			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
+		}
 		p.parseTok(lex.ASSIGN)
 		expr := p.parseExpression()
-		return &ast.SetStmt{name, expr}
+		return &ast.SetStmt{name, ref, expr}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}

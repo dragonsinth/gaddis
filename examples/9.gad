@@ -1,0 +1,10 @@
+Constant Real WEIGHT_CHANGE = 4
+Declare Real startingWeight
+Display "What is your starting weight?"
+Input startingWeight
+Display "After one months of reducing calories by 500, your weight will be ", startingWeight - (1 * WEIGHT_CHANGE), "."
+Display "After two months of reducing calories by 500, your weight will be ", startingWeight - (2 * WEIGHT_CHANGE), "."
+Display "After three months of reducing calories by 500, your weight will be ", startingWeight - (3 * WEIGHT_CHANGE), "."
+Display "After four months of reducing calories by 500, your weight will be ", startingWeight - (4 * WEIGHT_CHANGE), "."
+Display "After five months of reducing calories by 500, your weight will be ", startingWeight - (5 * WEIGHT_CHANGE), "."
+Display "After six months of reducing calories by 500, your weight will be ", startingWeight - (6 * WEIGHT_CHANGE), "."

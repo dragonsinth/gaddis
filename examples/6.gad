@@ -1,0 +1,12 @@
+Constant Real STATE_TAX_RATE = 0.04
+Constant Real COUNTY_TAX_RATE = 0.02
+Declare Real subtotal, stateTax, countyTax
+Display "What is the original amount of the purchase?"
+Input subtotal
+Set stateTax = subtotal * STATE_TAX_RATE
+Set countyTax = subtotal * COUNTY_TAX_RATE
+Display "Subtotal: $", subtotal
+Display "State tax: $", stateTax
+Display "County tax: $", countyTax
+Display "Total tax: $", stateTax + countyTax
+Display "Total sale: $", subtotal + stateTax + countyTax

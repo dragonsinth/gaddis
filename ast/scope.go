@@ -28,7 +28,9 @@ func (vd *VarDecl) Visit(v Visitor) {
 	if !v.PreVisitVarDecl(vd) {
 		return
 	}
-	vd.Expr.Visit(v)
+	if vd.Expr != nil {
+		vd.Expr.Visit(v)
+	}
 	v.PostVisitVarDecl(vd)
 }
 

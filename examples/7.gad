@@ -1,0 +1,7 @@
+Declare Real milesDriven, gallonsUsed, milesPerGallon
+Display "How many miles did you drive?"
+Input milesDriven
+Display "How many gallons of gas did you use?"
+Input gallonsUsed
+Set milesPerGallon = milesDriven / gallonsUsed
+Display "Miles per gallon: ", milesPerGallon

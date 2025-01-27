@@ -1,7 +1,6 @@
-package gaddis
+package parser
 
 import (
-	"github.com/dragonsinth/gaddis/parser"
 	"strconv"
 	"testing"
 )
@@ -125,8 +124,9 @@ Display "It’s ", fahrenheit, " degrees fahrenheit outside."
 
 func TestPrograms(t *testing.T) {
 	for i, input := range programs {
-		t.Run(strconv.Itoa(i+1), func(t *testing.T) {
-			block, err := parser.Parse([]byte(input))
+		id := strconv.Itoa(i + 1)
+		t.Run(id, func(t *testing.T) {
+			block, err := Parse([]byte(input))
 			for _, stmt := range block.Statements {
 				t.Log(stmt.String())
 			}

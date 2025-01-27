@@ -1,0 +1,5 @@
+Declare Real celsius, fahrenheit
+Display "How many degrees Celsius is it outside?"
+Input celsius
+Set fahrenheit = (1.8 * celsius) + 32
+Display "It’s ", fahrenheit, " degrees fahrenheit outside."

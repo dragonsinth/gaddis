@@ -1,0 +1,5 @@
+Constant Real LAND_DIVISOR = 43560
+Declare Real sqrFeet
+Display "How many square feet of land are in this tract?"
+Input sqrFeet
+Display "This tract takes up ", sqrFeet / LAND_DIVISOR, " acres of land."

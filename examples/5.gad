@@ -1,0 +1,4 @@
+Constant Real MILES_PER_HOUR = 60
+Display "In 5 hours, the car will travel ", MILES_PER_HOUR * 5, " miles."
+Display "In 8 hours, the car will travel ", MILES_PER_HOUR * 8, " miles."
+Display "In 12 hours, the car will travel ", MILES_PER_HOUR * 12, " miles."

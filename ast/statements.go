@@ -72,6 +72,7 @@ func (d DisplayStmt) String() string {
 
 type InputStmt struct {
 	Name string
+	Ref  *VarDecl
 }
 
 func (i *InputStmt) Visit(v Visitor) {
@@ -87,6 +88,7 @@ func (i InputStmt) String() string {
 
 type SetStmt struct {
 	Name string
+	Ref  *VarDecl
 	Expr Expression
 }
 

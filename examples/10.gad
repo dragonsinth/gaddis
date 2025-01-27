@@ -1,0 +1,7 @@
+Declare Real monthlyPayment
+Declare Integer monthsPaid
+Display "What’s your monthly car payment?"
+Input monthlyPayment
+Display "How many months have you paid up?"
+Input monthsPaid
+Display "Overall, you’ve paid $", monthlyPayment * monthsPaid, " on car payments."

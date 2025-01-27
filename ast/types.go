@@ -11,5 +11,5 @@ const (
 )
 
 func (t Type) String() string {
-	return [...]string{"Integer", "Real", "String", "Character"}[t]
+	return [...]string{"INVALID", "Integer", "Real", "String", "Character"}[t]
 }

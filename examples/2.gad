@@ -1,0 +1,5 @@
+Constant Real PROFIT_MARGIN = 0.23
+Declare Integer sales
+Display "What were the annual sales?"
+Input sales
+Display "The company made about $", sales * PROFIT_MARGIN

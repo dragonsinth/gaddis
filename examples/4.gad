@@ -1,0 +1,16 @@
+Constant Real TAX = 0.06
+Declare Real itemOnePrice, itemTwoPrice, itemThreePrice, itemFourPrice, itemFivePrice
+Display "How much does a bag of pecans cost?"
+Input itemOnePrice
+Display "How much does a bar of soap cost?"
+Input itemTwoPrice
+Display "How much does a bag of chips cost?"
+Input itemThreePrice
+Display "How much does a bottle of shampoo cost?"
+Input itemFourPrice
+Display "How much does a bottle of laundry detergent cost?"
+Input itemFivePrice
+Declare Real subtotal = itemOnePrice + itemTwoPrice + itemThreePrice + itemFourPrice + itemFivePrice
+Display "Subtotal: $", subtotal
+Display "Tax: $", subtotal * TAX
+Display "Your grand total is $", subtotal + (subtotal * TAX)

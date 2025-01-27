@@ -1,0 +1,22 @@
+Declare String username, address, city, state, phone, major
+Declare Integer zip
+Display "What is your name?"
+Input username
+Display "What is your street address?"
+Input address
+Display "What city do you live in?"
+Input city
+Display "What state do you live in?"
+Input state
+Display "What’s your zipcode?"
+Input zip
+Display "What’s your phone number?"
+Input phone
+Display "What’s your college major?"
+Input major
+Display "Name: ", username
+Display "Address:"
+Display address
+Display city, ", ", state, " ", zip
+Display "Phone number: ", phone
+Display "College major: ", major

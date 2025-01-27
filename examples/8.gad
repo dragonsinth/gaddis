@@ -1,0 +1,11 @@
+Constant Real TIP_RATE = 0.15
+Constant Real SALES_TAX_RATE = 0.04
+Declare Real subtotal, tip, tax
+Display "How much does the meal cost?"
+Input subtotal
+Set tip = subtotal * TIP_RATE
+Set tax = subtotal * SALES_TAX_RATE
+Display "Subtotal: $", subtotal
+Display "Tip: $", tip
+Display "Tax: $", tax
+Display "Total: $", subtotal + tip + tax
