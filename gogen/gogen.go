@@ -14,12 +14,17 @@ var (
 	builtins string
 )
 
+const oldPrefix = "package main_template\n"
+const newPrefix = "package main\n"
 const suffix = "}\n"
 
 func Generate(globalBlock *ast.Block) string {
 	var sb strings.Builder
-	prefix := strings.TrimSuffix(builtins, suffix)
-	sb.WriteString(prefix)
+
+	sb.WriteString(newPrefix)
+	data := strings.TrimPrefix(builtins, oldPrefix)
+	data = strings.TrimSuffix(data, suffix)
+	sb.WriteString(data)
 	v := New("\t", &sb)
 	globalBlock.Visit(v)
 	sb.WriteString(suffix)
