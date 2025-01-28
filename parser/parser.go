@@ -120,6 +120,15 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 		p.parseTok(lex.ASSIGN)
 		expr := p.parseExpression()
+
+		// type check
+		exprType := expr.Type()
+		if ref.Type != exprType {
+			if ref.Type != ast.Real || exprType != ast.Integer {
+				panic(fmt.Errorf("%d:%d type error: %s not assignable to %s %s", r.Pos.Line, r.Pos.Column, exprType, ref.Type, name))
+			}
+		}
+
 		return &ast.SetStmt{name, ref, expr}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
@@ -184,10 +193,19 @@ func (p *Parser) parseExpression() ast.Expression {
 	return p.parseOperators(2)
 }
 
-var precedence = [][]lex.Token{
-	{lex.EXP},
-	{lex.MUL, lex.DIV, lex.MOD},
-	{lex.ADD, lex.SUB},
+var tokenMap = map[lex.Token]ast.Operator{
+	lex.ADD: ast.ADD,
+	lex.SUB: ast.SUB,
+	lex.MUL: ast.MUL,
+	lex.DIV: ast.DIV,
+	lex.EXP: ast.EXP,
+	lex.MOD: ast.MOD,
+}
+
+var precedence = [][]ast.Operator{
+	{ast.EXP},
+	{ast.MUL, ast.DIV, ast.MOD},
+	{ast.ADD, ast.SUB},
 }
 
 func (p *Parser) parseOperators(level int) ast.Expression {
@@ -198,15 +216,41 @@ func (p *Parser) parseOperators(level int) ast.Expression {
 	ret := p.parseOperators(level - 1)
 	for {
 		r := p.Peek()
-		if slices.Contains(ops, r.Token) {
+		op, ok := tokenMap[r.Token]
+		if ok && slices.Contains(ops, op) {
 			// generate a new binary operation and continue
 			p.Next()
 			rhs := p.parseOperators(level - 1)
-			ret = ast.NewBinaryOperation(r, ret, rhs)
+			ret = p.tryCreateBinaryOperation(r, op, ret, rhs)
 		} else {
 			return ret
 		}
 	}
+}
+
+func (p *Parser) tryCreateBinaryOperation(r lex.Result, op ast.Operator, lhs ast.Expression, rhs ast.Expression) *ast.BinaryOperation {
+	// TODO: more semantic / type checking pass
+	switch op {
+	case ast.ADD, ast.SUB, ast.MUL, ast.DIV, ast.EXP, ast.MOD:
+		aTyp := lhs.Type()
+		bTyp := rhs.Type()
+		var typ ast.Type
+		if aTyp == ast.Integer && bTyp == ast.Integer {
+			typ = ast.Integer
+		} else if aTyp == ast.Integer && bTyp == ast.Real {
+			typ = ast.Real
+		} else if aTyp == ast.Real && bTyp == ast.Integer {
+			typ = ast.Real
+		} else if aTyp == ast.Real && bTyp == ast.Real {
+			typ = ast.Real
+		} else {
+			panic(fmt.Errorf("%d:%d unsupported binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
+		}
+		return &ast.BinaryOperation{op, typ, lhs, rhs}
+	default:
+		panic(fmt.Errorf("%d:%d unsupported binary operation: %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+	}
+	return nil
 }
 
 func (p *Parser) parseTerminal() ast.Expression {

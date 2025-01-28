@@ -3,7 +3,6 @@ package gogen
 import (
 	_ "embed"
 	"github.com/dragonsinth/gaddis/ast"
-	"github.com/dragonsinth/gaddis/lex"
 	"io"
 	"strconv"
 	"strings"
@@ -65,7 +64,7 @@ func (g *GoGenerator) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	}
 	g.ident(vd)
 	g.output(" ")
-	g.output(goType(vd.Type))
+	g.output(goTypes[vd.Type])
 	if vd.Expr != nil {
 		g.output(" = ")
 	}
@@ -128,11 +127,12 @@ func (g *GoGenerator) PreVisitSetStmt(s *ast.SetStmt) bool {
 	g.indent()
 	g.ident(s.Ref)
 	g.output(" = ")
-	return true
+	g.maybeCast(s.Ref.Type, s.Expr)
+	g.output("\n")
+	return false
 }
 
 func (g *GoGenerator) PostVisitSetStmt(s *ast.SetStmt) {
-	g.output("\n")
 }
 
 func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
@@ -169,8 +169,8 @@ func (g *GoGenerator) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
 
 func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	// must special case exp and mod
-	if bo.Op == lex.MOD || bo.Op == lex.EXP {
-		if bo.Op == lex.MOD {
+	if bo.Op == ast.MOD || bo.Op == ast.EXP {
+		if bo.Op == ast.MOD {
 			g.output("mod")
 		} else {
 			g.output("exp")
@@ -184,7 +184,7 @@ func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	} else {
 		g.output("(")
 		g.maybeCast(bo.Typ, bo.Lhs)
-		g.output(operator(bo.Op))
+		g.output(goOperators[bo.Op])
 		g.maybeCast(bo.Typ, bo.Rhs)
 		g.output(")")
 	}
@@ -220,24 +220,23 @@ func (g *GoGenerator) ident(ref *ast.VarDecl) {
 
 func (g *GoGenerator) maybeCast(typ ast.Type, exp ast.Expression) {
 	if exp.Type() != typ {
-		g.output(goType(typ))
+		g.output(goTypes[typ])
 		g.output("(")
 		defer g.output(")")
 	}
 	exp.Visit(g)
 }
 
-func goType(t ast.Type) string {
-	return [...]string{"INVALID", "int64", "float64", "string", "byte"}[t]
+var goTypes = [...]string{
+	ast.Integer:   "int64",
+	ast.Real:      "float64",
+	ast.String:    "string",
+	ast.Character: "character",
 }
 
-func operator(op lex.Token) string {
-	return [...]string{
-		lex.ADD: "+",
-		lex.SUB: "-",
-		lex.MUL: "*",
-		lex.DIV: "/",
-		lex.EXP: "^", // TODO: fixme
-		lex.MOD: "%",
-	}[op]
+var goOperators = [...]string{
+	ast.ADD: "+",
+	ast.SUB: "-",
+	ast.MUL: "*",
+	ast.DIV: "/",
 }

@@ -127,8 +127,10 @@ func TestPrograms(t *testing.T) {
 		id := strconv.Itoa(i + 1)
 		t.Run(id, func(t *testing.T) {
 			block, err := Parse([]byte(input))
-			for _, stmt := range block.Statements {
-				t.Log(stmt.String())
+			if block != nil {
+				for _, stmt := range block.Statements {
+					t.Log(stmt.String())
+				}
 			}
 			if err != nil {
 				t.Error(err)

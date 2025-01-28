@@ -2,7 +2,6 @@ package ast
 
 import (
 	"fmt"
-	"github.com/dragonsinth/gaddis/lex"
 )
 
 type Expression interface {
@@ -88,7 +87,7 @@ func (cl CharacterLiteral) Type() Type {
 }
 
 type BinaryOperation struct {
-	Op  lex.Token
+	Op  Operator
 	Typ Type
 	Lhs Expression
 	Rhs Expression
@@ -109,30 +108,6 @@ func (bo *BinaryOperation) Type() Type {
 
 func (bo *BinaryOperation) String() string {
 	return fmt.Sprintf("(%s %s %s)", bo.Lhs, bo.Op, bo.Rhs)
-}
-
-func NewBinaryOperation(r lex.Result, lhs Expression, rhs Expression) *BinaryOperation {
-	// TODO: more semantic / type checking pass
-	switch r.Token {
-	case lex.ADD, lex.SUB, lex.MUL, lex.DIV, lex.EXP, lex.MOD:
-		aTyp := lhs.Type()
-		bTyp := rhs.Type()
-		var typ Type
-		if aTyp == Integer && bTyp == Integer {
-			typ = Integer
-		} else if aTyp == Integer && bTyp == Real {
-			typ = Real
-		} else if aTyp == Real && bTyp == Integer {
-			typ = Real
-		} else if aTyp == Real && bTyp == Real {
-			typ = Real
-		} else {
-			panic(fmt.Sprintf("%d:%d unsupported binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
-		}
-		return &BinaryOperation{r.Token, typ, lhs, rhs}
-	default:
-		panic(fmt.Sprintf("%d:%d unsupported binary operation: %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
-	}
 }
 
 type VariableExpression struct {
