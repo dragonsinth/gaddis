@@ -33,6 +33,14 @@ func main() {
 	}
 }
 
+/*
+Test mode:
+- output only: run and verify, assume no input
+- output and input: run and verify, assume input
+- input only: run and produce output
+- neither: run and prodcue output, reading from stdin
+*/
+
 func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
