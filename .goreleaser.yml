@@ -29,3 +29,6 @@ archives:
       {{- with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}
     files:
       - LICENSE
+
+env_files:
+  github_token: .github_token

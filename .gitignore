@@ -18,6 +18,10 @@ go.work.sum
 # env file
 .env
 
+# release
+.github_token
+dist/
+
 # project
 *.tmp.go
 *.tmp.exec
