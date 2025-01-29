@@ -38,7 +38,7 @@ func (vd *VarDecl) String() string {
 	if vd.Expr != nil {
 		return fmt.Sprintf("%s = %s", vd.Name, vd.Expr)
 	}
-	return fmt.Sprintf("%s", vd.Name)
+	return vd.Name
 }
 
 func NewScope(parent *Scope) *Scope {

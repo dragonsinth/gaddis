@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	fDebug = flag.Bool("d", false, "debug mode")
+	fVerbose = flag.Bool("v", false, "verbose logging to stderr")
 )
 
 func main() {
@@ -50,14 +50,14 @@ func run() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if *fDebug {
+	if *fVerbose {
 		for _, stmt := range block.Statements {
 			log.Println(stmt.String())
 		}
 	}
 
 	goSrc := gogen.Generate(block)
-	if *fDebug {
+	if *fVerbose {
 		log.Println(goSrc)
 	}
 

@@ -1,0 +1,31 @@
+builds:
+  - binary: gaddis
+    main: ./cmd/gaddis
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - 386
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version=v{{.Version}}
+
+archives:
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .Binary }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}osx{{ else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64{{ else if eq .Arch "386" }}x86_32{{ else }}{{ .Arch }}{{ end }}
+      {{- with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}
+    files:
+      - LICENSE

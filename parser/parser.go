@@ -87,7 +87,7 @@ func (p *Parser) parseStatement() ast.Statement {
 			p.parseTok(lex.COMMA)
 			decls = append(decls, p.parseVarDecl(typ, true))
 		}
-		return &ast.DeclareStmt{typ, decls}
+		return &ast.DeclareStmt{Type: typ, Decls: decls}
 	case lex.DECLARE:
 		typ := p.parseType()
 		var decls []*ast.VarDecl
@@ -96,7 +96,7 @@ func (p *Parser) parseStatement() ast.Statement {
 			p.parseTok(lex.COMMA)
 			decls = append(decls, p.parseVarDecl(typ, false))
 		}
-		return &ast.DeclareStmt{typ, decls}
+		return &ast.DeclareStmt{Type: typ, Decls: decls}
 	case lex.DISPLAY:
 		var exprs []ast.Expression
 		exprs = append(exprs, p.parseExpression())
@@ -104,14 +104,14 @@ func (p *Parser) parseStatement() ast.Statement {
 			p.parseTok(lex.COMMA)
 			exprs = append(exprs, p.parseExpression())
 		}
-		return &ast.DisplayStmt{exprs}
+		return &ast.DisplayStmt{Exprs: exprs}
 	case lex.INPUT:
 		name := p.parseIdentifer()
 		ref := p.currScope.Lookup(name)
 		if ref == nil {
 			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
-		return &ast.InputStmt{name, ref}
+		return &ast.InputStmt{Name: name, Ref: ref}
 	case lex.SET:
 		name := p.parseIdentifer()
 		ref := p.currScope.Lookup(name)
@@ -129,7 +129,7 @@ func (p *Parser) parseStatement() ast.Statement {
 			}
 		}
 
-		return &ast.SetStmt{name, ref, expr}
+		return &ast.SetStmt{Name: name, Ref: ref, Expr: expr}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -147,7 +147,7 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 		r := p.Peek()
 		panic(fmt.Errorf("%d:%d: expected constant initializer, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
-	decl := &ast.VarDecl{r.Text, typ, expr, isConst}
+	decl := &ast.VarDecl{Name: r.Text, Type: typ, Expr: expr, IsConst: isConst}
 	if existing, ok := p.currScope.Decls[decl.Name]; ok {
 		panic(fmt.Errorf("%d:%d: identifier %s %s already defined in this scope", r.Pos.Line, r.Pos.Column, existing.Type, existing.Name))
 	}
@@ -246,11 +246,10 @@ func (p *Parser) tryCreateBinaryOperation(r lex.Result, op ast.Operator, lhs ast
 		} else {
 			panic(fmt.Errorf("%d:%d unsupported binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
 		}
-		return &ast.BinaryOperation{op, typ, lhs, rhs}
+		return &ast.BinaryOperation{Op: op, Typ: typ, Lhs: lhs, Rhs: rhs}
 	default:
 		panic(fmt.Errorf("%d:%d unsupported binary operation: %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
-	return nil
 }
 
 func (p *Parser) parseTerminal() ast.Expression {
@@ -262,31 +261,31 @@ func (p *Parser) parseTerminal() ast.Expression {
 		if ref == nil {
 			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
-		return &ast.VariableExpression{name, ref}
+		return &ast.VariableExpression{Name: name, Ref: ref}
 	case lex.INT_LIT:
 		v, err := strconv.ParseInt(r.Text, 0, 64)
 		if err != nil {
 			panic(err)
 		}
-		return &ast.IntegerLiteral{v}
+		return &ast.IntegerLiteral{Val: v}
 	case lex.REAL_LIT:
 		v, err := strconv.ParseFloat(r.Text, 64)
 		if err != nil {
 			panic(err)
 		}
-		return &ast.RealLiteral{v}
+		return &ast.RealLiteral{Val: v}
 	case lex.STR_LIT:
 		v, err := strconv.Unquote(r.Text)
 		if err != nil {
 			panic(fmt.Errorf("%d:%d: invalid string literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
-		return &ast.StringLiteral{v}
+		return &ast.StringLiteral{Val: v}
 	case lex.CHR_LIT:
 		v, err := strconv.Unquote(r.Text)
 		if err != nil || len(v) > 1 {
 			panic(fmt.Errorf("%d:%d: invalid string literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
-		return &ast.CharacterLiteral{v[0]}
+		return &ast.CharacterLiteral{Val: v[0]}
 	case lex.LPAREN:
 		expr := p.parseExpression()
 		p.parseTok(lex.RPAREN)

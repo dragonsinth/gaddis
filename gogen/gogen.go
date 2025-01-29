@@ -9,24 +9,23 @@ import (
 )
 
 var (
-	//go:embed tmpl/builtins.go
+	//go:embed builtins/builtins.go
 	builtins string
 )
 
 const oldPrefix = "package main_template\n"
 const newPrefix = "package main\n"
-const suffix = "}\n"
 
 func Generate(globalBlock *ast.Block) string {
 	var sb strings.Builder
 
-	sb.WriteString(newPrefix)
 	data := strings.TrimPrefix(builtins, oldPrefix)
-	data = strings.TrimSuffix(data, suffix)
+	sb.WriteString(newPrefix)
 	sb.WriteString(data)
+	sb.WriteString("func main() {\n")
 	v := New("\t", &sb)
 	globalBlock.Visit(v)
-	sb.WriteString(suffix)
+	sb.WriteString("}\n")
 	return sb.String()
 }
 

@@ -3,6 +3,7 @@ package main_template
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -10,51 +11,57 @@ import (
 	"strings"
 )
 
+type syncWriter interface {
+	io.Writer
+	Sync() error
+}
+
 var stdin = bufio.NewReader(os.Stdin)
+var stdout = syncWriter(os.Stdout)
 
 func display(args ...any) {
 	for _, arg := range args {
-		fmt.Print(arg)
+		_, _ = fmt.Fprint(stdout, arg)
 	}
-	fmt.Println()
+	_, _ = fmt.Fprintln(stdout)
 }
 
 func readLine() string {
-	_ = os.Stdout.Sync() // ensure any prompts are flushed
+	_ = stdout.Sync() // ensure any prompts are flushed
 	input, err := stdin.ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
 	}
-	_ = os.Stdout.Sync() // ensure user's newline is flushed to the terminal
+	_ = stdout.Sync() // ensure user's newline is flushed to the terminal
 	return strings.TrimSuffix(input, "\n")
 }
 
 func inputInteger() int64 {
 	for {
-		fmt.Print("integer> ")
+		_, _ = fmt.Fprint(stdout, "integer> ")
 		input := readLine()
 		v, err := strconv.ParseInt(input, 10, 64)
 		if err == nil {
 			return v
 		}
-		fmt.Println("error, invalid integer, try again")
+		_, _ = fmt.Fprintln(stdout, "error, invalid integer, try again")
 	}
 }
 
 func inputReal() float64 {
 	for {
-		fmt.Print("real> ")
+		_, _ = fmt.Fprint(stdout, "real> ")
 		input := readLine()
 		v, err := strconv.ParseFloat(input, 64)
 		if err == nil {
 			return v
 		}
-		fmt.Println("error, invalid real, try again")
+		_, _ = fmt.Fprintln(stdout, "error, invalid real, try again")
 	}
 }
 
 func inputString() string {
-	fmt.Print("string> ")
+	_, _ = fmt.Fprint(stdout, "string> ")
 	input := readLine()
 	return input
 }
@@ -91,7 +98,4 @@ func modReal(a, b float64) float64 {
 
 func expReal(base, exp float64) float64 {
 	return math.Pow(base, exp)
-}
-
-func main() {
 }
