@@ -61,5 +61,9 @@ func run() error {
 		log.Println(goSrc)
 	}
 
-	return goexec.Run(ctx, goSrc, os.Stdin, os.Stdout, os.Stderr)
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	return goexec.Run(ctx, goSrc, dir, os.Stdin, os.Stdout, os.Stderr)
 }

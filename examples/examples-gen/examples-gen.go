@@ -1,25 +1,30 @@
-package examples
+package main
 
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/dragonsinth/gaddis/examples"
 	"io/fs"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"testing"
 )
+
+// TODO: instead of a separate command, this could just be options on the main gaddis command
+// -r (recursive) -i (capture input)
 
 const slash = string(filepath.Separator)
 
-func TestExamples(t *testing.T) {
+func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	_, file, _, _ := runtime.Caller(0)
-	root := filepath.Dir(file)
+	root := filepath.Dir(filepath.Dir(file))
 	if !strings.HasSuffix(root, slash) {
 		root += slash
 	}
@@ -33,18 +38,19 @@ func TestExamples(t *testing.T) {
 		if !strings.HasSuffix(path, ".gad") {
 			return nil
 		}
-		testname := strings.TrimPrefix(path, root)
-		testname = strings.ReplaceAll(testname, slash, "_")
-		t.Run(testname, func(t *testing.T) {
-			if err := RunTest(ctx, path); errors.Is(err, context.Canceled) {
-				t.Skip(err)
-			} else if err != nil {
-				t.Error(err)
-			}
-		})
-		return err
+		if _, err := os.Stat(path + ".in"); err == nil {
+			fmt.Println("skipping:", path)
+			return nil
+		}
+		fmt.Println("running:", path)
+		if err := examples.RunTest(ctx, path); errors.Is(err, context.Canceled) {
+			os.Exit(1)
+		} else if err != nil {
+			return err
+		}
+		return nil
 	})
 	if err != nil {
-		t.Error(err)
+		log.Fatal(err)
 	}
 }
