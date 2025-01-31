@@ -22,17 +22,13 @@ The company made about $27600
 
 ## Status
 
-Implemented up through Chapter 2; supports basic statements, expressions, operations, variables, constants, Integer, Real, String.
+Implemented up through Chapter 3; supports basic statements, expressions, operations, variables, constants, Integer, Real, String, Boolean.
 Should cover the whole language by May 2025.
 
 ### Not yet supported
-- comments
-- boolean data type, logic, operators, conditionals
-- if statements
 - loops
 - arrays
 - string processing and characters
 - functions/modules
 - classes
 - I/O
-  
