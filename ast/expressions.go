@@ -86,6 +86,47 @@ func (cl CharacterLiteral) Type() Type {
 	return Character
 }
 
+type BooleanLiteral struct {
+	Val bool
+}
+
+func (bl *BooleanLiteral) Visit(v Visitor) {
+	if !v.PreVisitBooleanLiteral(bl) {
+		return
+	}
+	v.PostVisitBooleanLiteral(bl)
+}
+
+func (bl BooleanLiteral) String() string {
+	return fmt.Sprintf("%t", bl.Val)
+}
+
+func (bl BooleanLiteral) Type() Type {
+	return Boolean
+}
+
+type UnaryOperation struct {
+	Op   Operator
+	Typ  Type
+	Expr Expression
+}
+
+func (uo *UnaryOperation) Visit(v Visitor) {
+	if !v.PreVisitUnaryOperation(uo) {
+		return
+	}
+	uo.Expr.Visit(v)
+	v.PostVisitUnaryOperation(uo)
+}
+
+func (uo *UnaryOperation) Type() Type {
+	return uo.Typ
+}
+
+func (uo *UnaryOperation) String() string {
+	return fmt.Sprintf("%s (%s)", uo.Op, uo.Expr)
+}
+
 type BinaryOperation struct {
 	Op  Operator
 	Typ Type

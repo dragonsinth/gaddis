@@ -11,11 +11,13 @@ const (
 	ILLEGAL = Token(iota)
 	EOF
 	EOL
+	COMMENT
 
 	INTEGER
 	REAL
 	STRING
 	CHARACTER
+	BOOLEAN
 
 	IDENT
 
@@ -25,6 +27,16 @@ const (
 	DIV
 	EXP
 	MOD
+
+	EQ
+	NEQ
+	LT
+	LTE
+	GT
+	GTE
+	AND
+	OR
+	NOT
 
 	ASSIGN
 	COMMA
@@ -37,20 +49,29 @@ const (
 	INPUT
 	SET
 
+	END
+	IF
+	THEN
+	ELSE
+
 	INT_LIT
 	REAL_LIT
 	STR_LIT
 	CHR_LIT
+	TRUE
+	FALSE
 )
 
 var tokens = []string{
 	ILLEGAL:   "ILLEGAL",
 	EOF:       "EOF",
 	EOL:       "EOL",
+	COMMENT:   "//",
 	INTEGER:   "INTEGER",
 	REAL:      "REAL",
 	STRING:    "STRING",
 	CHARACTER: "CHARACTER",
+	BOOLEAN:   "BOOLEAN",
 	IDENT:     "IDENT",
 	ADD:       "+",
 	SUB:       "-",
@@ -58,6 +79,15 @@ var tokens = []string{
 	DIV:       "/",
 	EXP:       "^",
 	MOD:       "MOD",
+	EQ:        "==",
+	NEQ:       "!=",
+	LT:        "<",
+	LTE:       "<=",
+	GT:        ">",
+	GTE:       ">=",
+	AND:       "AND",
+	OR:        "OR",
+	NOT:       "NOT",
 	ASSIGN:    "=",
 	COMMA:     ",",
 	LPAREN:    "(",
@@ -67,10 +97,16 @@ var tokens = []string{
 	DISPLAY:   "DISPLAY",
 	INPUT:     "INPUT",
 	SET:       "SET",
+	END:       "END",
+	IF:        "IF",
+	THEN:      "THEN",
+	ELSE:      "ELSE",
 	INT_LIT:   "INT_LIT",
 	REAL_LIT:  "REAL_LIT",
 	STR_LIT:   "STR_LIT",
 	CHR_LIT:   "CHR_LIT",
+	TRUE:      "TRUE",
+	FALSE:     "FALSE",
 }
 
 var keywords = map[string]Token{
@@ -78,12 +114,22 @@ var keywords = map[string]Token{
 	"Real":      REAL,
 	"String":    STRING,
 	"Character": CHARACTER,
+	"Boolean":   BOOLEAN,
 	"MOD":       MOD,
+	"AND":       AND,
+	"OR":        OR,
+	"NOT":       NOT,
 	"Constant":  CONSTANT,
 	"Declare":   DECLARE,
 	"Display":   DISPLAY,
 	"Input":     INPUT,
 	"Set":       SET,
+	"End":       END,
+	"If":        IF,
+	"Then":      THEN,
+	"Else":      ELSE,
+	"True":      TRUE,
+	"False":     FALSE,
 }
 
 func (t Token) String() string {
@@ -163,11 +209,42 @@ func (l *Lexer) Lex() Result {
 		case '*':
 			return Result{l.advance(), MUL, "*", nil}
 		case '/':
-			return Result{l.advance(), DIV, "/", nil}
+			pos := l.advance()
+			if l.stream.Peek() == '/' {
+				// single line comment
+				return l.parseComment(pos)
+			}
+			return Result{pos, DIV, "/", nil}
 		case '^':
 			return Result{l.advance(), EXP, "^", nil}
 		case '=':
-			return Result{l.advance(), ASSIGN, "=", nil}
+			pos := l.advance()
+			if l.stream.Peek() == '=' {
+				l.advance()
+				return Result{pos, EQ, "==", nil}
+			}
+			return Result{pos, ASSIGN, "=", nil}
+		case '!':
+			pos := l.advance()
+			if l.stream.Peek() == '=' {
+				l.advance()
+				return Result{pos, NEQ, "!=", nil}
+			}
+			return Result{pos, ILLEGAL, string(r), ErrSyntax}
+		case '<':
+			pos := l.advance()
+			if l.stream.Peek() == '=' {
+				l.advance()
+				return Result{pos, LTE, "<=", nil}
+			}
+			return Result{pos, LT, "<", nil}
+		case '>':
+			pos := l.advance()
+			if l.stream.Peek() == '=' {
+				l.advance()
+				return Result{pos, GTE, ">=", nil}
+			}
+			return Result{pos, GT, ">", nil}
 		case ',':
 			return Result{l.advance(), COMMA, "=", nil}
 		case '(':
@@ -229,6 +306,15 @@ func (l *Lexer) parseNumber() Result {
 			return Result{pos, INT_LIT, str, nil}
 		} else {
 			return Result{pos, ILLEGAL, str, err}
+		}
+	}
+}
+
+func (l *Lexer) parseComment(pos Position) Result {
+	for {
+		c := l.stream.Next()
+		if c == '\n' {
+			return Result{pos, EOL, "\n", nil}
 		}
 	}
 }

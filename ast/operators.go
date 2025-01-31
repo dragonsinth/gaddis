@@ -10,6 +10,15 @@ const (
 	DIV
 	EXP
 	MOD
+	EQ
+	NEQ
+	LT
+	LTE
+	GT
+	GTE
+	AND
+	OR
+	NOT
 )
 
 var operators = [...]string{
@@ -19,6 +28,15 @@ var operators = [...]string{
 	DIV: "/",
 	EXP: "^",
 	MOD: "MOD",
+	EQ:  "==",
+	NEQ: "!=",
+	LT:  "<",
+	LTE: "<=",
+	GT:  ">",
+	GTE: ">",
+	AND: "AND",
+	OR:  "OR",
+	NOT: "NOT",
 }
 
 func (op Operator) String() string {

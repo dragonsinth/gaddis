@@ -17,7 +17,9 @@ func Parse(input []byte) (ret *ast.Block, err error) {
 		}
 	}()
 	// parse the global lock
+	p.maybeParseEol()
 	ret = p.parseBlock(lex.EOF)
+	p.parseTok(lex.EOF)
 	return
 }
 
@@ -58,7 +60,7 @@ func errCheck(r lex.Result) lex.Result {
 	return r
 }
 
-func (p *Parser) parseBlock(expectToken lex.Token) *ast.Block {
+func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 	parentScope := p.currScope
 	defer func() {
 		p.currScope = parentScope
@@ -66,14 +68,13 @@ func (p *Parser) parseBlock(expectToken lex.Token) *ast.Block {
 	p.currScope = ast.NewScope(parentScope)
 
 	var stmts []ast.Statement
-	for !p.hasTok(expectToken) {
-		for p.hasTok(lex.EOL) {
-			p.parseTok(lex.EOL)
+	for {
+		if slices.Contains(endTokens, p.Peek().Token) {
+			return &ast.Block{Scope: p.currScope, Statements: stmts}
 		}
 		stmts = append(stmts, p.parseStatement())
-		p.parseTok(lex.EOL)
+		p.parseEol()
 	}
-	return &ast.Block{Scope: p.currScope, Statements: stmts}
 }
 
 func (p *Parser) parseStatement() ast.Statement {
@@ -130,6 +131,23 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 
 		return &ast.SetStmt{Name: name, Ref: ref, Expr: expr}
+	case lex.IF:
+		expr := p.parseExpression()
+		if expr.Type() != ast.Boolean {
+			panic(fmt.Errorf("%d:%d type error: expected Boolean, got %s", r.Pos.Line, r.Pos.Column, expr.Type()))
+		}
+		p.parseTok(lex.THEN)
+		p.parseEol()
+		ifBlock := p.parseBlock(lex.END, lex.ELSE)
+		var elseBlock *ast.Block
+		if p.hasTok(lex.ELSE) {
+			p.parseTok(lex.ELSE)
+			p.parseEol()
+			elseBlock = p.parseBlock(lex.END)
+		}
+		p.parseTok(lex.END)
+		p.parseTok(lex.IF)
+		return &ast.IfStmt{Expr: expr, IfBlock: ifBlock, ElseBlock: elseBlock}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -166,6 +184,8 @@ func (p *Parser) parseType() ast.Type {
 		return ast.String
 	case lex.CHARACTER:
 		return ast.Character
+	case lex.BOOLEAN:
+		return ast.Boolean
 	default:
 		panic(fmt.Errorf("%d:%d expected type, got %s, %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -190,37 +210,50 @@ func (p *Parser) parseTok(expect lex.Token) lex.Result {
 }
 
 func (p *Parser) parseExpression() ast.Expression {
-	return p.parseOperators(2)
+	return p.parseBinaryOperations(binaryLevels)
 }
 
-var tokenMap = map[lex.Token]ast.Operator{
+var binaryOpMap = map[lex.Token]ast.Operator{
 	lex.ADD: ast.ADD,
 	lex.SUB: ast.SUB,
 	lex.MUL: ast.MUL,
 	lex.DIV: ast.DIV,
 	lex.EXP: ast.EXP,
 	lex.MOD: ast.MOD,
+	lex.EQ:  ast.EQ,
+	lex.NEQ: ast.NEQ,
+	lex.LT:  ast.LT,
+	lex.LTE: ast.LTE,
+	lex.GT:  ast.GT,
+	lex.GTE: ast.GTE,
+	lex.AND: ast.AND,
+	lex.OR:  ast.OR,
+	lex.NOT: ast.NOT,
 }
 
-var precedence = [][]ast.Operator{
+var binaryPrecedence = [][]ast.Operator{
 	{ast.EXP},
 	{ast.MUL, ast.DIV, ast.MOD},
 	{ast.ADD, ast.SUB},
+	{ast.EQ, ast.NEQ, ast.LT, ast.LTE, ast.GT, ast.GTE},
+	{ast.AND, ast.OR},
 }
 
-func (p *Parser) parseOperators(level int) ast.Expression {
+var binaryLevels = len(binaryPrecedence) - 1
+
+func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 	if level < 0 {
 		return p.parseTerminal()
 	}
-	ops := precedence[level]
-	ret := p.parseOperators(level - 1)
+	ops := binaryPrecedence[level]
+	ret := p.parseBinaryOperations(level - 1)
 	for {
 		r := p.Peek()
-		op, ok := tokenMap[r.Token]
+		op, ok := binaryOpMap[r.Token]
 		if ok && slices.Contains(ops, op) {
-			// generate a new binary operation and continue
+			// generate a new operation and continue
 			p.Next()
-			rhs := p.parseOperators(level - 1)
+			rhs := p.parseBinaryOperations(level - 1)
 			ret = p.tryCreateBinaryOperation(r, op, ret, rhs)
 		} else {
 			return ret
@@ -230,26 +263,68 @@ func (p *Parser) parseOperators(level int) ast.Expression {
 
 func (p *Parser) tryCreateBinaryOperation(r lex.Result, op ast.Operator, lhs ast.Expression, rhs ast.Expression) *ast.BinaryOperation {
 	// TODO: more semantic / type checking pass
+	aTyp := lhs.Type()
+	bTyp := rhs.Type()
 	switch op {
 	case ast.ADD, ast.SUB, ast.MUL, ast.DIV, ast.EXP, ast.MOD:
-		aTyp := lhs.Type()
-		bTyp := rhs.Type()
-		var typ ast.Type
-		if aTyp == ast.Integer && bTyp == ast.Integer {
-			typ = ast.Integer
-		} else if aTyp == ast.Integer && bTyp == ast.Real {
-			typ = ast.Real
-		} else if aTyp == ast.Real && bTyp == ast.Integer {
-			typ = ast.Real
-		} else if aTyp == ast.Real && bTyp == ast.Real {
-			typ = ast.Real
-		} else {
-			panic(fmt.Errorf("%d:%d unsupported binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
+		if !isNumericType(aTyp) {
+			panic(fmt.Errorf("%d:%d operator %s expects left hand operand of type %s to be numeric", r.Pos.Line, r.Pos.Column, r.Text, aTyp))
 		}
-		return &ast.BinaryOperation{Op: op, Typ: typ, Lhs: lhs, Rhs: rhs}
+		if !isNumericType(bTyp) {
+			panic(fmt.Errorf("%d:%d operator %s expects right hand operand of type %s to be numeric", r.Pos.Line, r.Pos.Column, r.Text, bTyp))
+		}
+		rTyp := areComparableTypes(aTyp, bTyp)
+		if rTyp == ast.InvalidType {
+			panic(fmt.Errorf("%d:%d binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
+		}
+		return &ast.BinaryOperation{Op: op, Typ: rTyp, Lhs: lhs, Rhs: rhs}
+	case ast.EQ, ast.NEQ:
+		rTyp := areComparableTypes(aTyp, bTyp)
+		if rTyp == ast.InvalidType {
+			panic(fmt.Errorf("%d:%d binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
+		}
+		return &ast.BinaryOperation{Op: op, Typ: ast.Boolean, Lhs: lhs, Rhs: rhs}
+	case ast.LT, ast.GT, ast.LTE, ast.GTE:
+		if !areOrderedTypes(aTyp, bTyp) {
+			panic(fmt.Errorf("%d:%d binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
+		}
+		return &ast.BinaryOperation{Op: op, Typ: ast.Boolean, Lhs: lhs, Rhs: rhs}
+	case ast.AND, ast.OR:
+		if aTyp != ast.Boolean {
+			panic(fmt.Errorf("%d:%d operator %s expects left hand operand of type %s to be boolean", r.Pos.Line, r.Pos.Column, r.Text, aTyp))
+		}
+		if bTyp != ast.Boolean {
+			panic(fmt.Errorf("%d:%d operator %s expects right hand operand of type %s to be boolean", r.Pos.Line, r.Pos.Column, r.Text, bTyp))
+		}
+		return &ast.BinaryOperation{Op: op, Typ: ast.Boolean, Lhs: lhs, Rhs: rhs}
 	default:
 		panic(fmt.Errorf("%d:%d unsupported binary operation: %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
+}
+
+func isNumericType(a ast.Type) bool {
+	return a == ast.Integer || a == ast.Real
+}
+
+func areComparableTypes(a ast.Type, b ast.Type) ast.Type {
+	if a == b {
+		return a
+	}
+	if isNumericType(a) && isNumericType(b) {
+		return ast.Real // promote
+	}
+	return ast.InvalidType
+}
+
+func areOrderedTypes(a ast.Type, b ast.Type) bool {
+	typ := areComparableTypes(a, b)
+	if typ == ast.InvalidType {
+		return false // must be comparable
+	}
+	if typ == ast.Boolean {
+		return false // cannot order booleans
+	}
+	return true
 }
 
 func (p *Parser) parseTerminal() ast.Expression {
@@ -286,11 +361,32 @@ func (p *Parser) parseTerminal() ast.Expression {
 			panic(fmt.Errorf("%d:%d: invalid string literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
 		return &ast.CharacterLiteral{Val: v[0]}
+	case lex.NOT:
+		expr := p.parseExpression()
+		if expr.Type() != ast.Boolean {
+			panic(fmt.Errorf("%d:%d operator %s expects operand of type %s to be boolean", r.Pos.Line, r.Pos.Column, r.Text, expr.Type()))
+		}
+		return &ast.UnaryOperation{Op: ast.NOT, Typ: ast.Boolean, Expr: expr}
+	case lex.TRUE:
+		return &ast.BooleanLiteral{Val: true}
+	case lex.FALSE:
+		return &ast.BooleanLiteral{Val: false}
 	case lex.LPAREN:
 		expr := p.parseExpression()
 		p.parseTok(lex.RPAREN)
 		return expr
 	default:
 		panic(fmt.Errorf("%d:%d expected expression, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+	}
+}
+
+func (p *Parser) parseEol() {
+	p.parseTok(lex.EOL)
+	p.maybeParseEol()
+}
+
+func (p *Parser) maybeParseEol() {
+	for p.hasTok(lex.EOL) {
+		p.parseTok(lex.EOL)
 	}
 }

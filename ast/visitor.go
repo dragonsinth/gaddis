@@ -11,32 +11,41 @@ type Visitor interface {
 	PreVisitVarDecl(vd *VarDecl) bool
 	PostVisitVarDecl(vd *VarDecl)
 
-	PreVisitConstantStmt(stmt *ConstantStmt) bool
-	PostVisitConstantStmt(stmt *ConstantStmt)
+	PreVisitConstantStmt(cs *ConstantStmt) bool
+	PostVisitConstantStmt(cs *ConstantStmt)
 
-	PreVisitDeclareStmt(stmt *DeclareStmt) bool
-	PostVisitDeclareStmt(stmt *DeclareStmt)
+	PreVisitDeclareStmt(ds *DeclareStmt) bool
+	PostVisitDeclareStmt(ds *DeclareStmt)
 
-	PreVisitDisplayStmt(d *DisplayStmt) bool
-	PostVisitDisplayStmt(d *DisplayStmt)
+	PreVisitDisplayStmt(ds *DisplayStmt) bool
+	PostVisitDisplayStmt(ds *DisplayStmt)
 
-	PreVisitInputStmt(i *InputStmt) bool
-	PostVisitInputStmt(i *InputStmt)
+	PreVisitInputStmt(is *InputStmt) bool
+	PostVisitInputStmt(is *InputStmt)
 
-	PreVisitSetStmt(s *SetStmt) bool
-	PostVisitSetStmt(s *SetStmt)
+	PreVisitSetStmt(ss *SetStmt) bool
+	PostVisitSetStmt(ss *SetStmt)
+
+	PreVisitIfStmt(is *IfStmt) bool
+	PostVisitIfStmt(is *IfStmt)
 
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
-	PostVisitIntegerLiteral(l *IntegerLiteral)
+	PostVisitIntegerLiteral(il *IntegerLiteral)
 
 	PreVisitRealLiteral(rl *RealLiteral) bool
-	PostVisitRealLiteral(l *RealLiteral)
+	PostVisitRealLiteral(rl *RealLiteral)
 
 	PreVisitStringLiteral(sl *StringLiteral) bool
 	PostVisitStringLiteral(sl *StringLiteral)
 
 	PreVisitCharacterLiteral(cl *CharacterLiteral) bool
 	PostVisitCharacterLiteral(cl *CharacterLiteral)
+
+	PreVisitBooleanLiteral(bl *BooleanLiteral) bool
+	PostVisitBooleanLiteral(bl *BooleanLiteral)
+
+	PreVisitUnaryOperation(uo *UnaryOperation) bool
+	PostVisitUnaryOperation(uo *UnaryOperation)
 
 	PreVisitBinaryOperation(bo *BinaryOperation) bool
 	PostVisitBinaryOperation(bo *BinaryOperation)

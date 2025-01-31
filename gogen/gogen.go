@@ -22,8 +22,9 @@ func Generate(globalBlock *ast.Block) string {
 	data := strings.TrimPrefix(builtins, oldPrefix)
 	sb.WriteString(newPrefix)
 	sb.WriteString(data)
-	sb.WriteString("func main() {\n")
+	sb.WriteString("\nfunc main() {\n")
 	v := New("\t", &sb)
+	// TODO: consider special-casing the global block to declare vars in global vs. other statements in main()
 	globalBlock.Visit(v)
 	sb.WriteString("}\n")
 	return sb.String()
@@ -48,10 +49,12 @@ type GoGenerator struct {
 var _ ast.Visitor = &GoGenerator{}
 
 func (g *GoGenerator) PreVisitBlock(bl *ast.Block) bool {
+	g.ind = g.ind + "\t"
 	return true
 }
 
 func (g *GoGenerator) PostVisitBlock(bl *ast.Block) {
+	g.ind = g.ind[:len(g.ind)-1]
 }
 
 func (g *GoGenerator) PreVisitVarDecl(vd *ast.VarDecl) bool {
@@ -134,6 +137,25 @@ func (g *GoGenerator) PreVisitSetStmt(s *ast.SetStmt) bool {
 func (g *GoGenerator) PostVisitSetStmt(s *ast.SetStmt) {
 }
 
+func (g *GoGenerator) PreVisitIfStmt(is *ast.IfStmt) bool {
+	g.indent()
+	g.output("if ")
+	is.Expr.Visit(g)
+	g.output(" {\n")
+	is.IfBlock.Visit(g)
+	if is.ElseBlock != nil {
+		g.indent()
+		g.output("} else {\n")
+		is.ElseBlock.Visit(g)
+	}
+	g.indent()
+	g.output("}\n")
+	return false
+}
+
+func (g *GoGenerator) PostVisitIfStmt(is *ast.IfStmt) {
+}
+
 func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	g.output(strconv.FormatInt(il.Val, 10))
 	return true
@@ -166,6 +188,27 @@ func (g *GoGenerator) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
 func (g *GoGenerator) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
 }
 
+func (g *GoGenerator) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
+	g.output(strconv.FormatBool(cl.Val))
+	return true
+}
+
+func (g *GoGenerator) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
+}
+
+func (g *GoGenerator) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
+	if uo.Op == ast.NOT {
+		g.output("!")
+	}
+	g.output("(")
+	uo.Expr.Visit(g)
+	g.output(")")
+	return false
+}
+
+func (g *GoGenerator) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
+}
+
 func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
@@ -176,15 +219,15 @@ func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 		}
 		g.output(bo.Typ.String())
 		g.output("(")
-		g.maybeCast(bo.Typ, bo.Lhs)
+		g.maybeCast(bo.Rhs.Type(), bo.Lhs)
 		g.output(", ")
-		g.maybeCast(bo.Typ, bo.Rhs)
+		g.maybeCast(bo.Lhs.Type(), bo.Rhs)
 		g.output(")")
 	} else {
 		g.output("(")
-		g.maybeCast(bo.Typ, bo.Lhs)
-		g.output(goOperators[bo.Op])
-		g.maybeCast(bo.Typ, bo.Rhs)
+		g.maybeCast(bo.Rhs.Type(), bo.Lhs)
+		g.output(goBinaryOperators[bo.Op])
+		g.maybeCast(bo.Lhs.Type(), bo.Rhs)
 		g.output(")")
 	}
 	return false
@@ -218,12 +261,13 @@ func (g *GoGenerator) ident(ref *ast.VarDecl) {
 }
 
 func (g *GoGenerator) maybeCast(typ ast.Type, exp ast.Expression) {
-	if exp.Type() != typ {
-		g.output(goTypes[typ])
-		g.output("(")
-		defer g.output(")")
+	if typ == ast.Real && exp.Type() == ast.Integer {
+		g.output("float64(")
+		exp.Visit(g)
+		g.output(")")
+	} else {
+		exp.Visit(g)
 	}
-	exp.Visit(g)
 }
 
 var goTypes = [...]string{
@@ -231,11 +275,20 @@ var goTypes = [...]string{
 	ast.Real:      "float64",
 	ast.String:    "string",
 	ast.Character: "character",
+	ast.Boolean:   "bool",
 }
 
-var goOperators = [...]string{
+var goBinaryOperators = [...]string{
 	ast.ADD: "+",
 	ast.SUB: "-",
 	ast.MUL: "*",
 	ast.DIV: "/",
+	ast.EQ:  "==",
+	ast.NEQ: "!=",
+	ast.LT:  "<",
+	ast.LTE: "<=",
+	ast.GT:  ">",
+	ast.GTE: ">=",
+	ast.AND: "&&",
+	ast.OR:  "||",
 }

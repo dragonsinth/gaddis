@@ -15,18 +15,18 @@ type ConstantStmt struct {
 	Decls []*VarDecl
 }
 
-func (c *ConstantStmt) Visit(v Visitor) {
-	if !v.PreVisitConstantStmt(c) {
+func (cs *ConstantStmt) Visit(v Visitor) {
+	if !v.PreVisitConstantStmt(cs) {
 		return
 	}
-	for _, d := range c.Decls {
+	for _, d := range cs.Decls {
 		d.Visit(v)
 	}
-	v.PostVisitConstantStmt(c)
+	v.PostVisitConstantStmt(cs)
 }
 
-func (c *ConstantStmt) String() string {
-	return fmt.Sprintf("Constant %s %s", c.Type, strings.Join(stringArray(c.Decls), ", "))
+func (cs *ConstantStmt) String() string {
+	return fmt.Sprintf("Constant %s %s", cs.Type, strings.Join(stringArray(cs.Decls), ", "))
 }
 
 type DeclareStmt struct {
@@ -34,37 +34,37 @@ type DeclareStmt struct {
 	Decls []*VarDecl
 }
 
-func (d *DeclareStmt) Visit(v Visitor) {
-	if !v.PreVisitDeclareStmt(d) {
+func (ds *DeclareStmt) Visit(v Visitor) {
+	if !v.PreVisitDeclareStmt(ds) {
 		return
 	}
-	for _, d := range d.Decls {
+	for _, d := range ds.Decls {
 		d.Visit(v)
 	}
-	v.PostVisitDeclareStmt(d)
+	v.PostVisitDeclareStmt(ds)
 }
 
-func (d *DeclareStmt) String() string {
-	return fmt.Sprintf("Declare %s %s", d.Type, strings.Join(stringArray(d.Decls), ", "))
+func (ds *DeclareStmt) String() string {
+	return fmt.Sprintf("Declare %s %s", ds.Type, strings.Join(stringArray(ds.Decls), ", "))
 }
 
 type DisplayStmt struct {
 	Exprs []Expression
 }
 
-func (d *DisplayStmt) Visit(v Visitor) {
-	if !v.PreVisitDisplayStmt(d) {
+func (ds *DisplayStmt) Visit(v Visitor) {
+	if !v.PreVisitDisplayStmt(ds) {
 		return
 	}
-	for _, e := range d.Exprs {
+	for _, e := range ds.Exprs {
 		e.Visit(v)
 	}
-	v.PostVisitDisplayStmt(d)
+	v.PostVisitDisplayStmt(ds)
 }
 
-func (d DisplayStmt) String() string {
+func (ds DisplayStmt) String() string {
 	var exprStr []string
-	for _, expr := range d.Exprs {
+	for _, expr := range ds.Exprs {
 		exprStr = append(exprStr, expr.String())
 	}
 	return fmt.Sprintf("Display %s", strings.Join(exprStr, ", "))
@@ -75,15 +75,15 @@ type InputStmt struct {
 	Ref  *VarDecl
 }
 
-func (i *InputStmt) Visit(v Visitor) {
-	if !v.PreVisitInputStmt(i) {
+func (is *InputStmt) Visit(v Visitor) {
+	if !v.PreVisitInputStmt(is) {
 		return
 	}
-	v.PostVisitInputStmt(i)
+	v.PostVisitInputStmt(is)
 }
 
-func (i InputStmt) String() string {
-	return fmt.Sprintf("Input %s", i.Name)
+func (is InputStmt) String() string {
+	return fmt.Sprintf("Input %s", is.Name)
 }
 
 type SetStmt struct {
@@ -92,14 +92,37 @@ type SetStmt struct {
 	Expr Expression
 }
 
-func (s *SetStmt) Visit(v Visitor) {
-	if !v.PreVisitSetStmt(s) {
+func (ss *SetStmt) Visit(v Visitor) {
+	if !v.PreVisitSetStmt(ss) {
+		return
+	}
+	ss.Expr.Visit(v)
+	v.PostVisitSetStmt(ss)
+}
+
+func (ss SetStmt) String() string {
+	return fmt.Sprintf("Set %s = %s", ss.Name, ss.Expr)
+}
+
+type IfStmt struct {
+	Expr      Expression
+	IfBlock   *Block
+	ElseBlock *Block
+}
+
+func (s *IfStmt) Visit(v Visitor) {
+	if !v.PreVisitIfStmt(s) {
 		return
 	}
 	s.Expr.Visit(v)
-	v.PostVisitSetStmt(s)
+	s.IfBlock.Visit(v)
+	if s.ElseBlock != nil {
+		s.ElseBlock.Visit(v)
+	}
+	v.PostVisitIfStmt(s)
 }
 
-func (s SetStmt) String() string {
-	return fmt.Sprintf("Set %s = %s", s.Name, s.Expr)
+func (s IfStmt) String() string {
+	// TODO
+	return fmt.Sprintf("If %s Then", s.Expr)
 }

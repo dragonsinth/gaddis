@@ -43,7 +43,7 @@ func (vd *VarDecl) String() string {
 
 func NewScope(parent *Scope) *Scope {
 	return &Scope{
-		Parent: nil,
+		Parent: parent,
 		Decls:  map[string]*VarDecl{},
 	}
 }

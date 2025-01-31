@@ -8,8 +8,11 @@ const (
 	Real
 	String
 	Character
+	Boolean
 )
 
+var typeNames = [...]string{"INVALID", "Integer", "Real", "String", "Character", "Boolean"}
+
 func (t Type) String() string {
-	return [...]string{"INVALID", "Integer", "Real", "String", "Character"}[t]
+	return typeNames[t]
 }

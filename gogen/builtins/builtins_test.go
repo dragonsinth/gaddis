@@ -58,6 +58,22 @@ func TestInputReal(t *testing.T) {
 	assertEqual(t, "real> error, invalid real, try again\nreal> ", outbuf.String())
 }
 
+func TestInputBoolean(t *testing.T) {
+	var outbuf bytes.Buffer
+	oldStdout := stdout
+	defer func() { stdout = oldStdout }()
+	stdout = noopSyncWriter{&outbuf}
+
+	oldStdin := stdin
+	defer func() { stdin = oldStdin }()
+	stdin = bufio.NewReader(strings.NewReader("not a boolean\ntrue\n"))
+
+	got := inputBoolean()
+	assertEqual(t, true, got)
+	assertEqual(t, 0, stdin.Buffered())
+	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", outbuf.String())
+}
+
 func TestInputString(t *testing.T) {
 	var outbuf bytes.Buffer
 	oldStdout := stdout

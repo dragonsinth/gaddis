@@ -66,6 +66,18 @@ func inputString() string {
 	return input
 }
 
+func inputBoolean() bool {
+	for {
+		_, _ = fmt.Fprint(stdout, "boolean> ")
+		input := readLine()
+		v, err := strconv.ParseBool(input)
+		if err == nil {
+			return v
+		}
+		_, _ = fmt.Fprintln(stdout, "error, invalid boolean, try again")
+	}
+}
+
 func modInteger(a, b int64) int64 {
 	return a % b
 }

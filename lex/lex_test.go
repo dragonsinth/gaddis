@@ -1,10 +1,9 @@
 package lex
 
-import (
-	"testing"
-)
+import "testing"
 
-const program = `Constant Real TAX_RATE = 0.5
+const program = `// Start
+Constant Real TAX_RATE = 0.5
 Declare Integer price, quantity, subtotal
 Display "Input price:"
 Input price
@@ -13,6 +12,20 @@ Input quantity
 Set subtotal = price * quantity
 Display "Subtotal:", subtotal
 Display "Total:", subtotal + subtotal * TAX_RATE
+
+Declare Boolean flag
+Set flag = price == quantity OR price != quantity
+Set flag = price <= quantity AND price < quantity
+Set flag = price >= quantity AND price > quantity
+Set flag = flag AND flag
+Set flag = flag OR flag
+Set flag = NOT flag
+Input flag
+If flag Then
+  Display True
+Else
+  Display False
+End If
 `
 
 func TestLex(t *testing.T) {
@@ -23,7 +36,7 @@ func TestLex(t *testing.T) {
 		if r.Token == EOF {
 			break
 		} else if r.Token == ILLEGAL {
-			t.Error(r.Error)
+			t.Fatal(r.Error)
 		}
 	}
 }

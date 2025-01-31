@@ -13,6 +13,20 @@ Input quantity
 Set subtotal = price * quantity
 Display "Subtotal:", subtotal
 Display "Total:", subtotal + subtotal * TAX_RATE
+
+Declare Boolean flag
+Set flag = price == quantity OR price != quantity
+Set flag = price <= quantity AND price < quantity
+Set flag = price >= quantity AND price > quantity
+Set flag = flag AND flag
+Set flag = flag OR flag
+Set flag = NOT flag
+Input flag
+If flag Then
+  Display True
+Else
+  Display False
+End If
 `
 
 func TestParse(t *testing.T) {
