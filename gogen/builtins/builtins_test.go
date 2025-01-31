@@ -34,11 +34,13 @@ func TestInputInteger(t *testing.T) {
 
 	oldStdin := stdin
 	defer func() { stdin = oldStdin }()
-	stdin = bufio.NewReader(strings.NewReader("not a number\n123\n"))
+	stdin = bufio.NewScanner(strings.NewReader("not a number\n123\n"))
 
 	got := inputInteger()
 	assertEqual(t, int64(123), got)
-	assertEqual(t, 0, stdin.Buffered())
+	if stdin.Scan() {
+		t.Error("extra input:", stdin.Text())
+	}
 	assertEqual(t, "integer> error, invalid integer, try again\ninteger> ", outbuf.String())
 }
 
@@ -50,11 +52,13 @@ func TestInputReal(t *testing.T) {
 
 	oldStdin := stdin
 	defer func() { stdin = oldStdin }()
-	stdin = bufio.NewReader(strings.NewReader("not a number\n123.456\n"))
+	stdin = bufio.NewScanner(strings.NewReader("not a number\n123.456\n"))
 
 	got := inputReal()
 	assertEqual(t, float64(123.456), got)
-	assertEqual(t, 0, stdin.Buffered())
+	if stdin.Scan() {
+		t.Error("extra input:", stdin.Text())
+	}
 	assertEqual(t, "real> error, invalid real, try again\nreal> ", outbuf.String())
 }
 
@@ -66,11 +70,13 @@ func TestInputBoolean(t *testing.T) {
 
 	oldStdin := stdin
 	defer func() { stdin = oldStdin }()
-	stdin = bufio.NewReader(strings.NewReader("not a boolean\ntrue\n"))
+	stdin = bufio.NewScanner(strings.NewReader("not a boolean\ntrue\n"))
 
 	got := inputBoolean()
 	assertEqual(t, true, got)
-	assertEqual(t, 0, stdin.Buffered())
+	if stdin.Scan() {
+		t.Error("extra input:", stdin.Text())
+	}
 	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", outbuf.String())
 }
 
@@ -82,11 +88,13 @@ func TestInputString(t *testing.T) {
 
 	oldStdin := stdin
 	defer func() { stdin = oldStdin }()
-	stdin = bufio.NewReader(strings.NewReader("David\n"))
+	stdin = bufio.NewScanner(strings.NewReader("David\n"))
 
 	got := inputString()
 	assertEqual(t, "David", got)
-	assertEqual(t, 0, stdin.Buffered())
+	if stdin.Scan() {
+		t.Error("extra input:", stdin.Text())
+	}
 	assertEqual(t, "string> ", outbuf.String())
 }
 

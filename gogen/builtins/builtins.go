@@ -8,7 +8,6 @@ import (
 	"math"
 	"os"
 	"strconv"
-	"strings"
 )
 
 type syncWriter interface {
@@ -16,7 +15,7 @@ type syncWriter interface {
 	Sync() error
 }
 
-var stdin = bufio.NewReader(os.Stdin)
+var stdin = bufio.NewScanner(os.Stdin)
 var stdout = syncWriter(os.Stdout)
 
 func display(args ...any) {
@@ -37,12 +36,15 @@ func display(args ...any) {
 
 func readLine() string {
 	_ = stdout.Sync() // ensure any prompts are flushed
-	input, err := stdin.ReadString('\n')
+	if !stdin.Scan() {
+		log.Fatal(io.EOF)
+	}
+	input, err := stdin.Text(), stdin.Err()
 	if err != nil {
 		log.Fatal(err)
 	}
 	_ = stdout.Sync() // ensure user's newline is flushed to the terminal
-	return strings.TrimSuffix(input, "\n")
+	return input
 }
 
 func inputInteger() int64 {
