@@ -21,6 +21,15 @@ var stdout = syncWriter(os.Stdout)
 
 func display(args ...any) {
 	for _, arg := range args {
+		switch typedArg := arg.(type) {
+		case bool:
+			if typedArg {
+				arg = "True"
+			} else {
+				arg = "False"
+			}
+			// TODO: special formatting for floats maybe?
+		}
 		_, _ = fmt.Fprint(stdout, arg)
 	}
 	_, _ = fmt.Fprintln(stdout)

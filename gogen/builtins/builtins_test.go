@@ -22,8 +22,8 @@ func TestDisplay(t *testing.T) {
 	defer func() { stdout = oldStdout }()
 	stdout = noopSyncWriter{&outbuf}
 
-	display("the score is ", 17, " to ", 21.5)
-	assertEqual(t, "the score is 17 to 21.5\n", outbuf.String())
+	display("the score is ", 17, " to ", 21.5, " is ", false)
+	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
 }
 
 func TestInputInteger(t *testing.T) {
