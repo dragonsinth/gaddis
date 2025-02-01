@@ -105,24 +105,43 @@ func (ss SetStmt) String() string {
 }
 
 type IfStmt struct {
-	Expr      Expression
-	IfBlock   *Block
-	ElseBlock *Block
+	If     *CondBlock
+	ElseIf []*CondBlock
+	Else   *Block
 }
 
-func (s *IfStmt) Visit(v Visitor) {
-	if !v.PreVisitIfStmt(s) {
+func (is *IfStmt) Visit(v Visitor) {
+	if !v.PreVisitIfStmt(is) {
 		return
 	}
-	s.Expr.Visit(v)
-	s.IfBlock.Visit(v)
-	if s.ElseBlock != nil {
-		s.ElseBlock.Visit(v)
+	is.If.Visit(v)
+	for _, cb := range is.ElseIf {
+		cb.Visit(v)
 	}
-	v.PostVisitIfStmt(s)
+	if is.Else != nil {
+		is.Else.Visit(v)
+	}
+	v.PostVisitIfStmt(is)
 }
 
-func (s IfStmt) String() string {
-	// TODO
-	return fmt.Sprintf("If %s Then", s.Expr)
+func (is IfStmt) String() string {
+	return "If..." // TODO
+}
+
+type CondBlock struct {
+	Expr  Expression
+	Block *Block
+}
+
+func (cb *CondBlock) Visit(v Visitor) {
+	if !v.PreVisitCondBlock(cb) {
+		return
+	}
+	cb.Expr.Visit(v)
+	cb.Block.Visit(v)
+	v.PostVisitCondBlock(cb)
+}
+
+func (cb *CondBlock) String() string {
+	return fmt.Sprintf("%s Then [..]", cb.Expr)
 }

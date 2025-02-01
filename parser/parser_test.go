@@ -27,6 +27,20 @@ If flag Then
 Else
   Display False
 End If
+
+If flag Then
+  Display True
+Else If flag Then
+  Display False
+End If
+
+If flag Then
+  Display True
+Else If flag Then
+  Display False
+Else
+  Display False
+End If
 `
 
 func TestParse(t *testing.T) {

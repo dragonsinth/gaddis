@@ -139,21 +139,36 @@ func (g *GoGenerator) PostVisitSetStmt(s *ast.SetStmt) {
 
 func (g *GoGenerator) PreVisitIfStmt(is *ast.IfStmt) bool {
 	g.indent()
-	g.output("if ")
-	is.Expr.Visit(g)
-	g.output(" {\n")
-	is.IfBlock.Visit(g)
-	if is.ElseBlock != nil {
-		g.indent()
-		g.output("} else {\n")
-		is.ElseBlock.Visit(g)
+	is.If.Visit(g)
+
+	for _, cb := range is.ElseIf {
+		g.output(" else ")
+		cb.Visit(g)
 	}
-	g.indent()
-	g.output("}\n")
+	if is.Else != nil {
+		g.output(" else {\n")
+		is.Else.Visit(g)
+		g.indent()
+		g.output("}")
+	}
+	g.output("\n")
 	return false
 }
 
 func (g *GoGenerator) PostVisitIfStmt(is *ast.IfStmt) {
+}
+
+func (g *GoGenerator) PreVisitCondBlock(cb *ast.CondBlock) bool {
+	g.output("if ")
+	cb.Expr.Visit(g)
+	g.output(" {\n")
+	cb.Block.Visit(g)
+	g.indent()
+	g.output("}")
+	return false
+}
+
+func (g *GoGenerator) PostVisitCondBlock(cb *ast.CondBlock) {
 }
 
 func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {

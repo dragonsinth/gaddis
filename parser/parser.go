@@ -132,22 +132,28 @@ func (p *Parser) parseStatement() ast.Statement {
 
 		return &ast.SetStmt{Name: name, Ref: ref, Expr: expr}
 	case lex.IF:
-		expr := p.parseExpression()
-		if expr.Type() != ast.Boolean {
-			panic(fmt.Errorf("%d:%d type error: expected Boolean, got %s", r.Pos.Line, r.Pos.Column, expr.Type()))
-		}
-		p.parseTok(lex.THEN)
-		p.parseEol()
-		ifBlock := p.parseBlock(lex.END, lex.ELSE)
+		ifCond := p.parseIfCondBlock(r.Pos)
+
+		// loop for else-if
+		var elseIfs []*ast.CondBlock
 		var elseBlock *ast.Block
-		if p.hasTok(lex.ELSE) {
-			p.parseTok(lex.ELSE)
-			p.parseEol()
-			elseBlock = p.parseBlock(lex.END)
+		for p.hasTok(lex.ELSE) {
+			r = p.parseTok(lex.ELSE)
+			if p.hasTok(lex.IF) {
+				// an else if block
+				r = p.parseTok(lex.IF)
+				elseIfCond := p.parseIfCondBlock(r.Pos)
+				elseIfs = append(elseIfs, elseIfCond)
+			} else {
+				// this is the final else block
+				p.parseEol()
+				elseBlock = p.parseBlock(lex.END)
+			}
 		}
+
 		p.parseTok(lex.END)
 		p.parseTok(lex.IF)
-		return &ast.IfStmt{Expr: expr, IfBlock: ifBlock, ElseBlock: elseBlock}
+		return &ast.IfStmt{If: ifCond, ElseIf: elseIfs, Else: elseBlock}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -171,6 +177,17 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 	}
 	p.currScope.Decls[decl.Name] = decl
 	return decl
+}
+
+func (p *Parser) parseIfCondBlock(pos lex.Position) *ast.CondBlock {
+	expr := p.parseExpression()
+	if expr.Type() != ast.Boolean {
+		panic(fmt.Errorf("%d:%d type error: expected Boolean, got %s", pos.Line, pos.Column, expr.Type()))
+	}
+	p.parseTok(lex.THEN)
+	p.parseEol()
+	block := p.parseBlock(lex.END, lex.ELSE)
+	return &ast.CondBlock{Expr: expr, Block: block}
 }
 
 func (p *Parser) parseType() ast.Type {

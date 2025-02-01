@@ -29,6 +29,9 @@ type Visitor interface {
 	PreVisitIfStmt(is *IfStmt) bool
 	PostVisitIfStmt(is *IfStmt)
 
+	PreVisitCondBlock(cb *CondBlock) bool
+	PostVisitCondBlock(cb *CondBlock)
+
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
 	PostVisitIntegerLiteral(il *IntegerLiteral)
 
