@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 )
 
 func Run(ctx context.Context, goSrc string, dir string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
@@ -40,12 +41,39 @@ func Run(ctx context.Context, goSrc string, dir string, stdin io.Reader, stdout 
 	// Run the compiled binary
 	runCmd := exec.CommandContext(ctx, execFile)
 	runCmd.Dir = dir
-	runCmd.Stdin = stdin
-	runCmd.Stdout = stdout
-	runCmd.Stderr = stderr
+	stdinPipe, _ := runCmd.StdinPipe()
+	stdoutPipe, _ := runCmd.StdoutPipe()
+	stderrPipe, _ := runCmd.StderrPipe()
+
+	var wgOut sync.WaitGroup
+	defer wgOut.Wait()
+	wgOut.Add(1)
+	go func() {
+		defer wgOut.Done()
+		_, _ = io.Copy(stdout, stdoutPipe)
+	}()
+	wgOut.Add(1)
+	go func() {
+		defer wgOut.Done()
+		_, _ = io.Copy(stderr, stderrPipe)
+	}()
+
+	var wgIn sync.WaitGroup
+	defer wgIn.Wait()
+	wgIn.Add(1)
+	go func() {
+		defer wgIn.Done()
+		wgOut.Wait()
+		_ = stdinPipe.Close()
+	}()
+	wgIn.Add(1)
+	go func() {
+		defer wgIn.Done()
+		_, _ = io.Copy(stdinPipe, stdin)
+	}()
+
 	if err := runCmd.Start(); err != nil {
 		return fmt.Errorf("could not start %s: %w", execFile, err)
 	}
-
 	return runCmd.Wait()
 }

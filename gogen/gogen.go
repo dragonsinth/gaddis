@@ -23,7 +23,7 @@ func Generate(globalBlock *ast.Block) string {
 	sb.WriteString(newPrefix)
 	sb.WriteString(data)
 	sb.WriteString("\nfunc main() {\n")
-	v := New("\t", &sb)
+	v := New("", &sb)
 	// TODO: consider special-casing the global block to declare vars in global vs. other statements in main()
 	globalBlock.Visit(v)
 	sb.WriteString("}\n")
