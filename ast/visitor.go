@@ -1,9 +1,5 @@
 package ast
 
-type Node interface {
-	Visit(v Visitor)
-}
-
 type Visitor interface {
 	PreVisitBlock(bl *Block) bool
 	PostVisitBlock(bl *Block)

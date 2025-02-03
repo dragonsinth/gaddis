@@ -157,6 +157,7 @@ func (s *Stream) Peek() byte {
 func (s *Stream) Next() byte {
 	ret := s.buf[s.pos]
 	s.pos++
+	s.column++
 	if ret == '\n' {
 		s.line++
 		s.column = 0
@@ -169,6 +170,7 @@ func (s *Stream) Eof() bool {
 }
 
 type Position struct {
+	Pos    int
 	Line   int
 	Column int
 }
@@ -383,6 +385,7 @@ func (l *Lexer) parseCharacterLiteral() Result {
 
 func (l *Lexer) position() Position {
 	return Position{
+		Pos:    l.stream.pos,
 		Line:   l.stream.line,
 		Column: l.stream.column,
 	}

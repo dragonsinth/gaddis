@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"github.com/dragonsinth/gaddis/parser"
@@ -55,9 +56,8 @@ func run() error {
 		log.Fatal(err)
 	}
 	if *fVerbose {
-		for _, stmt := range block.Statements {
-			log.Println(stmt.String())
-		}
+		dbgOut := ast.DebugString(block)
+		os.Stdout.WriteString(dbgOut)
 	}
 
 	goSrc := gogen.Generate(block)

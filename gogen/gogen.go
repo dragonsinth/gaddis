@@ -30,10 +30,6 @@ func Generate(globalBlock *ast.Block) string {
 	return sb.String()
 }
 
-type Output interface {
-	WriteString(string)
-}
-
 func New(indent string, out io.StringWriter) *GoGenerator {
 	return &GoGenerator{
 		ind: indent,

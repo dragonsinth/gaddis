@@ -1,56 +1,23 @@
 package parser
 
 import (
+	_ "embed"
+	"github.com/dragonsinth/gaddis/ast"
+	"os"
 	"testing"
 )
 
-const program = `Constant Real TAX_RATE = 0.5
-Declare Integer price, quantity, subtotal
-Display "Input price:"
-Input price
-Display "Input quantity:"
-Input quantity
-Set subtotal = price * quantity
-Display "Subtotal:", subtotal
-Display "Total:", subtotal + subtotal * TAX_RATE
-
-Declare Boolean flag
-Set flag = price == quantity OR price != quantity
-Set flag = price <= quantity AND price < quantity
-Set flag = price >= quantity AND price > quantity
-Set flag = flag AND flag
-Set flag = flag OR flag
-Set flag = NOT flag
-Input flag
-If flag Then
-  Display True
-Else
-  Display False
-End If
-
-If flag Then
-  Display True
-Else If flag Then
-  Display False
-End If
-
-If flag Then
-  Display True
-Else If flag Then
-  Display False
-Else
-  Display False
-End If
-`
+var (
+	//go:embed parser_test.gad
+	program string
+)
 
 func TestParse(t *testing.T) {
 	block, err := Parse([]byte(program))
-	if block != nil {
-		for _, stmt := range block.Statements {
-			t.Log(stmt.String())
-		}
-	}
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
+
+	out := ast.DebugString(block)
+	os.Stdout.WriteString(out)
 }

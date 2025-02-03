@@ -1,16 +1,12 @@
 package ast
 
-import (
-	"fmt"
-)
-
 type Expression interface {
-	fmt.Stringer
+	Node
 	Type() Type
-	Visit(v Visitor)
 }
 
 type IntegerLiteral struct {
+	SourceInfo
 	Val int64
 }
 
@@ -21,15 +17,12 @@ func (il *IntegerLiteral) Visit(v Visitor) {
 	v.PostVisitIntegerLiteral(il)
 }
 
-func (il *IntegerLiteral) String() string {
-	return fmt.Sprintf("%d", il.Val)
-}
-
 func (il *IntegerLiteral) Type() Type {
 	return Integer
 }
 
 type RealLiteral struct {
+	SourceInfo
 	Val float64
 }
 
@@ -40,15 +33,12 @@ func (rl *RealLiteral) Visit(v Visitor) {
 	v.PostVisitRealLiteral(rl)
 }
 
-func (rl *RealLiteral) String() string {
-	return fmt.Sprintf("%f", rl.Val)
-}
-
 func (rl *RealLiteral) Type() Type {
 	return Real
 }
 
 type StringLiteral struct {
+	SourceInfo
 	Val string
 }
 
@@ -59,15 +49,12 @@ func (sl *StringLiteral) Visit(v Visitor) {
 	v.PostVisitStringLiteral(sl)
 }
 
-func (sl *StringLiteral) String() string {
-	return fmt.Sprintf("%q", sl.Val)
-}
-
 func (sl *StringLiteral) Type() Type {
 	return String
 }
 
 type CharacterLiteral struct {
+	SourceInfo
 	Val byte
 }
 
@@ -78,15 +65,12 @@ func (cl *CharacterLiteral) Visit(v Visitor) {
 	v.PostVisitCharacterLiteral(cl)
 }
 
-func (cl CharacterLiteral) String() string {
-	return fmt.Sprintf("%c", cl.Val)
-}
-
 func (cl CharacterLiteral) Type() Type {
 	return Character
 }
 
 type BooleanLiteral struct {
+	SourceInfo
 	Val bool
 }
 
@@ -97,15 +81,12 @@ func (bl *BooleanLiteral) Visit(v Visitor) {
 	v.PostVisitBooleanLiteral(bl)
 }
 
-func (bl BooleanLiteral) String() string {
-	return fmt.Sprintf("%t", bl.Val)
-}
-
 func (bl BooleanLiteral) Type() Type {
 	return Boolean
 }
 
 type UnaryOperation struct {
+	SourceInfo
 	Op   Operator
 	Typ  Type
 	Expr Expression
@@ -123,11 +104,8 @@ func (uo *UnaryOperation) Type() Type {
 	return uo.Typ
 }
 
-func (uo *UnaryOperation) String() string {
-	return fmt.Sprintf("%s (%s)", uo.Op, uo.Expr)
-}
-
 type BinaryOperation struct {
+	SourceInfo
 	Op  Operator
 	Typ Type
 	Lhs Expression
@@ -147,11 +125,8 @@ func (bo *BinaryOperation) Type() Type {
 	return bo.Typ
 }
 
-func (bo *BinaryOperation) String() string {
-	return fmt.Sprintf("(%s %s %s)", bo.Lhs, bo.Op, bo.Rhs)
-}
-
 type VariableExpression struct {
+	SourceInfo
 	Name string
 	Ref  *VarDecl
 }
@@ -165,8 +140,4 @@ func (ve *VariableExpression) Visit(v Visitor) {
 
 func (ve *VariableExpression) Type() Type {
 	return ve.Ref.Type
-}
-
-func (ve *VariableExpression) String() string {
-	return ve.Name
 }

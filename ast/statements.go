@@ -1,16 +1,27 @@
 package ast
 
-import (
-	"fmt"
-	"strings"
-)
-
 type Statement interface {
 	Node
-	fmt.Stringer
+}
+
+type Block struct {
+	SourceInfo
+	Statements []Statement
+	Scope      *Scope
+}
+
+func (bl *Block) Visit(v Visitor) {
+	if !v.PreVisitBlock(bl) {
+		return
+	}
+	for _, stmt := range bl.Statements {
+		stmt.Visit(v)
+	}
+	v.PostVisitBlock(bl)
 }
 
 type ConstantStmt struct {
+	SourceInfo
 	Type  Type
 	Decls []*VarDecl
 }
@@ -25,11 +36,8 @@ func (cs *ConstantStmt) Visit(v Visitor) {
 	v.PostVisitConstantStmt(cs)
 }
 
-func (cs *ConstantStmt) String() string {
-	return fmt.Sprintf("Constant %s %s", cs.Type, strings.Join(stringArray(cs.Decls), ", "))
-}
-
 type DeclareStmt struct {
+	SourceInfo
 	Type  Type
 	Decls []*VarDecl
 }
@@ -44,11 +52,8 @@ func (ds *DeclareStmt) Visit(v Visitor) {
 	v.PostVisitDeclareStmt(ds)
 }
 
-func (ds *DeclareStmt) String() string {
-	return fmt.Sprintf("Declare %s %s", ds.Type, strings.Join(stringArray(ds.Decls), ", "))
-}
-
 type DisplayStmt struct {
+	SourceInfo
 	Exprs []Expression
 }
 
@@ -62,15 +67,8 @@ func (ds *DisplayStmt) Visit(v Visitor) {
 	v.PostVisitDisplayStmt(ds)
 }
 
-func (ds DisplayStmt) String() string {
-	var exprStr []string
-	for _, expr := range ds.Exprs {
-		exprStr = append(exprStr, expr.String())
-	}
-	return fmt.Sprintf("Display %s", strings.Join(exprStr, ", "))
-}
-
 type InputStmt struct {
+	SourceInfo
 	Name string
 	Ref  *VarDecl
 }
@@ -82,11 +80,8 @@ func (is *InputStmt) Visit(v Visitor) {
 	v.PostVisitInputStmt(is)
 }
 
-func (is InputStmt) String() string {
-	return fmt.Sprintf("Input %s", is.Name)
-}
-
 type SetStmt struct {
+	SourceInfo
 	Name string
 	Ref  *VarDecl
 	Expr Expression
@@ -100,11 +95,8 @@ func (ss *SetStmt) Visit(v Visitor) {
 	v.PostVisitSetStmt(ss)
 }
 
-func (ss SetStmt) String() string {
-	return fmt.Sprintf("Set %s = %s", ss.Name, ss.Expr)
-}
-
 type IfStmt struct {
+	SourceInfo
 	If     *CondBlock
 	ElseIf []*CondBlock
 	Else   *Block
@@ -124,11 +116,8 @@ func (is *IfStmt) Visit(v Visitor) {
 	v.PostVisitIfStmt(is)
 }
 
-func (is IfStmt) String() string {
-	return "If..." // TODO
-}
-
 type CondBlock struct {
+	SourceInfo
 	Expr  Expression
 	Block *Block
 }
@@ -140,8 +129,4 @@ func (cb *CondBlock) Visit(v Visitor) {
 	cb.Expr.Visit(v)
 	cb.Block.Visit(v)
 	v.PostVisitCondBlock(cb)
-}
-
-func (cb *CondBlock) String() string {
-	return fmt.Sprintf("%s Then [..]", cb.Expr)
 }
