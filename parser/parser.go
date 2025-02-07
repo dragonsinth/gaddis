@@ -162,6 +162,35 @@ func (p *Parser) parseStatement() ast.Statement {
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.IF)
 		return &ast.IfStmt{SourceInfo: spanResult(r, rEnd), If: ifCond, ElseIf: elseIfs, Else: elseBlock}
+	case lex.SELECT:
+		expr := p.parseExpression()
+		exprType := expr.Type()
+		p.parseEol()
+
+		var cases []*ast.CaseBlock
+		for p.hasTok(lex.CASE) {
+			cr := p.parseTok(lex.CASE)
+			caseExpr := p.parseExpression()
+			if areComparableTypes(exprType, caseExpr.Type()) == ast.InvalidType {
+				panic(fmt.Errorf("%d:%d type error: case type %s not comparable to select type %s", cr.Pos.Line, cr.Pos.Column, caseExpr.Type(), exprType))
+			}
+			p.parseTok(lex.COLON)
+			p.parseEol()
+			block := p.parseBlock(lex.CASE, lex.DEFAULT, lex.END)
+			cases = append(cases, &ast.CaseBlock{SourceInfo: spanAst(cr, block), Expr: caseExpr, Block: block})
+		}
+
+		var def *ast.Block
+		if p.hasTok(lex.DEFAULT) {
+			p.parseTok(lex.DEFAULT)
+			p.parseTok(lex.COLON)
+			p.parseEol()
+			def = p.parseBlock(lex.END)
+		}
+
+		p.parseTok(lex.END)
+		rEnd := p.parseTok(lex.SELECT)
+		return &ast.SelectStmt{SourceInfo: spanResult(r, rEnd), Expr: expr, Cases: cases, Default: def} // TODO
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}

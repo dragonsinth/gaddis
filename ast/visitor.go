@@ -24,9 +24,13 @@ type Visitor interface {
 
 	PreVisitIfStmt(is *IfStmt) bool
 	PostVisitIfStmt(is *IfStmt)
-
 	PreVisitCondBlock(cb *CondBlock) bool
 	PostVisitCondBlock(cb *CondBlock)
+
+	PreVisitSelectStmt(ss *SelectStmt) bool
+	PostVisitSelectStmt(ss *SelectStmt)
+	PreVisitCaseBlock(cb *CaseBlock) bool
+	PostVisitCaseBlock(cb *CaseBlock)
 
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
 	PostVisitIntegerLiteral(il *IntegerLiteral)

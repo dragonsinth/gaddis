@@ -42,6 +42,7 @@ const (
 	COMMA
 	LPAREN
 	RPAREN
+	COLON
 
 	CONSTANT
 	DECLARE
@@ -53,6 +54,9 @@ const (
 	IF
 	THEN
 	ELSE
+	SELECT
+	CASE
+	DEFAULT
 
 	INT_LIT
 	REAL_LIT
@@ -92,6 +96,7 @@ var tokens = []string{
 	COMMA:     ",",
 	LPAREN:    "(",
 	RPAREN:    ")",
+	COLON:     ":",
 	CONSTANT:  "CONSTANT",
 	DECLARE:   "DECLARE",
 	DISPLAY:   "DISPLAY",
@@ -101,6 +106,9 @@ var tokens = []string{
 	IF:        "IF",
 	THEN:      "THEN",
 	ELSE:      "ELSE",
+	SELECT:    "SELECT",
+	CASE:      "CASE",
+	DEFAULT:   "DEFAULT",
 	INT_LIT:   "INT_LIT",
 	REAL_LIT:  "REAL_LIT",
 	STR_LIT:   "STR_LIT",
@@ -128,6 +136,9 @@ var keywords = map[string]Token{
 	"If":        IF,
 	"Then":      THEN,
 	"Else":      ELSE,
+	"Select":    SELECT,
+	"Case":      CASE,
+	"Default":   DEFAULT,
 	"True":      TRUE,
 	"False":     FALSE,
 }
@@ -253,6 +264,8 @@ func (l *Lexer) Lex() Result {
 			return Result{l.advance(), LPAREN, "(", nil}
 		case ')':
 			return Result{l.advance(), RPAREN, ")", nil}
+		case ':':
+			return Result{l.advance(), COLON, ":", nil}
 		case '"':
 			return l.parseStringLiteral()
 		case '\'':

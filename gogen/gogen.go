@@ -167,6 +167,45 @@ func (g *GoGenerator) PreVisitCondBlock(cb *ast.CondBlock) bool {
 func (g *GoGenerator) PostVisitCondBlock(cb *ast.CondBlock) {
 }
 
+func (v *GoGenerator) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
+	v.indent()
+	v.output("switch (")
+	ss.Expr.Visit(v)
+	v.output(") {\n")
+
+	oldInd := v.ind
+	v.ind += "\t"
+
+	for _, cb := range ss.Cases {
+		cb.Visit(v)
+	}
+	if ss.Default != nil {
+		v.indent()
+		v.output("default:\n")
+		ss.Default.Visit(v)
+	}
+
+	v.ind = oldInd
+	v.indent()
+	v.output("}\n")
+	return false
+}
+
+func (v *GoGenerator) PostVisitSelectStmt(ss *ast.SelectStmt) {
+}
+
+func (v *GoGenerator) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
+	v.indent()
+	v.output("case ")
+	cb.Expr.Visit(v)
+	v.output(":\n")
+	cb.Block.Visit(v)
+	return false
+}
+
+func (v *GoGenerator) PostVisitCaseBlock(cb *ast.CaseBlock) {
+}
+
 func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	g.output(strconv.FormatInt(il.Val, 10))
 	return true

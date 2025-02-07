@@ -157,6 +157,45 @@ func (v *StringVisitor) PreVisitCondBlock(cb *CondBlock) bool {
 func (v *StringVisitor) PostVisitCondBlock(cb *CondBlock) {
 }
 
+func (v *StringVisitor) PreVisitSelectStmt(ss *SelectStmt) bool {
+	v.indent()
+	v.output("Select ")
+	ss.Expr.Visit(v)
+	v.output("\n")
+
+	oldInd := v.ind
+	v.ind += "\t"
+
+	for _, cb := range ss.Cases {
+		cb.Visit(v)
+	}
+	if ss.Default != nil {
+		v.indent()
+		v.output("Default:\n")
+		ss.Default.Visit(v)
+	}
+
+	v.ind = oldInd
+	v.indent()
+	v.output("End Select\n")
+	return false
+}
+
+func (v *StringVisitor) PostVisitSelectStmt(ss *SelectStmt) {
+}
+
+func (v *StringVisitor) PreVisitCaseBlock(cb *CaseBlock) bool {
+	v.indent()
+	v.output("Case ")
+	cb.Expr.Visit(v)
+	v.output(":\n")
+	cb.Block.Visit(v)
+	return false
+}
+
+func (v *StringVisitor) PostVisitCaseBlock(cb *CaseBlock) {
+}
+
 func (v *StringVisitor) PreVisitIntegerLiteral(il *IntegerLiteral) bool {
 	v.output(strconv.FormatInt(il.Val, 10))
 	return true

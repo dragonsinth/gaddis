@@ -22,3 +22,12 @@ If flag Then
 Else
   Display False
 End If
+
+Select quantity
+   Case 0:
+      Display "zero"
+   Case 1:
+      Display "one"
+   Default:
+      Display "many"
+End Select

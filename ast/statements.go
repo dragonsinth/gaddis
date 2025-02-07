@@ -130,3 +130,37 @@ func (cb *CondBlock) Visit(v Visitor) {
 	cb.Block.Visit(v)
 	v.PostVisitCondBlock(cb)
 }
+
+type SelectStmt struct {
+	SourceInfo
+	Expr    Expression
+	Cases   []*CaseBlock
+	Default *Block
+}
+
+func (ss *SelectStmt) Visit(v Visitor) {
+	if !v.PreVisitSelectStmt(ss) {
+		return
+	}
+	ss.Expr.Visit(v)
+	for _, cb := range ss.Cases {
+		cb.Visit(v)
+	}
+	ss.Default.Visit(v)
+	v.PostVisitSelectStmt(ss)
+}
+
+type CaseBlock struct {
+	SourceInfo
+	Expr  Expression
+	Block *Block
+}
+
+func (cb *CaseBlock) Visit(v Visitor) {
+	if !v.PreVisitCaseBlock(cb) {
+		return
+	}
+	cb.Expr.Visit(v)
+	cb.Block.Visit(v)
+	v.PostVisitCaseBlock(cb)
+}

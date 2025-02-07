@@ -1,0 +1,19 @@
+Declare Boolean flag
+Input flag
+Select flag
+   Case True:
+      Display "true"
+   Case False:
+      Display "false"
+End Select
+
+Declare Integer quantity
+Input quantity
+Select quantity
+   Case 0:
+      Display "zero"
+   Case 1:
+      Display "one"
+   Default:
+      Display "many"
+End Select
