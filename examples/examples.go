@@ -7,6 +7,7 @@ import (
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"github.com/dragonsinth/gaddis/parser"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -40,7 +41,7 @@ func RunTest(ctx context.Context, filename string) error {
 		return fmt.Errorf("failed to read file %s: %w", filename+".out", err)
 	}
 
-	err = goexec.Run(ctx, goSrc, filepath.Dir(filename), &input, &output, &errput)
+	err = goexec.Run(ctx, goSrc, filepath.Dir(filename), io.NopCloser(&input), &output, &errput)
 	if err != nil {
 		return fmt.Errorf("failed to exec %s: %w", filename, err)
 	}

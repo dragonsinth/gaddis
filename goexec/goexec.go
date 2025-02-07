@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-func Run(ctx context.Context, goSrc string, dir string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+func Run(ctx context.Context, goSrc string, dir string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) error {
 	goBytes := []byte(goSrc)
 	hash := sha256.New()
 	hash.Write(goBytes)
@@ -58,18 +58,18 @@ func Run(ctx context.Context, goSrc string, dir string, stdin io.Reader, stdout 
 		_, _ = io.Copy(stderr, stderrPipe)
 	}()
 
+	go func() {
+		wgOut.Wait()
+		_ = stdin.Close()
+	}()
+
 	var wgIn sync.WaitGroup
 	defer wgIn.Wait()
 	wgIn.Add(1)
 	go func() {
 		defer wgIn.Done()
-		wgOut.Wait()
-		_ = stdinPipe.Close()
-	}()
-	wgIn.Add(1)
-	go func() {
-		defer wgIn.Done()
 		_, _ = io.Copy(stdinPipe, stdin)
+		_ = stdinPipe.Close()
 	}()
 
 	if err := runCmd.Start(); err != nil {

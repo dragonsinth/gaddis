@@ -67,8 +67,16 @@ func run() error {
 
 	var terminalInput bool
 	var input bytes.Buffer
-	var stdin io.Reader
-	if inBytes, err := os.ReadFile(filename + ".in"); err != nil {
+	var stdin io.ReadCloser
+	if *fTest {
+		if inBytes, err := os.ReadFile(filename + ".in"); err == nil {
+			// use input file as input
+			terminalInput = false
+			input.Write(inBytes)
+			stdin = io.NopCloser(&input)
+		}
+	}
+	if stdin == nil {
 		// capture input from terminal
 		terminalInput = true
 		r, w := io.Pipe()
@@ -77,12 +85,15 @@ func run() error {
 			fmt.Println("closing")
 			_ = w.Close()
 		}()
-		stdin = io.TeeReader(r, &input)
-	} else {
-		// use input file as input
-		terminalInput = false
-		input.Write(inBytes)
-		stdin = &input
+
+		readCloser := struct {
+			io.Reader
+			io.Closer
+		}{
+			Reader: io.TeeReader(r, &input),
+			Closer: w,
+		}
+		stdin = readCloser
 	}
 
 	// echo output to terminal if we need terminal input; or if we're not running test mode; or if verbose
