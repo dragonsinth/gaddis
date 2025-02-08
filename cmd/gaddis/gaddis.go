@@ -29,7 +29,7 @@ func main() {
 	if err := run(); err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) {
-			log.Println(ee)
+			log.Println(err)
 			os.Exit(ee.ExitCode())
 		} else {
 			log.Fatal(err)

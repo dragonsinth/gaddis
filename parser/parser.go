@@ -166,12 +166,14 @@ func (p *Parser) parseStatement() ast.Statement {
 		expr := p.parseExpression()
 		exprType := expr.Type()
 		p.parseEol()
+		dstType := exprType
 
 		var cases []*ast.CaseBlock
 		for p.hasTok(lex.CASE) {
 			cr := p.parseTok(lex.CASE)
 			caseExpr := p.parseExpression()
-			if areComparableTypes(exprType, caseExpr.Type()) == ast.InvalidType {
+			dstType = ast.AreComparableTypes(dstType, caseExpr.Type())
+			if dstType == ast.InvalidType {
 				panic(fmt.Errorf("%d:%d type error: case type %s not comparable to select type %s", cr.Pos.Line, cr.Pos.Column, caseExpr.Type(), exprType))
 			}
 			p.parseTok(lex.COLON)
@@ -190,7 +192,7 @@ func (p *Parser) parseStatement() ast.Statement {
 
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.SELECT)
-		return &ast.SelectStmt{SourceInfo: spanResult(r, rEnd), Expr: expr, Cases: cases, Default: def} // TODO
+		return &ast.SelectStmt{SourceInfo: spanResult(r, rEnd), Type: dstType, Expr: expr, Cases: cases, Default: def}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -278,25 +280,25 @@ func (p *Parser) tryCreateBinaryOperation(r lex.Result, op ast.Operator, lhs ast
 	si := mergeSourceInfo(lhs, rhs)
 	switch op {
 	case ast.ADD, ast.SUB, ast.MUL, ast.DIV, ast.EXP, ast.MOD:
-		if !isNumericType(aTyp) {
+		if !ast.IsNumericType(aTyp) {
 			panic(fmt.Errorf("%d:%d operator %s expects left hand operand of type %s to be numeric", r.Pos.Line, r.Pos.Column, r.Text, aTyp))
 		}
-		if !isNumericType(bTyp) {
+		if !ast.IsNumericType(bTyp) {
 			panic(fmt.Errorf("%d:%d operator %s expects right hand operand of type %s to be numeric", r.Pos.Line, r.Pos.Column, r.Text, bTyp))
 		}
-		rTyp := areComparableTypes(aTyp, bTyp)
+		rTyp := ast.AreComparableTypes(aTyp, bTyp)
 		if rTyp == ast.InvalidType {
 			panic(fmt.Errorf("%d:%d binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
 		}
 		return &ast.BinaryOperation{SourceInfo: si, Op: op, Typ: rTyp, Lhs: lhs, Rhs: rhs}
 	case ast.EQ, ast.NEQ:
-		rTyp := areComparableTypes(aTyp, bTyp)
+		rTyp := ast.AreComparableTypes(aTyp, bTyp)
 		if rTyp == ast.InvalidType {
 			panic(fmt.Errorf("%d:%d binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
 		}
 		return &ast.BinaryOperation{SourceInfo: si, Op: op, Typ: ast.Boolean, Lhs: lhs, Rhs: rhs}
 	case ast.LT, ast.GT, ast.LTE, ast.GTE:
-		if !areOrderedTypes(aTyp, bTyp) {
+		if !ast.AreComparableOrderedTypes(aTyp, bTyp) {
 			panic(fmt.Errorf("%d:%d binary operation %s not supported for types %s and %s", r.Pos.Line, r.Pos.Column, r.Text, aTyp, bTyp))
 		}
 		return &ast.BinaryOperation{SourceInfo: si, Op: op, Typ: ast.Boolean, Lhs: lhs, Rhs: rhs}

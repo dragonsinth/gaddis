@@ -38,8 +38,9 @@ func New(indent string, out io.StringWriter) *GoGenerator {
 }
 
 type GoGenerator struct {
-	ind string
-	out io.StringWriter
+	ind        string
+	out        io.StringWriter
+	selectType ast.Type // type of most recently enclosing select statement
 }
 
 var _ ast.Visitor = &GoGenerator{}
@@ -65,17 +66,18 @@ func (g *GoGenerator) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	g.output(goTypes[vd.Type])
 	if vd.Expr != nil {
 		g.output(" = ")
+		g.maybeCast(vd.Type, vd.Expr)
 	}
-	return true
-}
-
-func (g *GoGenerator) PostVisitVarDecl(vd *ast.VarDecl) {
 	g.output("\n")
 	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
 	g.indent()
 	g.output("_ = ")
 	g.ident(vd)
 	g.output("\n")
+	return false
+}
+
+func (g *GoGenerator) PostVisitVarDecl(vd *ast.VarDecl) {
 }
 
 func (g *GoGenerator) PreVisitConstantStmt(stmt *ast.ConstantStmt) bool {
@@ -167,43 +169,48 @@ func (g *GoGenerator) PreVisitCondBlock(cb *ast.CondBlock) bool {
 func (g *GoGenerator) PostVisitCondBlock(cb *ast.CondBlock) {
 }
 
-func (v *GoGenerator) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
-	v.indent()
-	v.output("switch (")
-	ss.Expr.Visit(v)
-	v.output(") {\n")
+func (g *GoGenerator) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
+	g.indent()
 
-	oldInd := v.ind
-	v.ind += "\t"
+	g.output("switch (")
+	g.maybeCast(ss.Type, ss.Expr)
+	g.output(") {\n")
+
+	oldInd, oldType := g.ind, g.selectType
+	g.ind += "\t"
+	g.selectType = ss.Type
+	defer func() {
+		g.ind, g.selectType = oldInd, oldType
+	}()
 
 	for _, cb := range ss.Cases {
-		cb.Visit(v)
+		cb.Visit(g)
 	}
 	if ss.Default != nil {
-		v.indent()
-		v.output("default:\n")
-		ss.Default.Visit(v)
+		g.indent()
+		g.output("default:\n")
+		ss.Default.Visit(g)
 	}
 
-	v.ind = oldInd
-	v.indent()
-	v.output("}\n")
+	g.ind = oldInd
+	g.indent()
+	g.output("}\n")
 	return false
 }
 
-func (v *GoGenerator) PostVisitSelectStmt(ss *ast.SelectStmt) {
+func (g *GoGenerator) PostVisitSelectStmt(ss *ast.SelectStmt) {
 }
 
-func (v *GoGenerator) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
-	v.indent()
-	v.output("case ")
-	cb.Expr.Visit(v)
-	v.output(":\n")
-	cb.Block.Visit(v)
+func (g *GoGenerator) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
+	g.indent()
+	g.output("case ")
+	g.maybeCast(g.selectType, cb.Expr)
+	g.output(":\n")
+	cb.Block.Visit(g)
 	return false
 }
 
-func (v *GoGenerator) PostVisitCaseBlock(cb *ast.CaseBlock) {
+func (g *GoGenerator) PostVisitCaseBlock(cb *ast.CaseBlock) {
 }
 
 func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
@@ -260,6 +267,8 @@ func (g *GoGenerator) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 }
 
 func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
+	dstType := ast.AreComparableTypes(bo.Lhs.Type(), bo.Rhs.Type())
+
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
 		if bo.Op == ast.MOD {
@@ -269,15 +278,15 @@ func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 		}
 		g.output(bo.Typ.String())
 		g.output("(")
-		g.maybeCast(bo.Rhs.Type(), bo.Lhs)
+		g.maybeCast(dstType, bo.Lhs)
 		g.output(", ")
-		g.maybeCast(bo.Lhs.Type(), bo.Rhs)
+		g.maybeCast(dstType, bo.Rhs)
 		g.output(")")
 	} else {
 		g.output("(")
-		g.maybeCast(bo.Rhs.Type(), bo.Lhs)
+		g.maybeCast(dstType, bo.Lhs)
 		g.output(goBinaryOperators[bo.Op])
-		g.maybeCast(bo.Lhs.Type(), bo.Rhs)
+		g.maybeCast(dstType, bo.Rhs)
 		g.output(")")
 	}
 	return false
@@ -310,9 +319,13 @@ func (g *GoGenerator) ident(ref *ast.VarDecl) {
 	g.output("_")
 }
 
-func (g *GoGenerator) maybeCast(typ ast.Type, exp ast.Expression) {
-	if typ == ast.Real && exp.Type() == ast.Integer {
+func (g *GoGenerator) maybeCast(dstType ast.Type, exp ast.Expression) {
+	if dstType == ast.Real && exp.Type() == ast.Integer {
 		g.output("float64(")
+		exp.Visit(g)
+		g.output(")")
+	} else if dstType == ast.Integer && exp.Type() == ast.Real {
+		g.output("int64(")
 		exp.Visit(g)
 		g.output(")")
 	} else {

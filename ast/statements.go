@@ -133,6 +133,7 @@ func (cb *CondBlock) Visit(v Visitor) {
 
 type SelectStmt struct {
 	SourceInfo
+	Type    Type
 	Expr    Expression
 	Cases   []*CaseBlock
 	Default *Block
