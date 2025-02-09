@@ -43,96 +43,6 @@ type GoGenerator struct {
 	selectType ast.Type // type of most recently enclosing select statement
 }
 
-func (g *GoGenerator) PreVisitDoStmt(ds *ast.DoStmt) bool {
-	g.indent()
-	g.output("for {\n")
-	ds.Block.Visit(g)
-	g.indent()
-
-	g.output("\tif ")
-	if ds.Not {
-		ds.Expr.Visit(g)
-	} else {
-		g.output("!(")
-		ds.Expr.Visit(g)
-		g.output(")")
-	}
-	g.output(" {\n")
-	g.indent()
-	g.output("\t\tbreak\n")
-	g.indent()
-	g.output("\t}\n")
-
-	g.indent()
-	g.output("}\n")
-	return false
-}
-
-func (g *GoGenerator) PostVisitDoStmt(ds *ast.DoStmt) {
-}
-
-func (g *GoGenerator) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
-	g.indent()
-	g.output("for ")
-	ws.Expr.Visit(g)
-	g.output(" {\n")
-	ws.Block.Visit(g)
-	g.indent()
-	g.output("}\n")
-	return false
-}
-
-func (g *GoGenerator) PostVisitWhileStmt(ws *ast.WhileStmt) {
-}
-
-func (g *GoGenerator) PreVisitForStmt(ws *ast.ForStmt) bool {
-	g.indent()
-	g.output("for ")
-	g.ident(ws.Ref)
-	g.output(" = ")
-	ws.StartExpr.Visit(g)
-	g.output("; ")
-	g.ident(ws.Ref)
-	if ws.Step != nil && ws.Step.Val < 0 {
-		g.output(" >= ")
-	} else {
-		g.output(" <= ")
-	}
-	ws.StopExpr.Visit(g)
-	g.output("; ")
-
-	g.ident(ws.Ref)
-	if ws.Step != nil {
-		g.output(" += ")
-		ws.Step.Visit(g)
-	} else {
-		g.output("++")
-	}
-	g.output(" {\n")
-
-	ws.Block.Visit(g)
-
-	g.indent()
-	g.output("\tif ")
-	g.ident(ws.Ref)
-	g.output(" == ")
-	ws.StopExpr.Visit(g)
-	g.output(" {\n")
-	g.indent()
-	g.output("\t\tbreak\n")
-	g.indent()
-	g.output("\t}\n")
-
-	g.indent()
-	g.output("}\n")
-	return false
-}
-
-func (g *GoGenerator) PostVisitForStmt(ws *ast.ForStmt) {
-	//TODO implement me
-	panic("implement me")
-}
-
 var _ ast.Visitor = &GoGenerator{}
 
 func (g *GoGenerator) PreVisitBlock(bl *ast.Block) bool {
@@ -301,6 +211,90 @@ func (g *GoGenerator) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
 }
 
 func (g *GoGenerator) PostVisitCaseBlock(cb *ast.CaseBlock) {
+}
+
+func (g *GoGenerator) PreVisitDoStmt(ds *ast.DoStmt) bool {
+	g.indent()
+	g.output("for {\n")
+	ds.Block.Visit(g)
+	g.indent()
+
+	g.output("\tif ")
+	if ds.Not {
+		ds.Expr.Visit(g)
+	} else {
+		g.output("!(")
+		ds.Expr.Visit(g)
+		g.output(")")
+	}
+	g.output(" {\n")
+	g.indent()
+	g.output("\t\tbreak\n")
+	g.indent()
+	g.output("\t}\n")
+
+	g.indent()
+	g.output("}\n")
+	return false
+}
+
+func (g *GoGenerator) PostVisitDoStmt(ds *ast.DoStmt) {
+}
+
+func (g *GoGenerator) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
+	g.indent()
+	g.output("for ")
+	ws.Expr.Visit(g)
+	g.output(" {\n")
+	ws.Block.Visit(g)
+	g.indent()
+	g.output("}\n")
+	return false
+}
+
+func (g *GoGenerator) PostVisitWhileStmt(ws *ast.WhileStmt) {
+}
+
+func (g *GoGenerator) PreVisitForStmt(ws *ast.ForStmt) bool {
+	g.indent()
+	g.ident(ws.Ref)
+	g.output(" = ")
+	ws.StartExpr.Visit(g)
+	g.output("\n")
+
+	g.indent()
+	g.output("for step")
+	refType := ws.Ref.Type
+	g.output(refType.String())
+	g.output("(")
+	g.ident(ws.Ref)
+	g.output(", ")
+	g.maybeCast(refType, ws.StopExpr)
+	g.output(", ")
+	if ws.StepExpr != nil {
+		g.maybeCast(refType, ws.StepExpr)
+	} else {
+		g.output("1")
+	}
+	g.output(") {\n")
+	ws.Block.Visit(g)
+
+	g.indent()
+	g.output("\t")
+	g.ident(ws.Ref)
+	g.output(" += ")
+	if ws.StepExpr != nil {
+		g.maybeCast(refType, ws.StepExpr)
+	} else {
+		g.output("1")
+	}
+	g.output("\n")
+	g.indent()
+	g.output("}\n")
+	return false
+}
+
+func (g *GoGenerator) PostVisitForStmt(ws *ast.ForStmt) {
 }
 
 func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {

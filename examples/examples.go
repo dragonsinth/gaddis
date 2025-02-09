@@ -31,9 +31,7 @@ func RunTest(ctx context.Context, filename string) error {
 	var output bytes.Buffer
 	var errput bytes.Buffer
 
-	if inBytes, err := os.ReadFile(filename + ".in"); err != nil {
-		return fmt.Errorf("failed to read file %s: %w", filename+".in", err)
-	} else {
+	if inBytes, err := os.ReadFile(filename + ".in"); err == nil {
 		input.Write(inBytes)
 	}
 	expectOut, err := os.ReadFile(filename + ".out")

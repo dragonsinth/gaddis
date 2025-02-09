@@ -246,7 +246,18 @@ func (l *Lexer) Lex() Result {
 		case '+':
 			return Result{l.advance(), ADD, "+", nil}
 		case '-':
-			return Result{l.advance(), SUB, "-", nil}
+			pos := l.advance()
+			if isDigit(l.stream.Peek()) {
+				// Try to parse a numeric literal
+				ret := l.parseNumber()
+				if ret.Error == nil {
+					// back fix the previously consumed negation into the literal
+					ret.Pos = pos
+					ret.Text = "-" + ret.Text
+					return ret
+				}
+			}
+			return Result{pos, SUB, "-", nil}
 		case '*':
 			return Result{l.advance(), MUL, "*", nil}
 		case '/':

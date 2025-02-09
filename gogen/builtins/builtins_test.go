@@ -126,6 +126,26 @@ func TestExpReal(t *testing.T) {
 	// TODO: zero, negative behavior spec?
 }
 
+func TestStepInteger(t *testing.T) {
+	assertEqual(t, true, stepInteger(0, 1, 1))
+	assertEqual(t, true, stepInteger(1, 1, 1))
+	assertEqual(t, false, stepInteger(2, 1, 1))
+
+	assertEqual(t, true, stepInteger(2, 1, -1))
+	assertEqual(t, true, stepInteger(1, 1, -1))
+	assertEqual(t, false, stepInteger(0, 1, -1))
+}
+
+func TestStepReal(t *testing.T) {
+	assertEqual(t, true, stepReal(0, 1, 1))
+	assertEqual(t, true, stepReal(1, 1, 1))
+	assertEqual(t, false, stepReal(2, 1, 1))
+
+	assertEqual(t, true, stepReal(2, 1, -1))
+	assertEqual(t, true, stepReal(1, 1, -1))
+	assertEqual(t, false, stepReal(0, 1, -1))
+}
+
 func assertEqual[T comparable](t *testing.T, want T, got T) {
 	if want != got {
 		t.Errorf("want=%v, got=%v", want, got)

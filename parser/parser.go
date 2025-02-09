@@ -119,6 +119,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		if ref == nil {
 			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
+		// TODO: variable is non-primitive
 		return &ast.InputStmt{SourceInfo: spanResult(r, id), Name: name, Ref: ref}
 	case lex.SET:
 		id := p.parseTok(lex.IDENT)
@@ -132,12 +133,9 @@ func (p *Parser) parseStatement() ast.Statement {
 
 		// type check
 		exprType := expr.Type()
-		if ref.Type != exprType {
-			if ref.Type != ast.Real || exprType != ast.Integer {
-				panic(fmt.Errorf("%d:%d type error: %s not assignable to %s %s", r.Pos.Line, r.Pos.Column, exprType, ref.Type, name))
-			}
+		if !ast.CanCoerce(ref.Type, exprType) {
+			panic(fmt.Errorf("%d:%d type error: %s not assignable to %s", r.Pos.Line, r.Pos.Column, expr.Type(), exprType))
 		}
-
 		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Name: name, Ref: ref, Expr: expr}
 	case lex.IF:
 		ifCond := p.parseIfCondBlock(r.Pos)
@@ -227,50 +225,34 @@ func (p *Parser) parseStatement() ast.Statement {
 		if ref == nil {
 			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, name))
 		}
-		if ref.Type != ast.Integer {
-			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, ref.Type))
+		if !ast.IsNumericType(ref.Type) {
+			panic(fmt.Errorf("%d:%d type error: expected number, got %s", rNext.Pos.Line, rNext.Pos.Column, ref.Type))
 		}
 		rNext = p.parseTok(lex.ASSIGN)
 		startExpr := p.parseExpression()
-		if startExpr.Type() != ast.Integer {
-			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, startExpr.Type()))
+		if !ast.CanCoerce(ref.Type, startExpr.Type()) {
+			panic(fmt.Errorf("%d:%d type error: %s not assignable to %s", rNext.Pos.Line, rNext.Pos.Column, startExpr.Type(), ref.Type))
 		}
 
 		rNext = p.parseTok(lex.TO)
 		stopExpr := p.parseExpression()
-		if stopExpr.Type() != ast.Integer {
-			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, stopExpr.Type()))
+		if !ast.CanCoerce(ref.Type, stopExpr.Type()) {
+			panic(fmt.Errorf("%d:%d type error: %s not assignable to %s", rNext.Pos.Line, rNext.Pos.Column, stopExpr.Type(), ref.Type))
 		}
 
-		var step *ast.IntegerLiteral
+		var stepExpr ast.Expression
 		if p.hasTok(lex.STEP) {
 			rNext = p.parseTok(lex.STEP)
-			expr := p.parseTerminal()
-			// strip off any neg operations
-			neg := false
-			for {
-				if inner, ok := expr.(*ast.UnaryOperation); ok && inner.Op == ast.NEG {
-					neg = !neg
-					expr = inner.Expr
-				} else {
-					break
-				}
-			}
-
-			if intLit, ok := expr.(*ast.IntegerLiteral); ok {
-				step = intLit
-				if neg {
-					step.Val = -step.Val
-				}
-			} else {
-				panic(fmt.Errorf("%d:%d type error: expected Integer Literal, got %s", rNext.Pos.Line, rNext.Pos.Column, expr))
+			stepExpr = p.parseExpression()
+			if !ast.CanCoerce(ref.Type, stepExpr.Type()) {
+				panic(fmt.Errorf("%d:%d type error: %s not assignable to %s", rNext.Pos.Line, rNext.Pos.Column, stepExpr.Type(), ref.Type))
 			}
 		}
 		p.parseEol()
 		block := p.parseBlock(lex.END)
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.FOR)
-		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, Step: step, Block: block}
+		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -283,6 +265,9 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 	if p.hasTok(lex.ASSIGN) {
 		p.parseTok(lex.ASSIGN)
 		expr = p.parseExpression()
+		if !ast.CanCoerce(typ, expr.Type()) {
+			panic(fmt.Errorf("%d:%d type error: %s not assignable to %s", r.Pos.Line, r.Pos.Column, expr.Type(), typ))
+		}
 		si = spanAst(r, expr)
 	} else if !isConst {
 		expr = nil

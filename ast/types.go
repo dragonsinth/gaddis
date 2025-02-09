@@ -21,6 +21,16 @@ func IsNumericType(t Type) bool {
 	return t == Integer || t == Real
 }
 
+func CanCoerce(dst Type, src Type) bool {
+	if dst == src {
+		return true
+	}
+	if dst == Real && src == Integer {
+		return true // promote
+	}
+	return false
+}
+
 func AreComparableTypes(a Type, b Type) Type {
 	if a == b {
 		return a

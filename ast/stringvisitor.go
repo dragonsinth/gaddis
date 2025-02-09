@@ -232,9 +232,9 @@ func (v *StringVisitor) PreVisitForStmt(fs *ForStmt) bool {
 	fs.StartExpr.Visit(v)
 	v.output(" To ")
 	fs.StopExpr.Visit(v)
-	if fs.Step != nil {
+	if fs.StepExpr != nil {
 		v.output(" Step ")
-		fs.Step.Visit(v)
+		fs.StepExpr.Visit(v)
 	}
 	v.output("\n")
 	fs.Block.Visit(v)

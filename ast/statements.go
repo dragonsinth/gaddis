@@ -203,7 +203,7 @@ type ForStmt struct {
 	Ref       *VarDecl
 	StartExpr Expression
 	StopExpr  Expression
-	Step      *IntegerLiteral
+	StepExpr  Expression
 	Block     *Block
 }
 
@@ -213,8 +213,8 @@ func (ws *ForStmt) Visit(v Visitor) {
 	}
 	ws.StartExpr.Visit(v)
 	ws.StopExpr.Visit(v)
-	if ws.Step != nil {
-		ws.Step.Visit(v)
+	if ws.StepExpr != nil {
+		ws.StepExpr.Visit(v)
 	}
 	ws.Block.Visit(v)
 	v.PostVisitForStmt(ws)

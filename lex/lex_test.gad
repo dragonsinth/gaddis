@@ -44,5 +44,8 @@ Until True
 For count = 1 To 10
 End For
 
+For count = 10 To 1 Step -1
+End For
+
 For count = 0 To 100 Step 10
 End For

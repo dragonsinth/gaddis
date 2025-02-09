@@ -122,3 +122,19 @@ func modReal(a, b float64) float64 {
 func expReal(base, exp float64) float64 {
 	return math.Pow(base, exp)
 }
+
+func stepInteger(ref int64, stop int64, step int64) bool {
+	if step < 0 {
+		return ref >= stop
+	} else {
+		return ref <= stop
+	}
+}
+
+func stepReal(ref float64, stop float64, step float64) bool {
+	if step < 0 {
+		return ref >= stop
+	} else {
+		return ref <= stop
+	}
+}
