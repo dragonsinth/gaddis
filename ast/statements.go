@@ -165,3 +165,57 @@ func (cb *CaseBlock) Visit(v Visitor) {
 	cb.Block.Visit(v)
 	v.PostVisitCaseBlock(cb)
 }
+
+type DoStmt struct {
+	SourceInfo
+	Block *Block
+	Not   bool
+	Expr  Expression
+}
+
+func (ds *DoStmt) Visit(v Visitor) {
+	if !v.PreVisitDoStmt(ds) {
+		return
+	}
+	ds.Block.Visit(v)
+	ds.Expr.Visit(v)
+	v.PostVisitDoStmt(ds)
+}
+
+type WhileStmt struct {
+	SourceInfo
+	Expr  Expression
+	Block *Block
+}
+
+func (ws *WhileStmt) Visit(v Visitor) {
+	if !v.PreVisitWhileStmt(ws) {
+		return
+	}
+	ws.Expr.Visit(v)
+	ws.Block.Visit(v)
+	v.PostVisitWhileStmt(ws)
+}
+
+type ForStmt struct {
+	SourceInfo
+	Name      string
+	Ref       *VarDecl
+	StartExpr Expression
+	StopExpr  Expression
+	StepExpr  Expression
+	Block     *Block
+}
+
+func (ws *ForStmt) Visit(v Visitor) {
+	if !v.PreVisitForStmt(ws) {
+		return
+	}
+	ws.StartExpr.Visit(v)
+	ws.StopExpr.Visit(v)
+	if ws.StepExpr != nil {
+		ws.StepExpr.Visit(v)
+	}
+	ws.Block.Visit(v)
+	v.PostVisitForStmt(ws)
+}

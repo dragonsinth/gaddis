@@ -43,7 +43,8 @@ Select flag
       Display "false"
 End Select
 
-Select quantity
+Declare Integer count = 1
+Select count
    Case 0:
       Display "zero"
    Case 1:
@@ -51,3 +52,23 @@ Select quantity
    Default:
       Display "many"
 End Select
+
+While False
+  Display "wrong"
+End While
+
+Do
+  Display "once"
+While False
+
+Do
+  Display "once"
+Until True
+
+For count = 1 To 10
+  Display count
+End For
+
+For count = 0 To 100 Step 10
+  Display count
+End For

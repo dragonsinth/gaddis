@@ -32,6 +32,15 @@ type Visitor interface {
 	PreVisitCaseBlock(cb *CaseBlock) bool
 	PostVisitCaseBlock(cb *CaseBlock)
 
+	PreVisitDoStmt(ds *DoStmt) bool
+	PostVisitDoStmt(ds *DoStmt)
+
+	PreVisitWhileStmt(ws *WhileStmt) bool
+	PostVisitWhileStmt(ws *WhileStmt)
+
+	PreVisitForStmt(ws *ForStmt) bool
+	PostVisitForStmt(ws *ForStmt)
+
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
 	PostVisitIntegerLiteral(il *IntegerLiteral)
 

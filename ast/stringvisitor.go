@@ -196,6 +196,56 @@ func (v *StringVisitor) PreVisitCaseBlock(cb *CaseBlock) bool {
 func (v *StringVisitor) PostVisitCaseBlock(cb *CaseBlock) {
 }
 
+func (v *StringVisitor) PreVisitDoStmt(ds *DoStmt) bool {
+	v.output("Do\n")
+	ds.Block.Visit(v)
+	if ds.Not {
+		v.output("Until ")
+	} else {
+		v.output("While ")
+	}
+	ds.Expr.Visit(v)
+	v.output("\n")
+	return false
+}
+
+func (v *StringVisitor) PostVisitDoStmt(ds *DoStmt) {
+}
+
+func (v *StringVisitor) PreVisitWhileStmt(ws *WhileStmt) bool {
+	v.output("While ")
+	ws.Expr.Visit(v)
+	v.output("\n")
+	ws.Block.Visit(v)
+	v.indent()
+	v.output("End While\n")
+	return false
+}
+
+func (v *StringVisitor) PostVisitWhileStmt(ws *WhileStmt) {
+}
+
+func (v *StringVisitor) PreVisitForStmt(fs *ForStmt) bool {
+	v.output("For ")
+	v.output(fs.Name)
+	v.output(" = ")
+	fs.StartExpr.Visit(v)
+	v.output(" To ")
+	fs.StopExpr.Visit(v)
+	if fs.StepExpr != nil {
+		v.output(" Step ")
+		fs.StepExpr.Visit(v)
+	}
+	v.output("\n")
+	fs.Block.Visit(v)
+	v.indent()
+	v.output("End For\n")
+	return false
+}
+
+func (v *StringVisitor) PostVisitForStmt(ws *ForStmt) {
+}
+
 func (v *StringVisitor) PreVisitIntegerLiteral(il *IntegerLiteral) bool {
 	v.output(strconv.FormatInt(il.Val, 10))
 	return true

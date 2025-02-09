@@ -193,6 +193,68 @@ func (p *Parser) parseStatement() ast.Statement {
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.SELECT)
 		return &ast.SelectStmt{SourceInfo: spanResult(r, rEnd), Type: dstType, Expr: expr, Cases: cases, Default: def}
+	case lex.DO:
+		p.parseEol()
+		block := p.parseBlock(lex.WHILE, lex.UNTIL)
+		rEnd := p.Next()
+		not := false
+		switch rEnd.Token {
+		case lex.WHILE:
+		case lex.UNTIL:
+			not = true
+		default:
+			panic(fmt.Errorf("%d:%d expected While or Until, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+		}
+		expr := p.parseExpression()
+		if expr.Type() != ast.Boolean {
+			panic(fmt.Errorf("%d:%d type error: expected Boolean, got %s", rEnd.Pos.Line, rEnd.Pos.Column, expr.Type()))
+		}
+		return &ast.DoStmt{SourceInfo: spanAst(r, expr), Block: block, Not: not, Expr: expr}
+	case lex.WHILE:
+		expr := p.parseExpression()
+		if expr.Type() != ast.Boolean {
+			panic(fmt.Errorf("%d:%d type error: expected Boolean, got %s", r.Pos.Line, r.Pos.Column, expr.Type()))
+		}
+		p.parseEol()
+		block := p.parseBlock(lex.END)
+		p.parseTok(lex.END)
+		rEnd := p.parseTok(lex.WHILE)
+		return &ast.WhileStmt{SourceInfo: spanResult(r, rEnd), Expr: expr, Block: block}
+	case lex.FOR:
+		rNext := p.parseTok(lex.IDENT)
+		name := rNext.Text
+		ref := p.currScope.Lookup(name)
+		if ref == nil {
+			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, name))
+		}
+		if ref.Type != ast.Integer {
+			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, ref.Type))
+		}
+		rNext = p.parseTok(lex.ASSIGN)
+		startExpr := p.parseExpression()
+		if startExpr.Type() != ast.Integer {
+			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, startExpr.Type()))
+		}
+
+		rNext = p.parseTok(lex.TO)
+		stopExpr := p.parseExpression()
+		if stopExpr.Type() != ast.Integer {
+			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, stopExpr.Type()))
+		}
+
+		var stepExpr ast.Expression
+		if p.hasTok(lex.STEP) {
+			rNext = p.parseTok(lex.STEP)
+			stepExpr = p.parseExpression()
+			if ref.Type != ast.Integer {
+				panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, stepExpr.Type()))
+			}
+		}
+		p.parseEol()
+		block := p.parseBlock(lex.END)
+		p.parseTok(lex.END)
+		rEnd := p.parseTok(lex.FOR)
+		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}

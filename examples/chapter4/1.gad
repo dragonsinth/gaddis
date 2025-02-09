@@ -1,0 +1,20 @@
+While False
+  Display "wrong"
+End While
+
+Do
+  Display "right"
+While False
+
+Do
+  Display "once"
+Until True
+
+Declare Integer count
+For count = 1 To 10
+  Display count
+End For
+
+For count = 0 To 100 Step 10
+  Display count
+End For
