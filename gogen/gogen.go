@@ -91,16 +91,24 @@ func (g *GoGenerator) PreVisitForStmt(ws *ast.ForStmt) bool {
 	g.ident(ws.Ref)
 	g.output(" = ")
 	ws.StartExpr.Visit(g)
-	g.output("; true; ")
+	g.output("; ")
 	g.ident(ws.Ref)
-	if ws.StepExpr != nil {
-		g.output(" += ")
-		ws.StepExpr.Visit(g)
-		g.output(" {\n")
-
+	if ws.Step != nil && ws.Step.Val < 0 {
+		g.output(" >= ")
 	} else {
-		g.output("++ {\n")
+		g.output(" <= ")
 	}
+	ws.StopExpr.Visit(g)
+	g.output("; ")
+
+	g.ident(ws.Ref)
+	if ws.Step != nil {
+		g.output(" += ")
+		ws.Step.Visit(g)
+	} else {
+		g.output("++")
+	}
+	g.output(" {\n")
 
 	ws.Block.Visit(g)
 
@@ -336,8 +344,13 @@ func (g *GoGenerator) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
 }
 
 func (g *GoGenerator) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
-	if uo.Op == ast.NOT {
-		g.output("!")
+	switch uo.Op {
+	case ast.NOT:
+		g.output(" !")
+	case ast.NEG:
+		g.output(" -")
+	default:
+		panic(uo.Op)
 	}
 	g.output("(")
 	uo.Expr.Visit(g)

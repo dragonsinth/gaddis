@@ -242,19 +242,35 @@ func (p *Parser) parseStatement() ast.Statement {
 			panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, stopExpr.Type()))
 		}
 
-		var stepExpr ast.Expression
+		var step *ast.IntegerLiteral
 		if p.hasTok(lex.STEP) {
 			rNext = p.parseTok(lex.STEP)
-			stepExpr = p.parseExpression()
-			if ref.Type != ast.Integer {
-				panic(fmt.Errorf("%d:%d type error: expected Integer, got %s", rNext.Pos.Line, rNext.Pos.Column, stepExpr.Type()))
+			expr := p.parseTerminal()
+			// strip off any neg operations
+			neg := false
+			for {
+				if inner, ok := expr.(*ast.UnaryOperation); ok && inner.Op == ast.NEG {
+					neg = !neg
+					expr = inner.Expr
+				} else {
+					break
+				}
+			}
+
+			if intLit, ok := expr.(*ast.IntegerLiteral); ok {
+				step = intLit
+				if neg {
+					step.Val = -step.Val
+				}
+			} else {
+				panic(fmt.Errorf("%d:%d type error: expected Integer Literal, got %s", rNext.Pos.Line, rNext.Pos.Column, expr))
 			}
 		}
 		p.parseEol()
 		block := p.parseBlock(lex.END)
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.FOR)
-		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
+		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, Step: step, Block: block}
 	default:
 		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
 	}
@@ -417,6 +433,12 @@ func (p *Parser) parseTerminal() ast.Expression {
 			panic(fmt.Errorf("%d:%d operator %s expects operand of type %s to be boolean", r.Pos.Line, r.Pos.Column, r.Text, expr.Type()))
 		}
 		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Typ: ast.Boolean, Expr: expr}
+	case lex.SUB:
+		expr := p.parseExpression()
+		if !ast.IsNumericType(expr.Type()) {
+			panic(fmt.Errorf("%d:%d operator %s expects operand of type %s to be numeric", r.Pos.Line, r.Pos.Column, r.Text, expr.Type()))
+		}
+		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Typ: expr.Type(), Expr: expr}
 	case lex.TRUE:
 		return &ast.BooleanLiteral{SourceInfo: toSourceInfo(r), Val: true}
 	case lex.FALSE:

@@ -19,6 +19,7 @@ const (
 	AND
 	OR
 	NOT
+	NEG
 )
 
 var operators = [...]string{
@@ -37,6 +38,7 @@ var operators = [...]string{
 	AND: "AND",
 	OR:  "OR",
 	NOT: "NOT",
+	NEG: "-",
 }
 
 func (op Operator) String() string {

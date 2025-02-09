@@ -232,9 +232,9 @@ func (v *StringVisitor) PreVisitForStmt(fs *ForStmt) bool {
 	fs.StartExpr.Visit(v)
 	v.output(" To ")
 	fs.StopExpr.Visit(v)
-	if fs.StepExpr != nil {
+	if fs.Step != nil {
 		v.output(" Step ")
-		fs.StepExpr.Visit(v)
+		fs.Step.Visit(v)
 	}
 	v.output("\n")
 	fs.Block.Visit(v)
@@ -287,8 +287,14 @@ func (v *StringVisitor) PostVisitBooleanLiteral(cl *BooleanLiteral) {
 }
 
 func (v *StringVisitor) PreVisitUnaryOperation(uo *UnaryOperation) bool {
-	v.output(operators[uo.Op])
-	v.output(" ")
+	switch uo.Op {
+	case NOT:
+		v.output("NOT ")
+	case NEG:
+		v.output("-")
+	default:
+		panic(uo.Op)
+	}
 	v.output("(")
 	uo.Expr.Visit(v)
 	v.output(")")
