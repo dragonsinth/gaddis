@@ -438,8 +438,10 @@ func (p *Parser) parseTerminal() ast.Expression {
 }
 
 func (p *Parser) parseEol() {
-	p.parseTok(lex.EOL)
-	p.maybeParseEol()
+	if !p.hasTok(lex.EOF) {
+		p.parseTok(lex.EOL)
+		p.maybeParseEol()
+	}
 }
 
 func (p *Parser) maybeParseEol() {

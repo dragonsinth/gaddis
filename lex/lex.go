@@ -235,10 +235,7 @@ func NewLexer(input []byte) *Lexer {
 // the token's type, and the literal value.
 func (l *Lexer) Lex() Result {
 	// keep looping until we return a token
-	for {
-		if l.stream.Eof() {
-			return Result{l.position(), EOF, "", nil}
-		}
+	for !l.stream.Eof() {
 		r := l.stream.Peek()
 		switch r {
 		case '\n':
@@ -322,6 +319,7 @@ func (l *Lexer) Lex() Result {
 			}
 		}
 	}
+	return Result{l.position(), EOF, "", nil}
 }
 
 func (l *Lexer) advance() Position {
@@ -334,7 +332,7 @@ func (l *Lexer) parseNumber() Result {
 	pos := l.position()
 	var lit []byte
 	isDecimal := false
-	for {
+	for !l.stream.Eof() {
 		c := l.stream.Peek()
 		if isDigit(c) {
 			lit = append(lit, c)
@@ -365,18 +363,19 @@ func (l *Lexer) parseNumber() Result {
 }
 
 func (l *Lexer) parseComment(pos Position) Result {
-	for {
+	for !l.stream.Eof() {
 		c := l.stream.Next()
 		if c == '\n' {
 			return Result{pos, EOL, "\n", nil}
 		}
 	}
+	return Result{pos, EOF, "", nil}
 }
 
 func (l *Lexer) parseIdent() Result {
 	pos := l.position()
 	var lit []byte
-	for {
+	for !l.stream.Eof() {
 		c := l.stream.Peek()
 		if isIdentCharacter(c) {
 			lit = append(lit, c)
@@ -399,7 +398,7 @@ func (l *Lexer) parseStringLiteral() Result {
 	l.advance()
 
 	// FIXME: real string literal parse with escaping?
-	for {
+	for !l.stream.Eof() {
 		c := l.stream.Peek()
 		if c == '\n' {
 			return Result{pos, ILLEGAL, string(lit), ErrUnterminatedString}
@@ -417,7 +416,7 @@ func (l *Lexer) parseCharacterLiteral() Result {
 	pos := l.position()
 	lit := []byte{'\''}
 	l.advance()
-	for {
+	for !l.stream.Eof() {
 		c := l.stream.Peek()
 		if c == '\n' {
 			return Result{pos, ILLEGAL, string(lit), ErrUnterminatedCharacter}

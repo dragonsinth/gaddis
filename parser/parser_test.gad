@@ -77,4 +77,4 @@ For count = 0 To 100 Step 10
   Display count
 End For
 
-Display -count
+Display -count // explicit no new line
