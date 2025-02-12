@@ -91,11 +91,11 @@ func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 
 func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {}
 
-func (v *Visitor) PreVisitForStmt(ws *ast.ForStmt) bool {
+func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitForStmt(ws *ast.ForStmt) {}
+func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	return true

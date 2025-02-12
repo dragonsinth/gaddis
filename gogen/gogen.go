@@ -255,36 +255,36 @@ func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 }
 
-func (v *Visitor) PreVisitForStmt(ws *ast.ForStmt) bool {
+func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.indent()
-	v.ident(ws.Ref)
+	v.ident(fs.Ref)
 	v.output(" = ")
-	ws.StartExpr.Visit(v)
+	fs.StartExpr.Visit(v)
 	v.output("\n")
 
 	v.indent()
 	v.output("for step")
-	refType := ws.Ref.Type
+	refType := fs.Ref.Type
 	v.output(refType.String())
 	v.output("(")
-	v.ident(ws.Ref)
+	v.ident(fs.Ref)
 	v.output(", ")
-	v.maybeCast(refType, ws.StopExpr)
+	v.maybeCast(refType, fs.StopExpr)
 	v.output(", ")
-	if ws.StepExpr != nil {
-		v.maybeCast(refType, ws.StepExpr)
+	if fs.StepExpr != nil {
+		v.maybeCast(refType, fs.StepExpr)
 	} else {
 		v.output("1")
 	}
 	v.output(") {\n")
-	ws.Block.Visit(v)
+	fs.Block.Visit(v)
 
 	v.indent()
 	v.output("\t")
-	v.ident(ws.Ref)
+	v.ident(fs.Ref)
 	v.output(" += ")
-	if ws.StepExpr != nil {
-		v.maybeCast(refType, ws.StepExpr)
+	if fs.StepExpr != nil {
+		v.maybeCast(refType, fs.StepExpr)
 	} else {
 		v.output("1")
 	}
@@ -294,7 +294,7 @@ func (v *Visitor) PreVisitForStmt(ws *ast.ForStmt) bool {
 	return false
 }
 
-func (v *Visitor) PostVisitForStmt(ws *ast.ForStmt) {
+func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 }
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {

@@ -10,6 +10,7 @@ import (
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"github.com/dragonsinth/gaddis/parse"
+	"github.com/dragonsinth/gaddis/typecheck"
 	"io"
 	"log"
 	"os"
@@ -55,6 +56,15 @@ func run() error {
 		}
 		os.Exit(1)
 	}
+
+	errs = typecheck.TypeCheck(block)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Println(err)
+		}
+		os.Exit(1)
+	}
+
 	if *fVerbose {
 		dbgOut := ast.DebugString(block, comments)
 		os.Stdout.WriteString(dbgOut)

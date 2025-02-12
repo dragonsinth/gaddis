@@ -147,7 +147,9 @@ func (ss *SelectStmt) Visit(v Visitor) {
 	for _, cb := range ss.Cases {
 		cb.Visit(v)
 	}
-	ss.Default.Visit(v)
+	if ss.Default != nil {
+		ss.Default.Visit(v)
+	}
 	v.PostVisitSelectStmt(ss)
 }
 

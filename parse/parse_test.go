@@ -13,9 +13,12 @@ var (
 )
 
 func TestParse(t *testing.T) {
-	block, comments, err := Parse([]byte(program))
-	if err != nil {
-		t.Fatal(err)
+	block, comments, errs := Parse([]byte(program))
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Error(err)
+		}
+		t.Fatal("parse errors")
 	}
 
 	out := ast.DebugString(block, comments)

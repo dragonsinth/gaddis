@@ -6,6 +6,7 @@ import (
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"github.com/dragonsinth/gaddis/parse"
+	"github.com/dragonsinth/gaddis/typecheck"
 	"io"
 	"os"
 	"os/signal"
@@ -24,8 +25,16 @@ func RunTest(t *testing.T, filename string) error {
 		for _, err := range errs {
 			t.Error(err)
 		}
-		t.Fatalf("failed to parse file %s", filename)
+		t.Fatalf("%s: failed to parse", filename)
 	}
+	errs = typecheck.TypeCheck(block)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Error(err)
+		}
+		t.Fatalf("%s: type check failed", filename)
+	}
+
 	goSrc := gogen.GoGenerate(block)
 
 	var input bytes.Buffer

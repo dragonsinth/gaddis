@@ -3,7 +3,7 @@ package ast
 type Type int
 
 const (
-	InvalidType = Type(iota)
+	UnresolvedType = Type(iota)
 	Integer
 	Real
 	String
@@ -38,12 +38,12 @@ func AreComparableTypes(a Type, b Type) Type {
 	if IsNumericType(a) && IsNumericType(b) {
 		return Real // promote
 	}
-	return InvalidType
+	return UnresolvedType
 }
 
 func AreComparableOrderedTypes(a Type, b Type) bool {
 	typ := AreComparableTypes(a, b)
-	if typ == InvalidType {
+	if typ == UnresolvedType {
 		return false // must be comparable
 	}
 	if typ == Boolean {

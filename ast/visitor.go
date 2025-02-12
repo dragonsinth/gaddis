@@ -38,8 +38,8 @@ type Visitor interface {
 	PreVisitWhileStmt(ws *WhileStmt) bool
 	PostVisitWhileStmt(ws *WhileStmt)
 
-	PreVisitForStmt(ws *ForStmt) bool
-	PostVisitForStmt(ws *ForStmt)
+	PreVisitForStmt(fs *ForStmt) bool
+	PostVisitForStmt(fs *ForStmt)
 
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
 	PostVisitIntegerLiteral(il *IntegerLiteral)
