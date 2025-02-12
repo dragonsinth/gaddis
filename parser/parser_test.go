@@ -13,11 +13,11 @@ var (
 )
 
 func TestParse(t *testing.T) {
-	block, err := Parse([]byte(program))
+	block, comments, err := Parse([]byte(program))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	out := ast.DebugString(block)
+	out := ast.DebugString(block, comments)
 	os.Stdout.WriteString(out)
 }

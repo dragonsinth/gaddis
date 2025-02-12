@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,9 +13,6 @@ import (
 const slash = string(filepath.Separator)
 
 func TestExamples(t *testing.T) {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
 	_, file, _, _ := runtime.Caller(0)
 	root := filepath.Dir(file)
 	if !strings.HasSuffix(root, slash) {
@@ -36,7 +31,7 @@ func TestExamples(t *testing.T) {
 		testname := strings.TrimPrefix(path, root)
 		testname = strings.ReplaceAll(testname, slash, "_")
 		t.Run(testname, func(t *testing.T) {
-			if err := RunTest(ctx, t, path); errors.Is(err, context.Canceled) {
+			if err := RunTest(t, path); errors.Is(err, context.Canceled) {
 				t.Skip(err)
 			} else if err != nil {
 				t.Error(err)

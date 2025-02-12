@@ -48,7 +48,7 @@ func run() error {
 		return fmt.Errorf("read file %s: %w", filename, err)
 	}
 
-	block, errs := parser.Parse(gadSrc)
+	block, comments, errs := parser.Parse(gadSrc)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Println(err)
@@ -56,13 +56,13 @@ func run() error {
 		os.Exit(1)
 	}
 	if *fVerbose {
-		dbgOut := ast.DebugString(block)
+		dbgOut := ast.DebugString(block, comments)
 		os.Stdout.WriteString(dbgOut)
 	}
 
 	goSrc := gogen.Generate(block)
 	if *fVerbose {
-		log.Println(goSrc)
+		os.Stdout.WriteString(goSrc)
 	}
 
 	var terminalInput bool

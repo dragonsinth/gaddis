@@ -18,12 +18,12 @@ type ParseError struct {
 	Desc string
 }
 
-func (e *ParseError) Error() string {
-	start := e.SourceInfo.Start
-	return fmt.Sprintf("%d:%d %s", start.Line, start.Column, e.Desc)
+func (pe ParseError) Error() string {
+	start := pe.SourceInfo.Start
+	return fmt.Sprintf("%d:%d %s", start.Line, start.Column, pe.Desc)
 }
 
-func Parse(input []byte) (*ast.Block, []*ParseError) {
+func Parse(input []byte) (*ast.Block, []ast.Comment, []ParseError) {
 	l := lex.NewLexer(input)
 	p := NewParser(l)
 	ret := p.parseBlock(lex.EOF)
@@ -31,7 +31,7 @@ func Parse(input []byte) (*ast.Block, []*ParseError) {
 	if len(errs) > maxErrors {
 		errs = errs[:maxErrors]
 	}
-	return ret, errs
+	return ret, p.comments, errs
 }
 
 func NewParser(l *lex.Lexer) *Parser {
@@ -46,29 +46,21 @@ type Parser struct {
 	next      *lex.Result
 	currScope *ast.Scope
 
-	errors []*ParseError
+	comments []ast.Comment
+	errors   []ParseError
 }
 
 func (p *Parser) Peek() lex.Result {
-	if p.next == nil {
-		v := p.lex.Lex()
-		p.next = &v
-	}
-	return p.errCheck(*p.next)
+	return p.errCheck(p.SafePeek())
 }
 
 func (p *Parser) Next() lex.Result {
-	if p.next != nil {
-		v := *p.next
-		p.next = nil
-		return v
-	}
-	return p.errCheck(p.lex.Lex())
+	return p.errCheck(p.SafeNext())
 }
 
 func (p *Parser) SafePeek() lex.Result {
 	if p.next == nil {
-		v := p.lex.Lex()
+		v := p.nextNonComment()
 		p.next = &v
 	}
 	return *p.next
@@ -80,7 +72,17 @@ func (p *Parser) SafeNext() lex.Result {
 		p.next = nil
 		return v
 	}
-	return p.lex.Lex()
+	return p.nextNonComment()
+}
+
+func (p *Parser) nextNonComment() lex.Result {
+	for {
+		r := p.lex.Lex()
+		if r.Token != lex.COMMENT {
+			return r
+		}
+		p.comments = append(p.comments, ast.Comment{SourceInfo: toSourceInfo(r), Text: r.Text})
+	}
 }
 
 func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
@@ -122,7 +124,7 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 func (p *Parser) safeParseStatement() ast.Statement {
 	defer func() {
 		if e := recover(); e != nil {
-			if pe, ok := e.(*ParseError); ok {
+			if pe, ok := e.(ParseError); ok {
 				p.errors = append(p.errors, pe)
 			} else {
 				panic(e)
@@ -524,13 +526,13 @@ func (p *Parser) parseTok(expect lex.Token) lex.Result {
 
 func (p *Parser) errCheck(r lex.Result) lex.Result {
 	if r.Token == lex.ILLEGAL {
-		panic(p.Errorf(r, "syntax error: illegal token %s: %v", r.Token, r.Error))
+		panic(p.Errorf(r, "%s: illegal token %q", r.Error.Error(), r.Text))
 	}
 	return r
 }
 
-func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) *ParseError {
-	return &ParseError{
+func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) ParseError {
+	return ParseError{
 		SourceInfo: toSourceInfo(r),
 		Desc:       fmt.Sprintf(fmtStr, args...),
 	}

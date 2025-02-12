@@ -22,3 +22,8 @@ type SourceInfo struct {
 func (si SourceInfo) GetSourceInfo() SourceInfo {
 	return si
 }
+
+type Comment struct {
+	SourceInfo
+	Text string
+}

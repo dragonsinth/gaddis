@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-func DebugString(globalBlock *Block) string {
+// TODO: emit extra newlines and comments to turn this into a pretty printer.
+
+func DebugString(globalBlock *Block, comments []Comment) string {
 	// visit the statements in the global block
 	var sb strings.Builder
 	v := NewStringVisitor("", &sb)

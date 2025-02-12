@@ -363,13 +363,15 @@ func (l *Lexer) parseNumber() Result {
 }
 
 func (l *Lexer) parseComment(pos Position) Result {
+	comment := []byte{'/'}
 	for !l.stream.Eof() {
-		c := l.stream.Next()
+		c := l.stream.Peek()
 		if c == '\n' {
-			return Result{pos, EOL, "\n", nil}
+			break
 		}
+		comment = append(comment, l.stream.Next())
 	}
-	return Result{pos, EOF, "", nil}
+	return Result{pos, COMMENT, string(comment), nil}
 }
 
 func (l *Lexer) parseIdent() Result {

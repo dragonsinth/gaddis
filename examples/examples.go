@@ -8,20 +8,18 @@ import (
 	"github.com/dragonsinth/gaddis/parser"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"testing"
 )
 
-func RunTest(ctx context.Context, t *testing.T, filename string) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
+func RunTest(t *testing.T, filename string) error {
 	src, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatalf("failed to read file %s: %v", filename, err)
 	}
 
-	block, errs := parser.Parse(src)
+	block, _, errs := parser.Parse(src)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			t.Error(err)
@@ -41,6 +39,9 @@ func RunTest(ctx context.Context, t *testing.T, filename string) error {
 	if err != nil {
 		t.Fatalf("failed to read file %s: %v", filename+".out", err)
 	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 
 	err = goexec.Run(ctx, goSrc, filepath.Dir(filename), io.NopCloser(&input), &output, &errput)
 	if err != nil {
