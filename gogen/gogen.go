@@ -16,7 +16,7 @@ var (
 const oldPrefix = "package main_template\n"
 const newPrefix = "package main\n"
 
-func Generate(globalBlock *ast.Block) string {
+func GoGenerate(globalBlock *ast.Block) string {
 	var sb strings.Builder
 
 	data := strings.TrimPrefix(builtins, oldPrefix)
@@ -30,395 +30,395 @@ func Generate(globalBlock *ast.Block) string {
 	return sb.String()
 }
 
-func New(indent string, out io.StringWriter) *GoGenerator {
-	return &GoGenerator{
+func New(indent string, out io.StringWriter) *Visitor {
+	return &Visitor{
 		ind: indent,
 		out: out,
 	}
 }
 
-type GoGenerator struct {
+type Visitor struct {
 	ind        string
 	out        io.StringWriter
 	selectType ast.Type // type of most recently enclosing select statement
 }
 
-var _ ast.Visitor = &GoGenerator{}
+var _ ast.Visitor = &Visitor{}
 
-func (g *GoGenerator) PreVisitBlock(bl *ast.Block) bool {
-	g.ind = g.ind + "\t"
+func (v *Visitor) PreVisitBlock(bl *ast.Block) bool {
+	v.ind = v.ind + "\t"
 	return true
 }
 
-func (g *GoGenerator) PostVisitBlock(bl *ast.Block) {
-	g.ind = g.ind[:len(g.ind)-1]
+func (v *Visitor) PostVisitBlock(bl *ast.Block) {
+	v.ind = v.ind[:len(v.ind)-1]
 }
 
-func (g *GoGenerator) PreVisitVarDecl(vd *ast.VarDecl) bool {
-	g.indent()
+func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
+	v.indent()
 	if vd.IsConst {
-		g.output("const ")
+		v.output("const ")
 	} else {
-		g.output("var ")
+		v.output("var ")
 	}
-	g.ident(vd)
-	g.output(" ")
-	g.output(goTypes[vd.Type])
+	v.ident(vd)
+	v.output(" ")
+	v.output(goTypes[vd.Type])
 	if vd.Expr != nil {
-		g.output(" = ")
-		g.maybeCast(vd.Type, vd.Expr)
+		v.output(" = ")
+		v.maybeCast(vd.Type, vd.Expr)
 	}
-	g.output("\n")
+	v.output("\n")
 	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
-	g.indent()
-	g.output("_ = ")
-	g.ident(vd)
-	g.output("\n")
+	v.indent()
+	v.output("_ = ")
+	v.ident(vd)
+	v.output("\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitVarDecl(vd *ast.VarDecl) {
+func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 }
 
-func (g *GoGenerator) PreVisitConstantStmt(stmt *ast.ConstantStmt) bool {
+func (v *Visitor) PreVisitConstantStmt(stmt *ast.ConstantStmt) bool {
 	return true
 }
 
-func (g *GoGenerator) PostVisitConstantStmt(stmt *ast.ConstantStmt) {
+func (v *Visitor) PostVisitConstantStmt(stmt *ast.ConstantStmt) {
 }
 
-func (g *GoGenerator) PreVisitDeclareStmt(stmt *ast.DeclareStmt) bool {
+func (v *Visitor) PreVisitDeclareStmt(stmt *ast.DeclareStmt) bool {
 	return true
 }
 
-func (g *GoGenerator) PostVisitDeclareStmt(stmt *ast.DeclareStmt) {
+func (v *Visitor) PostVisitDeclareStmt(stmt *ast.DeclareStmt) {
 }
 
-func (g *GoGenerator) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
-	g.indent()
-	g.output("display(")
+func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
+	v.indent()
+	v.output("display(")
 	for i, arg := range d.Exprs {
 		if i > 0 {
-			g.output(", ")
+			v.output(", ")
 		}
-		arg.Visit(g)
+		arg.Visit(v)
 	}
-	g.output(")\n")
+	v.output(")\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitDisplayStmt(d *ast.DisplayStmt) {
+func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 }
 
-func (g *GoGenerator) PreVisitInputStmt(i *ast.InputStmt) bool {
-	g.indent()
-	g.ident(i.Ref)
-	g.output(" = ")
-	g.output("input")
-	g.output(i.Ref.Type.String())
-	g.output("()\n")
+func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
+	v.indent()
+	v.ident(i.Ref)
+	v.output(" = ")
+	v.output("input")
+	v.output(i.Ref.Type.String())
+	v.output("()\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitInputStmt(i *ast.InputStmt) {
+func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 }
 
-func (g *GoGenerator) PreVisitSetStmt(s *ast.SetStmt) bool {
-	g.indent()
-	g.ident(s.Ref)
-	g.output(" = ")
-	g.maybeCast(s.Ref.Type, s.Expr)
-	g.output("\n")
+func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
+	v.indent()
+	v.ident(s.Ref)
+	v.output(" = ")
+	v.maybeCast(s.Ref.Type, s.Expr)
+	v.output("\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitSetStmt(s *ast.SetStmt) {
+func (v *Visitor) PostVisitSetStmt(s *ast.SetStmt) {
 }
 
-func (g *GoGenerator) PreVisitIfStmt(is *ast.IfStmt) bool {
-	g.indent()
-	is.If.Visit(g)
+func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
+	v.indent()
+	is.If.Visit(v)
 
 	for _, cb := range is.ElseIf {
-		g.output(" else ")
-		cb.Visit(g)
+		v.output(" else ")
+		cb.Visit(v)
 	}
 	if is.Else != nil {
-		g.output(" else {\n")
-		is.Else.Visit(g)
-		g.indent()
-		g.output("}")
+		v.output(" else {\n")
+		is.Else.Visit(v)
+		v.indent()
+		v.output("}")
 	}
-	g.output("\n")
+	v.output("\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitIfStmt(is *ast.IfStmt) {
+func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
 }
 
-func (g *GoGenerator) PreVisitCondBlock(cb *ast.CondBlock) bool {
-	g.output("if ")
-	cb.Expr.Visit(g)
-	g.output(" {\n")
-	cb.Block.Visit(g)
-	g.indent()
-	g.output("}")
+func (v *Visitor) PreVisitCondBlock(cb *ast.CondBlock) bool {
+	v.output("if ")
+	cb.Expr.Visit(v)
+	v.output(" {\n")
+	cb.Block.Visit(v)
+	v.indent()
+	v.output("}")
 	return false
 }
 
-func (g *GoGenerator) PostVisitCondBlock(cb *ast.CondBlock) {
+func (v *Visitor) PostVisitCondBlock(cb *ast.CondBlock) {
 }
 
-func (g *GoGenerator) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
-	g.indent()
+func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
+	v.indent()
 
-	g.output("switch (")
-	g.maybeCast(ss.Type, ss.Expr)
-	g.output(") {\n")
+	v.output("switch (")
+	v.maybeCast(ss.Type, ss.Expr)
+	v.output(") {\n")
 
-	oldInd, oldType := g.ind, g.selectType
-	g.ind += "\t"
-	g.selectType = ss.Type
+	oldInd, oldType := v.ind, v.selectType
+	v.ind += "\t"
+	v.selectType = ss.Type
 	defer func() {
-		g.ind, g.selectType = oldInd, oldType
+		v.ind, v.selectType = oldInd, oldType
 	}()
 
 	for _, cb := range ss.Cases {
-		cb.Visit(g)
+		cb.Visit(v)
 	}
 	if ss.Default != nil {
-		g.indent()
-		g.output("default:\n")
-		ss.Default.Visit(g)
+		v.indent()
+		v.output("default:\n")
+		ss.Default.Visit(v)
 	}
 
-	g.ind = oldInd
-	g.indent()
-	g.output("}\n")
+	v.ind = oldInd
+	v.indent()
+	v.output("}\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitSelectStmt(ss *ast.SelectStmt) {
+func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
 }
 
-func (g *GoGenerator) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
-	g.indent()
-	g.output("case ")
-	g.maybeCast(g.selectType, cb.Expr)
-	g.output(":\n")
-	cb.Block.Visit(g)
+func (v *Visitor) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
+	v.indent()
+	v.output("case ")
+	v.maybeCast(v.selectType, cb.Expr)
+	v.output(":\n")
+	cb.Block.Visit(v)
 	return false
 }
 
-func (g *GoGenerator) PostVisitCaseBlock(cb *ast.CaseBlock) {
+func (v *Visitor) PostVisitCaseBlock(cb *ast.CaseBlock) {
 }
 
-func (g *GoGenerator) PreVisitDoStmt(ds *ast.DoStmt) bool {
-	g.indent()
-	g.output("for {\n")
-	ds.Block.Visit(g)
-	g.indent()
+func (v *Visitor) PreVisitDoStmt(ds *ast.DoStmt) bool {
+	v.indent()
+	v.output("for {\n")
+	ds.Block.Visit(v)
+	v.indent()
 
-	g.output("\tif ")
+	v.output("\tif ")
 	if ds.Not {
-		ds.Expr.Visit(g)
+		ds.Expr.Visit(v)
 	} else {
-		g.output("!(")
-		ds.Expr.Visit(g)
-		g.output(")")
+		v.output("!(")
+		ds.Expr.Visit(v)
+		v.output(")")
 	}
-	g.output(" {\n")
-	g.indent()
-	g.output("\t\tbreak\n")
-	g.indent()
-	g.output("\t}\n")
+	v.output(" {\n")
+	v.indent()
+	v.output("\t\tbreak\n")
+	v.indent()
+	v.output("\t}\n")
 
-	g.indent()
-	g.output("}\n")
+	v.indent()
+	v.output("}\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitDoStmt(ds *ast.DoStmt) {
+func (v *Visitor) PostVisitDoStmt(ds *ast.DoStmt) {
 }
 
-func (g *GoGenerator) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
-	g.indent()
-	g.output("for ")
-	ws.Expr.Visit(g)
-	g.output(" {\n")
-	ws.Block.Visit(g)
-	g.indent()
-	g.output("}\n")
+func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
+	v.indent()
+	v.output("for ")
+	ws.Expr.Visit(v)
+	v.output(" {\n")
+	ws.Block.Visit(v)
+	v.indent()
+	v.output("}\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitWhileStmt(ws *ast.WhileStmt) {
+func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 }
 
-func (g *GoGenerator) PreVisitForStmt(ws *ast.ForStmt) bool {
-	g.indent()
-	g.ident(ws.Ref)
-	g.output(" = ")
-	ws.StartExpr.Visit(g)
-	g.output("\n")
+func (v *Visitor) PreVisitForStmt(ws *ast.ForStmt) bool {
+	v.indent()
+	v.ident(ws.Ref)
+	v.output(" = ")
+	ws.StartExpr.Visit(v)
+	v.output("\n")
 
-	g.indent()
-	g.output("for step")
+	v.indent()
+	v.output("for step")
 	refType := ws.Ref.Type
-	g.output(refType.String())
-	g.output("(")
-	g.ident(ws.Ref)
-	g.output(", ")
-	g.maybeCast(refType, ws.StopExpr)
-	g.output(", ")
+	v.output(refType.String())
+	v.output("(")
+	v.ident(ws.Ref)
+	v.output(", ")
+	v.maybeCast(refType, ws.StopExpr)
+	v.output(", ")
 	if ws.StepExpr != nil {
-		g.maybeCast(refType, ws.StepExpr)
+		v.maybeCast(refType, ws.StepExpr)
 	} else {
-		g.output("1")
+		v.output("1")
 	}
-	g.output(") {\n")
-	ws.Block.Visit(g)
+	v.output(") {\n")
+	ws.Block.Visit(v)
 
-	g.indent()
-	g.output("\t")
-	g.ident(ws.Ref)
-	g.output(" += ")
+	v.indent()
+	v.output("\t")
+	v.ident(ws.Ref)
+	v.output(" += ")
 	if ws.StepExpr != nil {
-		g.maybeCast(refType, ws.StepExpr)
+		v.maybeCast(refType, ws.StepExpr)
 	} else {
-		g.output("1")
+		v.output("1")
 	}
-	g.output("\n")
-	g.indent()
-	g.output("}\n")
+	v.output("\n")
+	v.indent()
+	v.output("}\n")
 	return false
 }
 
-func (g *GoGenerator) PostVisitForStmt(ws *ast.ForStmt) {
+func (v *Visitor) PostVisitForStmt(ws *ast.ForStmt) {
 }
 
-func (g *GoGenerator) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
-	g.output(strconv.FormatInt(il.Val, 10))
+func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
+	v.output(strconv.FormatInt(il.Val, 10))
 	return true
 }
 
-func (g *GoGenerator) PostVisitIntegerLiteral(l *ast.IntegerLiteral) {
+func (v *Visitor) PostVisitIntegerLiteral(l *ast.IntegerLiteral) {
 }
 
-func (g *GoGenerator) PreVisitRealLiteral(rl *ast.RealLiteral) bool {
-	g.output(strconv.FormatFloat(rl.Val, 'f', -1, 64))
+func (v *Visitor) PreVisitRealLiteral(rl *ast.RealLiteral) bool {
+	v.output(strconv.FormatFloat(rl.Val, 'f', -1, 64))
 	return true
 }
 
-func (g *GoGenerator) PostVisitRealLiteral(l *ast.RealLiteral) {
+func (v *Visitor) PostVisitRealLiteral(l *ast.RealLiteral) {
 }
 
-func (g *GoGenerator) PreVisitStringLiteral(sl *ast.StringLiteral) bool {
-	g.output(strconv.Quote(sl.Val))
+func (v *Visitor) PreVisitStringLiteral(sl *ast.StringLiteral) bool {
+	v.output(strconv.Quote(sl.Val))
 	return true
 }
 
-func (g *GoGenerator) PostVisitStringLiteral(sl *ast.StringLiteral) {
+func (v *Visitor) PostVisitStringLiteral(sl *ast.StringLiteral) {
 }
 
-func (g *GoGenerator) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
-	g.output(strconv.QuoteRune(rune(cl.Val)))
+func (v *Visitor) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
+	v.output(strconv.QuoteRune(rune(cl.Val)))
 	return true
 }
 
-func (g *GoGenerator) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
+func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
 }
 
-func (g *GoGenerator) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
-	g.output(strconv.FormatBool(cl.Val))
+func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
+	v.output(strconv.FormatBool(cl.Val))
 	return true
 }
 
-func (g *GoGenerator) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
+func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
 }
 
-func (g *GoGenerator) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
+func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 	switch uo.Op {
 	case ast.NOT:
-		g.output(" !")
+		v.output(" !")
 	case ast.NEG:
-		g.output(" -")
+		v.output(" -")
 	default:
 		panic(uo.Op)
 	}
-	g.output("(")
-	uo.Expr.Visit(g)
-	g.output(")")
+	v.output("(")
+	uo.Expr.Visit(v)
+	v.output(")")
 	return false
 }
 
-func (g *GoGenerator) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
+func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 }
 
-func (g *GoGenerator) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
+func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	dstType := ast.AreComparableTypes(bo.Lhs.Type(), bo.Rhs.Type())
 
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
 		if bo.Op == ast.MOD {
-			g.output("mod")
+			v.output("mod")
 		} else {
-			g.output("exp")
+			v.output("exp")
 		}
-		g.output(bo.Typ.String())
-		g.output("(")
-		g.maybeCast(dstType, bo.Lhs)
-		g.output(", ")
-		g.maybeCast(dstType, bo.Rhs)
-		g.output(")")
+		v.output(bo.Typ.String())
+		v.output("(")
+		v.maybeCast(dstType, bo.Lhs)
+		v.output(", ")
+		v.maybeCast(dstType, bo.Rhs)
+		v.output(")")
 	} else {
-		g.output("(")
-		g.maybeCast(dstType, bo.Lhs)
-		g.output(goBinaryOperators[bo.Op])
-		g.maybeCast(dstType, bo.Rhs)
-		g.output(")")
+		v.output("(")
+		v.maybeCast(dstType, bo.Lhs)
+		v.output(goBinaryOperators[bo.Op])
+		v.maybeCast(dstType, bo.Rhs)
+		v.output(")")
 	}
 	return false
 }
 
-func (g *GoGenerator) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
+func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
-func (g *GoGenerator) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
-	g.ident(ve.Ref)
+func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+	v.ident(ve.Ref)
 	return true
 }
 
-func (g *GoGenerator) PostVisitVariableExpression(ve *ast.VariableExpression) {
+func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
 }
 
-func (g *GoGenerator) indent() {
-	g.output(g.ind)
+func (v *Visitor) indent() {
+	v.output(v.ind)
 }
 
-func (g *GoGenerator) output(s string) {
-	_, err := g.out.WriteString(s)
+func (v *Visitor) output(s string) {
+	_, err := v.out.WriteString(s)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (g *GoGenerator) ident(ref *ast.VarDecl) {
-	g.output(ref.Name)
-	g.output("_")
+func (v *Visitor) ident(ref *ast.VarDecl) {
+	v.output(ref.Name)
+	v.output("_")
 }
 
-func (g *GoGenerator) maybeCast(dstType ast.Type, exp ast.Expression) {
+func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	if dstType == ast.Real && exp.Type() == ast.Integer {
-		g.output("float64(")
-		exp.Visit(g)
-		g.output(")")
+		v.output("float64(")
+		exp.Visit(v)
+		v.output(")")
 	} else if dstType == ast.Integer && exp.Type() == ast.Real {
-		g.output("int64(")
-		exp.Visit(g)
-		g.output(")")
+		v.output("int64(")
+		exp.Visit(v)
+		v.output(")")
 	} else {
-		exp.Visit(g)
+		exp.Visit(v)
 	}
 }
 

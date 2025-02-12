@@ -5,7 +5,7 @@ import (
 	"context"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
-	"github.com/dragonsinth/gaddis/parser"
+	"github.com/dragonsinth/gaddis/parse"
 	"io"
 	"os"
 	"os/signal"
@@ -19,14 +19,14 @@ func RunTest(t *testing.T, filename string) error {
 		t.Fatalf("failed to read file %s: %v", filename, err)
 	}
 
-	block, _, errs := parser.Parse(src)
+	block, _, errs := parse.Parse(src)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			t.Error(err)
 		}
 		t.Fatalf("failed to parse file %s", filename)
 	}
-	goSrc := gogen.Generate(block)
+	goSrc := gogen.GoGenerate(block)
 
 	var input bytes.Buffer
 	var output bytes.Buffer

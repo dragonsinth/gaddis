@@ -9,7 +9,7 @@ import (
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
-	"github.com/dragonsinth/gaddis/parser"
+	"github.com/dragonsinth/gaddis/parse"
 	"io"
 	"log"
 	"os"
@@ -48,7 +48,7 @@ func run() error {
 		return fmt.Errorf("read file %s: %w", filename, err)
 	}
 
-	block, comments, errs := parser.Parse(gadSrc)
+	block, comments, errs := parse.Parse(gadSrc)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Println(err)
@@ -60,7 +60,7 @@ func run() error {
 		os.Stdout.WriteString(dbgOut)
 	}
 
-	goSrc := gogen.Generate(block)
+	goSrc := gogen.GoGenerate(block)
 	if *fVerbose {
 		os.Stdout.WriteString(goSrc)
 	}

@@ -11,7 +11,7 @@ var (
 )
 
 func TestLex(t *testing.T) {
-	lexer := NewLexer([]byte(program))
+	lexer := New([]byte(program))
 	for {
 		r := lexer.Lex()
 		t.Logf("%d:%d:%d\t%s\t%s\n", r.Pos.Pos, r.Pos.Line, r.Pos.Column, r.Token, r.Text)

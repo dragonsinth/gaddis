@@ -1,4 +1,4 @@
-package parser
+package parse
 
 import (
 	_ "embed"
@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	//go:embed parser_test.gad
+	//go:embed parse_test.gad
 	program string
 )
 

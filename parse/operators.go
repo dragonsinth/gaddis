@@ -1,4 +1,4 @@
-package parser
+package parse
 
 import (
 	"github.com/dragonsinth/gaddis/ast"

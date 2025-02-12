@@ -1,4 +1,4 @@
-package parser
+package parse
 
 import (
 	"fmt"
@@ -13,19 +13,9 @@ import (
 
 const maxErrors = 20
 
-type ParseError struct {
-	ast.SourceInfo
-	Desc string
-}
-
-func (pe ParseError) Error() string {
-	start := pe.SourceInfo.Start
-	return fmt.Sprintf("%d:%d %s", start.Line, start.Column, pe.Desc)
-}
-
-func Parse(input []byte) (*ast.Block, []ast.Comment, []ParseError) {
-	l := lex.NewLexer(input)
-	p := NewParser(l)
+func Parse(input []byte) (*ast.Block, []ast.Comment, []ast.Error) {
+	l := lex.New(input)
+	p := New(l)
 	ret := p.parseBlock(lex.EOF)
 	errs := p.errors
 	if len(errs) > maxErrors {
@@ -34,7 +24,7 @@ func Parse(input []byte) (*ast.Block, []ast.Comment, []ParseError) {
 	return ret, p.comments, errs
 }
 
-func NewParser(l *lex.Lexer) *Parser {
+func New(l *lex.Lexer) *Parser {
 	return &Parser{
 		lex:  l,
 		next: nil,
@@ -47,7 +37,7 @@ type Parser struct {
 	currScope *ast.Scope
 
 	comments []ast.Comment
-	errors   []ParseError
+	errors   []ast.Error
 }
 
 func (p *Parser) Peek() lex.Result {
@@ -124,7 +114,7 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 func (p *Parser) safeParseStatement() ast.Statement {
 	defer func() {
 		if e := recover(); e != nil {
-			if pe, ok := e.(ParseError); ok {
+			if pe, ok := e.(ast.Error); ok {
 				p.errors = append(p.errors, pe)
 			} else {
 				panic(e)
@@ -526,14 +516,14 @@ func (p *Parser) parseTok(expect lex.Token) lex.Result {
 
 func (p *Parser) errCheck(r lex.Result) lex.Result {
 	if r.Token == lex.ILLEGAL {
-		panic(p.Errorf(r, "%s: illegal token %q", r.Error.Error(), r.Text))
+		panic(p.Errorf(r, "illegal token %q; %s", r.Text, r.Error.Error()))
 	}
 	return r
 }
 
-func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) ParseError {
-	return ParseError{
+func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) ast.Error {
+	return ast.Error{
 		SourceInfo: toSourceInfo(r),
-		Desc:       fmt.Sprintf(fmtStr, args...),
+		Desc:       fmt.Sprintf("syntax error: "+fmtStr, args...),
 	}
 }
