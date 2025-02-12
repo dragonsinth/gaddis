@@ -3,27 +3,30 @@ package examples
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"github.com/dragonsinth/gaddis/parser"
 	"io"
 	"os"
 	"path/filepath"
+	"testing"
 )
 
-func RunTest(ctx context.Context, filename string) error {
+func RunTest(ctx context.Context, t *testing.T, filename string) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	src, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", filename, err)
+		t.Fatalf("failed to read file %s: %v", filename, err)
 	}
 
-	block, err := parser.Parse(src)
-	if err != nil {
-		return fmt.Errorf("failed to parse file %s: %w", filename, err)
+	block, errs := parser.Parse(src)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Error(err)
+		}
+		t.Fatalf("failed to parse file %s", filename)
 	}
 	goSrc := gogen.Generate(block)
 
@@ -36,20 +39,20 @@ func RunTest(ctx context.Context, filename string) error {
 	}
 	expectOut, err := os.ReadFile(filename + ".out")
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", filename+".out", err)
+		t.Fatalf("failed to read file %s: %v", filename+".out", err)
 	}
 
 	err = goexec.Run(ctx, goSrc, filepath.Dir(filename), io.NopCloser(&input), &output, &errput)
 	if err != nil {
-		return fmt.Errorf("failed to exec %s: %w", filename, err)
+		t.Fatalf("failed to exec %s: %v", filename, err)
 	}
 	if errput.Len() > 0 {
-		return fmt.Errorf("stderr:\n%s", errput.String())
+		t.Fatalf("stderr:\n%s", errput.String())
 	}
 
 	if !bytes.Equal(output.Bytes(), expectOut) {
 		// compare the output
-		return fmt.Errorf("wrong output:\n%s", output.String())
+		t.Fatalf("wrong output:\n%s", output.String())
 	}
 	return nil
 }

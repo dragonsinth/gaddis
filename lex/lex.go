@@ -315,7 +315,7 @@ func (l *Lexer) Lex() Result {
 			} else if isIdentStart(r) {
 				return l.parseIdent()
 			} else {
-				return Result{l.position(), ILLEGAL, string(r), ErrSyntax}
+				return Result{l.advance(), ILLEGAL, string(r), ErrSyntax}
 			}
 		}
 	}

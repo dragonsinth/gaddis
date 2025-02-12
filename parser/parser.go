@@ -11,19 +11,27 @@ import (
 // TODO: defer scope creation / symbol resolution pass
 // TODO: defer type checking / type propagation
 
-func Parse(input []byte) (ret *ast.Block, err error) {
+const maxErrors = 20
+
+type ParseError struct {
+	ast.SourceInfo
+	Desc string
+}
+
+func (e *ParseError) Error() string {
+	start := e.SourceInfo.Start
+	return fmt.Sprintf("%d:%d %s", start.Line, start.Column, e.Desc)
+}
+
+func Parse(input []byte) (*ast.Block, []*ParseError) {
 	l := lex.NewLexer(input)
 	p := NewParser(l)
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-		}
-	}()
-	// parse the global lock
-	p.maybeParseEol()
-	ret = p.parseBlock(lex.EOF)
-	p.parseTok(lex.EOF)
-	return
+	ret := p.parseBlock(lex.EOF)
+	errs := p.errors
+	if len(errs) > maxErrors {
+		errs = errs[:maxErrors]
+	}
+	return ret, errs
 }
 
 func NewParser(l *lex.Lexer) *Parser {
@@ -37,6 +45,8 @@ type Parser struct {
 	lex       *lex.Lexer
 	next      *lex.Result
 	currScope *ast.Scope
+
+	errors []*ParseError
 }
 
 func (p *Parser) Peek() lex.Result {
@@ -44,7 +54,7 @@ func (p *Parser) Peek() lex.Result {
 		v := p.lex.Lex()
 		p.next = &v
 	}
-	return errCheck(*p.next)
+	return p.errCheck(*p.next)
 }
 
 func (p *Parser) Next() lex.Result {
@@ -53,7 +63,24 @@ func (p *Parser) Next() lex.Result {
 		p.next = nil
 		return v
 	}
-	return errCheck(p.lex.Lex())
+	return p.errCheck(p.lex.Lex())
+}
+
+func (p *Parser) SafePeek() lex.Result {
+	if p.next == nil {
+		v := p.lex.Lex()
+		p.next = &v
+	}
+	return *p.next
+}
+
+func (p *Parser) SafeNext() lex.Result {
+	if p.next != nil {
+		v := *p.next
+		p.next = nil
+		return v
+	}
+	return p.lex.Lex()
 }
 
 func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
@@ -65,21 +92,56 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 
 	var stmts []ast.Statement
 	for {
-		if slices.Contains(endTokens, p.Peek().Token) {
-			si := toSourceInfo(p.Peek())
+		peek := p.SafePeek()
+		if slices.Contains(endTokens, peek.Token) {
+			si := toSourceInfo(peek)
 			if len(stmts) > 0 {
 				si = mergeSourceInfo(stmts[0], stmts[len(stmts)-1])
 			}
 			return &ast.Block{SourceInfo: si, Scope: p.currScope, Statements: stmts}
 		}
-		stmts = append(stmts, p.parseStatement())
-		p.parseEol()
+
+		st := p.safeParseStatement()
+		if _, ok := st.(EmptyStatement); ok {
+			// nothing
+		} else if st != nil {
+			stmts = append(stmts, st)
+		} else {
+			if len(p.errors) > maxErrors {
+				return &ast.Block{}
+			}
+
+			// something went wrong... consume tokens until we hit an EOL then try to keep going
+			for tok := p.SafePeek(); tok.Token != lex.EOL && tok.Token != lex.EOF; tok = p.SafePeek() {
+				p.SafeNext()
+			}
+		}
 	}
+}
+
+func (p *Parser) safeParseStatement() ast.Statement {
+	defer func() {
+		if e := recover(); e != nil {
+			if pe, ok := e.(*ParseError); ok {
+				p.errors = append(p.errors, pe)
+			} else {
+				panic(e)
+			}
+		}
+	}()
+
+	return p.parseStatement()
+}
+
+type EmptyStatement struct {
+	ast.Node
 }
 
 func (p *Parser) parseStatement() ast.Statement {
 	r := p.Next()
 	switch r.Token {
+	case lex.EOL, lex.EOF:
+		return EmptyStatement{}
 	case lex.CONSTANT:
 		typ := p.parseType()
 		var decls []*ast.VarDecl
@@ -201,7 +263,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		case lex.UNTIL:
 			not = true
 		default:
-			panic(fmt.Errorf("%d:%d expected While or Until, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+			panic(p.Errorf(r, "expected While or Until, got %s %q", r.Token, r.Text))
 		}
 		expr := p.parseExpression()
 		if expr.Type() != ast.Boolean {
@@ -254,7 +316,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		rEnd := p.parseTok(lex.FOR)
 		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 	default:
-		panic(fmt.Errorf("%d:%d: expected statement, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+		panic(p.Errorf(r, "expected statement, got %s %q", r.Token, r.Text))
 	}
 }
 
@@ -374,7 +436,7 @@ func (p *Parser) tryCreateBinaryOperation(r lex.Result, op ast.Operator, lhs ast
 		}
 		return &ast.BinaryOperation{SourceInfo: si, Op: op, Typ: ast.Boolean, Lhs: lhs, Rhs: rhs}
 	default:
-		panic(fmt.Errorf("%d:%d unsupported binary operation: %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+		panic(p.Errorf(r, "unsupported binary operation %s %q", r.Token, r.Text))
 	}
 }
 
@@ -391,25 +453,29 @@ func (p *Parser) parseTerminal() ast.Expression {
 	case lex.INT_LIT:
 		v, err := strconv.ParseInt(r.Text, 0, 64)
 		if err != nil {
-			panic(err)
+			// should happen in lexer
+			panic(fmt.Errorf("%d:%d: invalid Integer literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
 		return &ast.IntegerLiteral{SourceInfo: toSourceInfo(r), Val: v}
 	case lex.REAL_LIT:
 		v, err := strconv.ParseFloat(r.Text, 64)
 		if err != nil {
-			panic(err)
+			// should happen in lexer
+			panic(fmt.Errorf("%d:%d: invalid Real literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
 		return &ast.RealLiteral{SourceInfo: toSourceInfo(r), Val: v}
 	case lex.STR_LIT:
 		v, err := strconv.Unquote(r.Text)
 		if err != nil {
-			panic(fmt.Errorf("%d:%d: invalid string literal %s", r.Pos.Line, r.Pos.Column, r.Text))
+			// should happen in lexer
+			panic(fmt.Errorf("%d:%d: invalid String literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
 		return &ast.StringLiteral{SourceInfo: toSourceInfo(r), Val: v}
 	case lex.CHR_LIT:
 		v, err := strconv.Unquote(r.Text)
 		if err != nil || len(v) > 1 {
-			panic(fmt.Errorf("%d:%d: invalid string literal %s", r.Pos.Line, r.Pos.Column, r.Text))
+			// should happen in lexer
+			panic(fmt.Errorf("%d:%d: invalid Character literal %s", r.Pos.Line, r.Pos.Column, r.Text))
 		}
 		return &ast.CharacterLiteral{SourceInfo: toSourceInfo(r), Val: v[0]}
 	case lex.NOT:
@@ -433,19 +499,12 @@ func (p *Parser) parseTerminal() ast.Expression {
 		p.parseTok(lex.RPAREN)
 		return expr
 	default:
-		panic(fmt.Errorf("%d:%d expected expression, got %s %q", r.Pos.Line, r.Pos.Column, r.Token, r.Text))
+		panic(p.Errorf(r, "expected expression, got %s %q", r.Token, r.Text))
 	}
 }
 
 func (p *Parser) parseEol() {
 	if !p.hasTok(lex.EOF) {
-		p.parseTok(lex.EOL)
-		p.maybeParseEol()
-	}
-}
-
-func (p *Parser) maybeParseEol() {
-	for p.hasTok(lex.EOL) {
 		p.parseTok(lex.EOL)
 	}
 }
@@ -458,14 +517,21 @@ func (p *Parser) hasTok(expect lex.Token) bool {
 func (p *Parser) parseTok(expect lex.Token) lex.Result {
 	r := p.Next()
 	if r.Token != expect {
-		panic(fmt.Errorf("%d:%d expected token %q, got %s %q", r.Pos.Line, r.Pos.Column, expect, r.Token, r.Text))
+		panic(p.Errorf(r, "expected token %q, got %s %q", expect, r.Token, r.Text))
 	}
 	return r
 }
 
-func errCheck(r lex.Result) lex.Result {
+func (p *Parser) errCheck(r lex.Result) lex.Result {
 	if r.Token == lex.ILLEGAL {
-		panic(fmt.Errorf("%d:%d: %s; %w", r.Pos.Line, r.Pos.Column, r.Token, r.Error))
+		panic(p.Errorf(r, "syntax error: illegal token %s: %v", r.Token, r.Error))
 	}
 	return r
+}
+
+func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) *ParseError {
+	return &ParseError{
+		SourceInfo: toSourceInfo(r),
+		Desc:       fmt.Sprintf(fmtStr, args...),
+	}
 }

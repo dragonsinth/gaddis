@@ -38,9 +38,6 @@ func main() {
 }
 
 func run() error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
 	if flag.NArg() != 1 {
 		return errors.New("gaddis expects exactly one argument -- the program to run")
 	}
@@ -51,9 +48,12 @@ func run() error {
 		return fmt.Errorf("read file %s: %w", filename, err)
 	}
 
-	block, err := parser.Parse(gadSrc)
-	if err != nil {
-		log.Fatal(err)
+	block, errs := parser.Parse(gadSrc)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Println(err)
+		}
+		os.Exit(1)
 	}
 	if *fVerbose {
 		dbgOut := ast.DebugString(block)
@@ -117,6 +117,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
 	err = goexec.Run(ctx, goSrc, dir, stdin, stdout, stderr)
 	if err != nil {

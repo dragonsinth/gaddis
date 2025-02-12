@@ -36,7 +36,7 @@ func TestExamples(t *testing.T) {
 		testname := strings.TrimPrefix(path, root)
 		testname = strings.ReplaceAll(testname, slash, "_")
 		t.Run(testname, func(t *testing.T) {
-			if err := RunTest(ctx, path); errors.Is(err, context.Canceled) {
+			if err := RunTest(ctx, t, path); errors.Is(err, context.Canceled) {
 				t.Skip(err)
 			} else if err != nil {
 				t.Error(err)
