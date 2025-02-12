@@ -3,10 +3,9 @@ package examples
 import (
 	"bytes"
 	"context"
+	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
-	"github.com/dragonsinth/gaddis/parse"
-	"github.com/dragonsinth/gaddis/typecheck"
 	"io"
 	"os"
 	"os/signal"
@@ -20,19 +19,12 @@ func RunTest(t *testing.T, filename string) error {
 		t.Fatalf("failed to read file %s: %v", filename, err)
 	}
 
-	block, _, errs := parse.Parse(src)
+	block, _, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			t.Error(err)
 		}
-		t.Fatalf("%s: failed to parse", filename)
-	}
-	errs = typecheck.TypeCheck(block)
-	if len(errs) > 0 {
-		for _, err := range errs {
-			t.Error(err)
-		}
-		t.Fatalf("%s: type check failed", filename)
+		t.Fatalf("%s: failed to compile", filename)
 	}
 
 	goSrc := gogen.GoGenerate(block)

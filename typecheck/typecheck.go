@@ -13,7 +13,7 @@ func TypeCheck(globalBlock *ast.Block) []ast.Error {
 		stmt.Visit(v)
 	}
 	slices.SortFunc(v.errors, func(a, b ast.Error) int {
-		return b.Start.Pos - a.Start.Pos
+		return a.Start.Pos - b.Start.Pos
 	})
 	return v.errors
 }
@@ -212,17 +212,19 @@ func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 
 func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 	typ := uo.Expr.Type()
-	switch uo.Op {
+	ok := typ != ast.UnresolvedType // reduce error reporting spam
+	op := uo.Op
+	switch op {
 	case ast.NOT:
-		if typ != ast.Boolean {
-			v.Errorf(uo.Expr, "operator %s expects operand of type %s to be Boolean", uo.Op, typ)
+		if ok && typ != ast.Boolean {
+			v.Errorf(uo.Expr, "operator %s expects operand of type %s to be Boolean", op, typ)
 		}
 	case ast.NEG:
-		if !ast.IsNumericType(typ) {
-			v.Errorf(uo.Expr, "operator %s expects operand of type %s to be numeric", uo.Op, typ)
+		if ok && !ast.IsNumericType(typ) {
+			v.Errorf(uo.Expr, "operator %s expects operand of type %s to be numeric", op, typ)
 		}
 	default:
-		panic(uo.Op)
+		panic(op)
 	}
 }
 
@@ -233,41 +235,47 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 	aTyp := bo.Lhs.Type()
 	bTyp := bo.Rhs.Type()
-	switch bo.Op {
+	aOk := aTyp != ast.UnresolvedType
+	bOk := bTyp != ast.UnresolvedType
+	ok := aOk && bOk
+	op := bo.Op
+	switch op {
 	case ast.ADD, ast.SUB, ast.MUL, ast.DIV, ast.EXP, ast.MOD:
 		// TODO: special case ADD as concat?
-		if !ast.IsNumericType(aTyp) {
-			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be numeric", bo.Op, aTyp)
+		if aOk && !ast.IsNumericType(aTyp) {
+			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be numeric", op, aTyp)
 		}
-		if !ast.IsNumericType(bTyp) {
-			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be numeric", bo.Op, bTyp)
+		if bOk && !ast.IsNumericType(bTyp) {
+			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be numeric", op, bTyp)
 		}
-		rTyp := ast.AreComparableTypes(aTyp, bTyp)
-		if rTyp == ast.UnresolvedType {
-			panic(bo) // should not happen
+		if ok {
+			rTyp := ast.AreComparableTypes(aTyp, bTyp)
+			if rTyp == ast.UnresolvedType {
+				v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
+			}
+			bo.Typ = rTyp
 		}
-		bo.Typ = rTyp
 	case ast.EQ, ast.NEQ:
 		rTyp := ast.AreComparableTypes(aTyp, bTyp)
-		if rTyp == ast.UnresolvedType {
-			v.Errorf(bo, "operator %s not supported for types %s and %s", aTyp, bTyp)
+		if ok && rTyp == ast.UnresolvedType {
+			v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 		}
 		bo.Typ = ast.Boolean
 	case ast.LT, ast.GT, ast.LTE, ast.GTE:
-		if !ast.AreComparableOrderedTypes(aTyp, bTyp) {
-			v.Errorf(bo, "operator %s not supported for types %s and %s", aTyp, bTyp)
+		if ok && !ast.AreComparableOrderedTypes(aTyp, bTyp) {
+			v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 		}
 		bo.Typ = ast.Boolean
 	case ast.AND, ast.OR:
-		if aTyp != ast.Boolean {
-			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be Boolean", bo.Op, aTyp)
+		if aOk && aTyp != ast.Boolean {
+			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be Boolean", op, aTyp)
 		}
-		if bTyp != ast.Boolean {
-			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be Boolean", bo.Op, bTyp)
+		if bOk && bTyp != ast.Boolean {
+			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be Boolean", op, bTyp)
 		}
 		bo.Typ = ast.Boolean
 	default:
-		panic(bo.Op)
+		panic(op)
 	}
 }
 

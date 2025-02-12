@@ -6,11 +6,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
-	"github.com/dragonsinth/gaddis/parse"
-	"github.com/dragonsinth/gaddis/typecheck"
 	"io"
 	"log"
 	"os"
@@ -49,15 +48,7 @@ func run() error {
 		return fmt.Errorf("read file %s: %w", filename, err)
 	}
 
-	block, comments, errs := parse.Parse(gadSrc)
-	if len(errs) > 0 {
-		for _, err := range errs {
-			log.Println(err)
-		}
-		os.Exit(1)
-	}
-
-	errs = typecheck.TypeCheck(block)
+	block, comments, errs := gaddis.Compile(gadSrc)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Println(err)
