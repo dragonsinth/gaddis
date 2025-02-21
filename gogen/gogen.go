@@ -340,9 +340,9 @@ func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
 func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 	switch uo.Op {
 	case ast.NOT:
-		v.output(" !")
+		v.output("!")
 	case ast.NEG:
-		v.output(" -")
+		v.output("-")
 	default:
 		panic(uo.Op)
 	}
@@ -374,7 +374,9 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	} else {
 		v.output("(")
 		v.maybeCast(dstType, bo.Lhs)
+		v.output(" ")
 		v.output(goBinaryOperators[bo.Op])
+		v.output(" ")
 		v.maybeCast(dstType, bo.Rhs)
 		v.output(")")
 	}

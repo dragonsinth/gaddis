@@ -1,0 +1,4 @@
+Type a list of numbers (hitting enter between each one).
+Type -99 when you're done.
+integer> Warning, low value!
+integer> integer> integer> The biggest possible range of these numbers is -100 and 10.
