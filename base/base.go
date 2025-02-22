@@ -102,6 +102,18 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
+func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
+
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	return true
 }
@@ -144,8 +156,14 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {}
 
-func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {}
+func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {}
+
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}

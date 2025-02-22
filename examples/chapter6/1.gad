@@ -1,0 +1,39 @@
+// Global constant for the discount percentage.
+Constant Real DISCOUNT_PERCENTAGE = 0.20
+
+// The main module is the program's starting point.
+Module main()
+	// Local variables to hold regular and sale prices.
+	Declare Real regularPrice, salePrice
+
+	// Get the item's regular price.
+	Set regularPrice = getRegularPrice()
+
+	// Calculate the sale price.
+	Set salePrice = regularPrice - discount(regularPrice)
+
+	// Display the sale price.
+	Display "The sale price is $", salePrice
+End Module
+
+// The getRegularPrice function prompts the
+// user to enter an item's regular price and
+// returns that value as a Real.
+Function Real getRegularPrice()
+	// Local variable to hold the price.
+	Declare Real price
+
+	// Get the regular price.
+	Display "Enter the item's regular price."
+	Input price
+
+	// Return the regular price.
+	Return price
+End Function
+
+// The discount function accepts an item's price
+// as an argument and returns the amount of the
+// discount specified by DISCOUNT_PERCENTAGE.
+Function Real discount(Real price)
+	Return price * DISCOUNT_PERCENTAGE
+End Function

@@ -9,9 +9,11 @@ import (
 // TODO: collect modules, functions, classes here.
 
 // Collect constructs scopes, collects global symbols.
-func Collect(globalBlock *ast.Block) []ast.Error {
+func Collect(prog *ast.Program) []ast.Error {
 	v := New()
-	globalBlock.Visit(v)
+	prog.Scope = ast.NewGlobalScope()
+	v.currScope = prog.Scope
+	prog.Block.Visit(v)
 	slices.SortFunc(v.errors, func(a, b ast.Error) int {
 		return a.Start.Pos - b.Start.Pos
 	})
@@ -30,14 +32,10 @@ type Visitor struct {
 var _ ast.Visitor = &Visitor{}
 
 func (v *Visitor) PreVisitBlock(bl *ast.Block) bool {
-	bl.Scope = ast.NewScope(v.currScope)
-	v.currScope = bl.Scope
 	return true
 }
 
-func (v *Visitor) PostVisitBlock(bl *ast.Block) {
-	v.currScope = bl.Scope.Parent
-}
+func (v *Visitor) PostVisitBlock(bl *ast.Block) {}
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	return true
@@ -121,14 +119,36 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	ms.Scope = ast.NewModuleScope(ms, v.currScope)
 	return true
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
+	v.currScope = ms.Scope.Parent
 	if existing := v.currScope.Decls[ms.Name]; existing != nil {
 		v.Errorf(ms, "symbol %s redeclared in this scope; previous declaration: %s", ms.Name, existing)
 	} else {
 		v.currScope.AddModule(ms)
+	}
+}
+
+func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	fs.Scope = ast.NewFunctionScope(fs, v.currScope)
+	return true
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+	v.currScope = fs.Scope.Parent
+	if existing := v.currScope.Decls[fs.Name]; existing != nil {
+		v.Errorf(fs, "symbol %s redeclared in this scope; previous declaration: %s", fs.Name, existing)
+	} else {
+		v.currScope.AddFunction(fs)
 	}
 }
 
@@ -174,11 +194,17 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {}
 
-func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {}
+func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {}
+
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}
 
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.errors = append(v.errors, ast.Error{

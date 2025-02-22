@@ -60,3 +60,10 @@ Module cupsToOunces(Real cups)
 End Module
 
 Call cupsToOunces(8)
+
+Constant Real DISCOUNT_PERCENTAGE = 0.20
+Function Real discount(Real price)
+	Return price * DISCOUNT_PERCENTAGE
+End Function
+
+Display discount(1.0)

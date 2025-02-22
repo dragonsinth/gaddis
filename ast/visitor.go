@@ -44,6 +44,12 @@ type Visitor interface {
 	PreVisitModuleStmt(ms *ModuleStmt) bool
 	PostVisitModuleStmt(ms *ModuleStmt)
 
+	PreVisitReturnStmt(fs *ReturnStmt) bool
+	PostVisitReturnStmt(fs *ReturnStmt)
+
+	PreVisitFunctionStmt(fs *FunctionStmt) bool
+	PostVisitFunctionStmt(fs *FunctionStmt)
+
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
 	PostVisitIntegerLiteral(il *IntegerLiteral)
 
@@ -65,6 +71,9 @@ type Visitor interface {
 	PreVisitBinaryOperation(bo *BinaryOperation) bool
 	PostVisitBinaryOperation(bo *BinaryOperation)
 
-	PreVisitVariableExpression(ve *VariableExpression) bool
-	PostVisitVariableExpression(ve *VariableExpression)
+	PreVisitVariableExpr(ve *VariableExpr) bool
+	PostVisitVariableExpr(ve *VariableExpr)
+
+	PreVisitCallExpr(ce *CallExpr) bool
+	PostVisitCallExpr(ce *CallExpr)
 }

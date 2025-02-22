@@ -5,18 +5,36 @@ import "fmt"
 // TODO: more than just var decls (module, function, class).
 
 type Scope struct {
-	Parent *Scope
-	Decls  map[string]*Decl
+	Parent       *Scope
+	IsGlobal     bool          // if true, global scope
+	ModuleStmt   *ModuleStmt   // if true, enclosing module
+	FunctionStmt *FunctionStmt // if true, enclosing function
+	Decls        map[string]*Decl
+}
+
+func (s *Scope) String() string {
+	if s.IsGlobal {
+		return "Global Scope"
+	} else if s.ModuleStmt != nil {
+		return fmt.Sprintf("Module %s Scope", s.ModuleStmt.Name)
+	} else if s.FunctionStmt != nil {
+		return fmt.Sprintf("Function %s %s Scope", s.FunctionStmt.Type, s.FunctionStmt.Name)
+	} else {
+		panic("unset")
+	}
 }
 
 type Decl struct {
-	ModuleStmt *ModuleStmt
-	VarDecl    *VarDecl
+	ModuleStmt   *ModuleStmt
+	FunctionStmt *FunctionStmt
+	VarDecl      *VarDecl
 }
 
 func (d *Decl) String() string {
 	if d.ModuleStmt != nil {
 		return fmt.Sprintf("Module %s", d.ModuleStmt.Name)
+	} else if d.FunctionStmt != nil {
+		return fmt.Sprintf("Function %s %s", d.FunctionStmt.Type, d.FunctionStmt.Name)
 	} else if d.VarDecl != nil {
 		if d.VarDecl.IsParam {
 			if d.VarDecl.IsRef {
@@ -52,6 +70,14 @@ func (s *Scope) AddModule(ms *ModuleStmt) {
 	s.Decls[name] = &Decl{ModuleStmt: ms}
 }
 
+func (s *Scope) AddFunction(fs *FunctionStmt) {
+	name := fs.Name
+	if s.Decls[name] != nil {
+		panic(name)
+	}
+	s.Decls[name] = &Decl{FunctionStmt: fs}
+}
+
 func (s *Scope) AddVariable(vd *VarDecl) {
 	name := vd.Name
 	if s.Decls[name] != nil {
@@ -60,9 +86,25 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	s.Decls[name] = &Decl{VarDecl: vd}
 }
 
-func NewScope(parent *Scope) *Scope {
+func NewGlobalScope() *Scope {
 	return &Scope{
-		Parent: parent,
-		Decls:  map[string]*Decl{},
+		IsGlobal: true,
+		Decls:    map[string]*Decl{},
+	}
+}
+
+func NewModuleScope(ms *ModuleStmt, parent *Scope) *Scope {
+	return &Scope{
+		Parent:     parent,
+		ModuleStmt: ms,
+		Decls:      map[string]*Decl{},
+	}
+}
+
+func NewFunctionScope(fs *FunctionStmt, parent *Scope) *Scope {
+	return &Scope{
+		Parent:       parent,
+		FunctionStmt: fs,
+		Decls:        map[string]*Decl{},
 	}
 }

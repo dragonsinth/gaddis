@@ -48,7 +48,7 @@ func run() error {
 		return fmt.Errorf("read file %s: %w", filename, err)
 	}
 
-	block, comments, errs := gaddis.Compile(gadSrc)
+	prog, comments, errs := gaddis.Compile(gadSrc)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Println(err)
@@ -57,11 +57,11 @@ func run() error {
 	}
 
 	if *fVerbose {
-		dbgOut := astprint.Print(block, comments)
+		dbgOut := astprint.Print(prog, comments)
 		os.Stdout.WriteString(dbgOut)
 	}
 
-	goSrc := gogen.GoGenerate(block)
+	goSrc := gogen.GoGenerate(prog)
 	if *fVerbose {
 		os.Stdout.WriteString(goSrc)
 	}

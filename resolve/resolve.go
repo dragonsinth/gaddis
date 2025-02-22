@@ -9,9 +9,10 @@ import (
 // TODO: ensure the resolved thing is the correct type of thing.
 
 // Resolve resolves symbols.
-func Resolve(globalBlock *ast.Block) []ast.Error {
+func Resolve(prog *ast.Program) []ast.Error {
 	v := New()
-	globalBlock.Visit(v)
+	v.currScope = prog.Scope
+	prog.Block.Visit(v)
 	slices.SortFunc(v.errors, func(a, b ast.Error) int {
 		return a.Start.Pos - b.Start.Pos
 	})
@@ -30,13 +31,10 @@ type Visitor struct {
 var _ ast.Visitor = &Visitor{}
 
 func (v *Visitor) PreVisitBlock(bl *ast.Block) bool {
-	v.currScope = bl.Scope
 	return true
 }
 
-func (v *Visitor) PostVisitBlock(bl *ast.Block) {
-	v.currScope = bl.Scope.Parent
-}
+func (v *Visitor) PostVisitBlock(bl *ast.Block) {}
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	return true
@@ -134,12 +132,35 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	// eagerly set the current scope for parameter scoping.
-	v.currScope = ms.Block.Scope
+	v.currScope = ms.Scope
 	return true
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
-	v.currScope = ms.Block.Scope.Parent
+	v.currScope = ms.Scope.Parent
+}
+
+func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
+	ref := v.currScope.FunctionStmt
+	if ref == nil {
+		v.Errorf(rs, "return statement without enclosing Function")
+	} else {
+		rs.Ref = ref
+	}
+}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	// eagerly set the current scope for parameter scoping.
+	v.currScope = fs.Scope
+	return true
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+	v.currScope = fs.Scope.Parent
 }
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
@@ -184,11 +205,11 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {}
 
-func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
+func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 	ref := v.currScope.Lookup(ve.Name)
 	if ref == nil {
 		v.Errorf(ve, "unresolved symbol: %s", ve.Name)
@@ -196,6 +217,21 @@ func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
 		ve.Ref = ref.VarDecl
 	} else {
 		v.Errorf(ve, "expected variable ref, got: %s", ref)
+	}
+}
+
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
+	ref := v.currScope.Lookup(ce.Name)
+	if ref == nil {
+		v.Errorf(ce, "unresolved symbol: %s", ce.Name)
+	} else if ref.FunctionStmt != nil {
+		ce.Ref = ref.FunctionStmt
+	} else {
+		v.Errorf(ce, "expected Function ref, got: %s", ref)
 	}
 }
 

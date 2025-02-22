@@ -140,7 +140,7 @@ func (bo *BinaryOperation) GetType() Type {
 
 func (*BinaryOperation) isExpression() {}
 
-type VariableExpression struct {
+type VariableExpr struct {
 	SourceInfo
 	Name string
 
@@ -148,15 +148,41 @@ type VariableExpression struct {
 	Type Type     // type checking
 }
 
-func (ve *VariableExpression) Visit(v Visitor) {
-	if !v.PreVisitVariableExpression(ve) {
+func (ve *VariableExpr) Visit(v Visitor) {
+	if !v.PreVisitVariableExpr(ve) {
 		return
 	}
-	v.PostVisitVariableExpression(ve)
+	v.PostVisitVariableExpr(ve)
 }
 
-func (ve *VariableExpression) GetType() Type {
+func (ve *VariableExpr) GetType() Type {
 	return ve.Type
 }
 
-func (*VariableExpression) isExpression() {}
+func (*VariableExpr) isExpression() {}
+
+type CallExpr struct {
+	SourceInfo
+	Name string
+	Args []Expression
+
+	Ref  *FunctionStmt // resolve
+	Type Type          // type checking
+}
+
+func (ce *CallExpr) Visit(v Visitor) {
+	if !v.PreVisitCallExpr(ce) {
+		return
+	}
+	for _, arg := range ce.Args {
+		arg.Visit(v)
+	}
+	v.PostVisitCallExpr(ce)
+}
+
+func (ce *CallExpr) GetType() Type {
+	return ce.Type
+}
+
+func (*CallExpr) isExpression() {
+}

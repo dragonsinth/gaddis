@@ -16,7 +16,7 @@ var (
 const oldPrefix = "package main_template\n"
 const newPrefix = "package main\n"
 
-func GoGenerate(globalBlock *ast.Block) string {
+func GoGenerate(prog *ast.Program) string {
 	var sb strings.Builder
 
 	data := strings.TrimPrefix(builtins, oldPrefix)
@@ -25,7 +25,7 @@ func GoGenerate(globalBlock *ast.Block) string {
 	v := New("", &sb)
 
 	// First, iterate the global block and emit any declarations.
-	for _, stmt := range globalBlock.Statements {
+	for _, stmt := range prog.Block.Statements {
 		switch stmt := stmt.(type) {
 		case *ast.DeclareStmt:
 			// emit declaration only, not assignment
@@ -37,7 +37,7 @@ func GoGenerate(globalBlock *ast.Block) string {
 				v.output(goTypes[decl.Type])
 				v.output("\n")
 			}
-		case *ast.ModuleStmt:
+		case *ast.ModuleStmt, *ast.FunctionStmt:
 			stmt.Visit(v)
 		default:
 			// nothing
@@ -46,8 +46,8 @@ func GoGenerate(globalBlock *ast.Block) string {
 
 	// Now, emit any non-declarations into the main function.
 	sb.WriteString("\nfunc main() {\n")
-	v.PreVisitBlock(globalBlock)
-	for _, stmt := range globalBlock.Statements {
+	v.PreVisitBlock(prog.Block)
+	for _, stmt := range prog.Block.Statements {
 		switch stmt := stmt.(type) {
 		case *ast.DeclareStmt:
 			// emit either an assignment or a dummy assignment
@@ -63,19 +63,19 @@ func GoGenerate(globalBlock *ast.Block) string {
 				}
 				v.output("\n")
 			}
-		case *ast.ModuleStmt:
+		case *ast.ModuleStmt, *ast.FunctionStmt:
 			// nothing
 		default:
 			stmt.Visit(v)
 		}
 	}
 	// If there is a module named main with no arguments, call it at the very end.
-	ref := globalBlock.Scope.Lookup("main")
+	ref := prog.Scope.Lookup("main")
 	if ref != nil && ref.ModuleStmt != nil && len(ref.ModuleStmt.Params) == 0 {
 		v.indent()
 		v.output("main_()\n")
 	}
-	v.PostVisitBlock(globalBlock)
+	v.PostVisitBlock(prog.Block)
 	v.output("}\n")
 	return sb.String()
 }
@@ -354,26 +354,7 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
 	v.ident(cs.Ref)
-	v.output("(")
-	for i, arg := range cs.Args {
-		if i > 0 {
-			v.output(", ")
-		}
-		param := cs.Ref.Params[i]
-		if param.IsRef {
-			// special case
-			// TODO: other types of references
-			ref := arg.(*ast.VariableExpression).Ref
-			if !ref.IsRef {
-				// take the address
-				v.output("&")
-			}
-			v.ident(ref)
-		} else {
-			v.maybeCast(param.Type, arg)
-		}
-	}
-	v.output(")\n")
+	v.outputArguments(cs.Args, cs.Ref.Params)
 	return false
 }
 
@@ -405,6 +386,45 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
+
+func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
+	v.indent()
+	v.output("return ")
+	v.maybeCast(rs.Ref.Type, rs.Expr)
+	v.output("\n")
+	return false
+}
+
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	v.indent()
+	v.output("func ")
+	v.ident(fs)
+	v.output("(")
+	for i, param := range fs.Params {
+		if i > 0 {
+			v.output(", ")
+		}
+		param.Visit(v)
+	}
+	v.output(") ")
+	v.output(goTypes[fs.Type])
+	v.output("{\n")
+	fs.Block.Visit(v)
+	v.indent()
+	v.output("}\n")
+
+	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
+	v.indent()
+	v.output("var _ = ")
+	v.ident(fs)
+	v.output("\n")
+
+	return false
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	v.output(strconv.FormatInt(il.Val, 10))
@@ -495,7 +515,7 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
-func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	if ve.Ref.IsRef {
 		// if we get here, we need to dereference
 		v.output("*")
@@ -504,8 +524,17 @@ func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
+func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
+
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	v.indent()
+	v.ident(ce.Ref)
+	v.outputArguments(ce.Args, ce.Ref.Params)
+	return false
+}
+
+func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}
 
 func (v *Visitor) indent() {
 	v.output(v.ind)
@@ -535,6 +564,29 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	} else {
 		exp.Visit(v)
 	}
+}
+
+func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) {
+	v.output("(")
+	for i, arg := range args {
+		if i > 0 {
+			v.output(", ")
+		}
+		param := params[i]
+		if param.IsRef {
+			// special case
+			// TODO: other types of references
+			ref := arg.(*ast.VariableExpr).Ref
+			if !ref.IsRef {
+				// take the address
+				v.output("&")
+			}
+			v.ident(ref)
+		} else {
+			v.maybeCast(param.Type, arg)
+		}
+	}
+	v.output(")")
 }
 
 var goTypes = [...]string{

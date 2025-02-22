@@ -6,10 +6,10 @@ import (
 	"slices"
 )
 
-func TypeCheck(globalBlock *ast.Block) []ast.Error {
+func TypeCheck(program *ast.Program) []ast.Error {
 	// visit the statements in the global block
 	v := New()
-	globalBlock.Visit(v)
+	program.Block.Visit(v)
 	slices.SortFunc(v.errors, func(a, b ast.Error) int {
 		return a.Start.Pos - b.Start.Pos
 	})
@@ -179,36 +179,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 
 func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
 	// check the number and type of each argument
-	args := cs.Args
-	params := cs.Ref.Params
-	for i, c := 0, min(len(args), len(params)); i < c; i++ {
-		arg, param := args[i], params[i]
-		if !ast.CanCoerce(param.Type, arg.GetType()) {
-			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
-		}
-		if param.IsRef {
-			// must be an exact type match for reference
-			if arg.GetType() != param.Type {
-				v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
-			}
-			// the argument must be referencable thing
-			switch arg := arg.(type) {
-			case *ast.VariableExpression:
-				ref := arg.Ref
-				if ref.IsConst {
-					v.Errorf(arg, "argument %d: expression may not be a constant", i+1)
-				}
-			default:
-				// TODO: array references, class field references?
-				v.Errorf(arg, "argument %d: expression must be a reference", i+1)
-			}
-		} else if !ast.CanCoerce(param.Type, arg.GetType()) {
-			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
-		}
-	}
-	if len(args) != len(params) {
-		v.Errorf(cs, "expected %d args, got %d", len(args), len(params))
-	}
+	v.checkArgumentList(cs, cs.Args, cs.Ref.Params)
 }
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
@@ -216,6 +187,24 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
+
+func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
+	returnType := rs.Ref.Type
+	exprType := rs.Expr.GetType()
+	if !ast.CanCoerce(returnType, exprType) {
+		v.Errorf(rs.Expr, "return: %s not assignable to %s", exprType, returnType)
+	}
+}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	return true
@@ -320,12 +309,55 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 	}
 }
 
-func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
+func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 	ve.Type = ve.Ref.Type
+}
+
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
+	// Assign the return type.
+	ce.Type = ce.Ref.Type
+
+	// check the number and type of each argument
+	v.checkArgumentList(ce, ce.Args, ce.Ref.Params)
+}
+
+func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression, params []*ast.VarDecl) {
+	for i, c := 0, min(len(args), len(params)); i < c; i++ {
+		arg, param := args[i], params[i]
+		if !ast.CanCoerce(param.Type, arg.GetType()) {
+			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
+		}
+		if param.IsRef {
+			// must be an exact type match for reference
+			if arg.GetType() != param.Type {
+				v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
+			}
+			// the argument must be referencable thing
+			switch arg := arg.(type) {
+			case *ast.VariableExpr:
+				ref := arg.Ref
+				if ref.IsConst {
+					v.Errorf(arg, "argument %d: expression may not be a constant", i+1)
+				}
+			default:
+				// TODO: array references, class field references?
+				v.Errorf(arg, "argument %d: expression must be a reference", i+1)
+			}
+		} else if !ast.CanCoerce(param.Type, arg.GetType()) {
+			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
+		}
+	}
+	if len(args) != len(params) {
+		v.Errorf(si, "expected %d args, got %d", len(args), len(params))
+	}
 }
 
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {

@@ -63,6 +63,8 @@ const (
 
 	MODULE
 	CALL
+	FUNCTION
+	RETURN
 
 	INT_LIT
 	REAL_LIT
@@ -132,8 +134,10 @@ var tokens = []string{
 	TO:    "TO",
 	STEP:  "STEP",
 
-	MODULE: "MODULE",
-	CALL:   "CALL",
+	MODULE:   "MODULE",
+	CALL:     "CALL",
+	FUNCTION: "FUNCTION",
+	RETURN:   "RETURN",
 
 	INT_LIT:  "INT_LIT",
 	REAL_LIT: "REAL_LIT",
@@ -174,6 +178,8 @@ var keywords = map[string]Token{
 	"Step":      STEP,
 	"Module":    MODULE,
 	"Call":      CALL,
+	"Function":  FUNCTION,
+	"Return":    RETURN,
 	"True":      TRUE,
 	"False":     FALSE,
 }

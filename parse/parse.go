@@ -12,7 +12,7 @@ import (
 
 const maxErrors = 20
 
-func Parse(input []byte) (*ast.Block, []ast.Comment, []ast.Error) {
+func Parse(input []byte) (*ast.Program, []ast.Comment, []ast.Error) {
 	l := lex.New(input)
 	p := New(l)
 	ret := p.parseGlobalBlock()
@@ -73,8 +73,9 @@ func (p *Parser) nextNonComment() lex.Result {
 	}
 }
 
-func (p *Parser) parseGlobalBlock() *ast.Block {
-	return p.doParseBlock(true, lex.EOF)
+func (p *Parser) parseGlobalBlock() *ast.Program {
+	bl := p.doParseBlock(true, lex.EOF)
+	return &ast.Program{Block: bl}
 }
 
 func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
@@ -297,6 +298,37 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.MODULE)
 		return &ast.ModuleStmt{SourceInfo: spanResult(r, rEnd), Name: name, Params: params, Block: block}
+	case lex.RETURN:
+		if isGlobalBlock {
+			panic(p.Errorf(r, "Return may not be declared in the global scope"))
+		}
+		expr := p.parseExpression()
+		return &ast.ReturnStmt{SourceInfo: spanAst(r, expr), Expr: expr}
+
+	case lex.FUNCTION:
+		if !isGlobalBlock {
+			panic(p.Errorf(r, "Function may only be declared in the global scope"))
+		}
+
+		returnType := p.parseType()
+		rNext := p.parseTok(lex.IDENT)
+		name := rNext.Text
+
+		var params []*ast.VarDecl
+		p.parseTok(lex.LPAREN)
+		if !p.hasTok(lex.RPAREN) {
+			params = append(params, p.parseParamDecl())
+		}
+		for p.hasTok(lex.COMMA) {
+			p.parseTok(lex.COMMA)
+			params = append(params, p.parseParamDecl())
+		}
+		p.parseTok(lex.RPAREN)
+		p.parseEol()
+		block := p.parseBlock(lex.END)
+		p.parseTok(lex.END)
+		rEnd := p.parseTok(lex.FUNCTION)
+		return &ast.FunctionStmt{SourceInfo: spanResult(r, rEnd), Name: name, Type: returnType, Params: params, Block: block}
 	default:
 		panic(p.Errorf(r, "expected statement, got %s %q", r.Token, r.Text))
 	}
@@ -381,16 +413,33 @@ func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 	}
 }
 
-func (p *Parser) parseVariableExpression() *ast.VariableExpression {
+func (p *Parser) parseVariableExpression() *ast.VariableExpr {
 	r := p.parseTok(lex.IDENT)
-	return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: r.Text}
+	return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
 }
 
 func (p *Parser) parseTerminal() ast.Expression {
 	r := p.Next()
 	switch r.Token {
 	case lex.IDENT:
-		return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: r.Text}
+		// If the next token is a '(', this is actually a CallExpr.
+		if p.hasTok(lex.LPAREN) {
+			p.parseTok(lex.LPAREN)
+
+			// This is actually a call expression.
+			var args []ast.Expression
+			if !p.hasTok(lex.RPAREN) {
+				args = append(args, p.parseExpression())
+			}
+			for p.hasTok(lex.COMMA) {
+				p.parseTok(lex.COMMA)
+				args = append(args, p.parseExpression())
+			}
+			rEnd := p.parseTok(lex.RPAREN)
+			return &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: r.Text, Args: args}
+		} else {
+			return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
+		}
 	case lex.INT_LIT:
 		v, err := strconv.ParseInt(r.Text, 0, 64)
 		if err != nil {

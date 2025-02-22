@@ -9,11 +9,11 @@ import (
 
 // TODO: emit extra newlines and comments to turn this into a pretty printer.
 
-func Print(globalBlock *ast.Block, comments []ast.Comment) string {
+func Print(prog *ast.Program, comments []ast.Comment) string {
 	// visit the statements in the global block
 	var sb strings.Builder
 	v := New("", &sb)
-	for _, stmt := range globalBlock.Statements {
+	for _, stmt := range prog.Block.Statements {
 		stmt.Visit(v)
 	}
 	return sb.String()
@@ -279,6 +279,39 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	return false
 }
 
+func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
+	v.indent()
+	v.output("Return ")
+	rs.Expr.Visit(v)
+	v.output("\n")
+	return false
+}
+
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	v.indent()
+	v.output("Function ")
+	v.output(fs.Type.String())
+	v.output(" ")
+	v.output(fs.Name)
+	v.output("(")
+	for i, param := range fs.Params {
+		if i > 0 {
+			v.output(", ")
+		}
+		param.Visit(v)
+	}
+	v.output(")\n")
+	fs.Block.Visit(v)
+	v.indent()
+	v.output("End Function\n")
+	return false
+}
+
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
@@ -353,12 +386,28 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
-func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	v.output(ve.Name)
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
+func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
+}
+
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	v.output(ce.Name)
+	v.output("(")
+	for i, arg := range ce.Args {
+		if i > 0 {
+			v.output(", ")
+		}
+		arg.Visit(v)
+	}
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 }
 
 func (v *Visitor) indent() {
