@@ -2,7 +2,8 @@ package ast
 
 type Expression interface {
 	Node
-	Type() Type
+	GetType() Type
+	isExpression()
 }
 
 type IntegerLiteral struct {
@@ -17,9 +18,11 @@ func (il *IntegerLiteral) Visit(v Visitor) {
 	v.PostVisitIntegerLiteral(il)
 }
 
-func (il *IntegerLiteral) Type() Type {
+func (il *IntegerLiteral) GetType() Type {
 	return Integer
 }
+
+func (*IntegerLiteral) isExpression() {}
 
 type RealLiteral struct {
 	SourceInfo
@@ -33,9 +36,11 @@ func (rl *RealLiteral) Visit(v Visitor) {
 	v.PostVisitRealLiteral(rl)
 }
 
-func (rl *RealLiteral) Type() Type {
+func (rl *RealLiteral) GetType() Type {
 	return Real
 }
+
+func (*RealLiteral) isExpression() {}
 
 type StringLiteral struct {
 	SourceInfo
@@ -49,9 +54,11 @@ func (sl *StringLiteral) Visit(v Visitor) {
 	v.PostVisitStringLiteral(sl)
 }
 
-func (sl *StringLiteral) Type() Type {
+func (sl *StringLiteral) GetType() Type {
 	return String
 }
+
+func (*StringLiteral) isExpression() {}
 
 type CharacterLiteral struct {
 	SourceInfo
@@ -65,9 +72,11 @@ func (cl *CharacterLiteral) Visit(v Visitor) {
 	v.PostVisitCharacterLiteral(cl)
 }
 
-func (cl CharacterLiteral) Type() Type {
+func (cl CharacterLiteral) GetType() Type {
 	return Character
 }
+
+func (*CharacterLiteral) isExpression() {}
 
 type BooleanLiteral struct {
 	SourceInfo
@@ -81,14 +90,16 @@ func (bl *BooleanLiteral) Visit(v Visitor) {
 	v.PostVisitBooleanLiteral(bl)
 }
 
-func (bl BooleanLiteral) Type() Type {
+func (bl BooleanLiteral) GetType() Type {
 	return Boolean
 }
+
+func (*BooleanLiteral) isExpression() {}
 
 type UnaryOperation struct {
 	SourceInfo
 	Op   Operator
-	Typ  Type
+	Type Type
 	Expr Expression
 }
 
@@ -100,16 +111,18 @@ func (uo *UnaryOperation) Visit(v Visitor) {
 	v.PostVisitUnaryOperation(uo)
 }
 
-func (uo *UnaryOperation) Type() Type {
-	return uo.Typ
+func (uo *UnaryOperation) GetType() Type {
+	return uo.Type
 }
+
+func (*UnaryOperation) isExpression() {}
 
 type BinaryOperation struct {
 	SourceInfo
-	Op  Operator
-	Typ Type
-	Lhs Expression
-	Rhs Expression
+	Op   Operator
+	Type Type
+	Lhs  Expression
+	Rhs  Expression
 }
 
 func (bo *BinaryOperation) Visit(v Visitor) {
@@ -121,16 +134,18 @@ func (bo *BinaryOperation) Visit(v Visitor) {
 	v.PostVisitBinaryOperation(bo)
 }
 
-func (bo *BinaryOperation) Type() Type {
-	return bo.Typ
+func (bo *BinaryOperation) GetType() Type {
+	return bo.Type
 }
+
+func (*BinaryOperation) isExpression() {}
 
 type VariableExpression struct {
 	SourceInfo
 	Name string
 
-	Ref *VarDecl // resolve symbols
-	Typ Type     // type checking
+	Ref  *VarDecl // resolve symbols
+	Type Type     // type checking
 }
 
 func (ve *VariableExpression) Visit(v Visitor) {
@@ -140,6 +155,8 @@ func (ve *VariableExpression) Visit(v Visitor) {
 	v.PostVisitVariableExpression(ve)
 }
 
-func (ve *VariableExpression) Type() Type {
-	return ve.Typ
+func (ve *VariableExpression) GetType() Type {
+	return ve.Type
 }
+
+func (*VariableExpression) isExpression() {}

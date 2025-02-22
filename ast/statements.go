@@ -2,6 +2,7 @@ package ast
 
 type Statement interface {
 	Node
+	isStatement()
 }
 
 type Block struct {
@@ -21,26 +22,11 @@ func (bl *Block) Visit(v Visitor) {
 	v.PostVisitBlock(bl)
 }
 
-type ConstantStmt struct {
-	SourceInfo
-	Type  Type
-	Decls []*VarDecl
-}
-
-func (cs *ConstantStmt) Visit(v Visitor) {
-	if !v.PreVisitConstantStmt(cs) {
-		return
-	}
-	for _, d := range cs.Decls {
-		d.Visit(v)
-	}
-	v.PostVisitConstantStmt(cs)
-}
-
 type DeclareStmt struct {
 	SourceInfo
-	Type  Type
-	Decls []*VarDecl
+	IsConst bool
+	Type    Type
+	Decls   []*VarDecl
 }
 
 func (ds *DeclareStmt) Visit(v Visitor) {
@@ -51,6 +37,9 @@ func (ds *DeclareStmt) Visit(v Visitor) {
 		d.Visit(v)
 	}
 	v.PostVisitDeclareStmt(ds)
+}
+
+func (*DeclareStmt) isStatement() {
 }
 
 type DisplayStmt struct {
@@ -68,34 +57,41 @@ func (ds *DisplayStmt) Visit(v Visitor) {
 	v.PostVisitDisplayStmt(ds)
 }
 
+func (*DisplayStmt) isStatement() {
+}
+
 type InputStmt struct {
 	SourceInfo
-	Name string
-
-	Ref *VarDecl // symbol resolution
+	Var *VariableExpression
 }
 
 func (is *InputStmt) Visit(v Visitor) {
 	if !v.PreVisitInputStmt(is) {
 		return
 	}
+	is.Var.Visit(v)
 	v.PostVisitInputStmt(is)
+}
+
+func (*InputStmt) isStatement() {
 }
 
 type SetStmt struct {
 	SourceInfo
-	Name string
+	Var  *VariableExpression
 	Expr Expression
-
-	Ref *VarDecl // symbol resolution
 }
 
 func (ss *SetStmt) Visit(v Visitor) {
 	if !v.PreVisitSetStmt(ss) {
 		return
 	}
+	ss.Var.Visit(v)
 	ss.Expr.Visit(v)
 	v.PostVisitSetStmt(ss)
+}
+
+func (*SetStmt) isStatement() {
 }
 
 type IfStmt struct {
@@ -117,6 +113,9 @@ func (is *IfStmt) Visit(v Visitor) {
 		is.Else.Visit(v)
 	}
 	v.PostVisitIfStmt(is)
+}
+
+func (*IfStmt) isStatement() {
 }
 
 type CondBlock struct {
@@ -156,6 +155,9 @@ func (ss *SelectStmt) Visit(v Visitor) {
 	v.PostVisitSelectStmt(ss)
 }
 
+func (*SelectStmt) isStatement() {
+}
+
 type CaseBlock struct {
 	SourceInfo
 	Expr  Expression
@@ -187,6 +189,9 @@ func (ds *DoStmt) Visit(v Visitor) {
 	v.PostVisitDoStmt(ds)
 }
 
+func (*DoStmt) isStatement() {
+}
+
 type WhileStmt struct {
 	SourceInfo
 	Expr  Expression
@@ -202,21 +207,23 @@ func (ws *WhileStmt) Visit(v Visitor) {
 	v.PostVisitWhileStmt(ws)
 }
 
+func (*WhileStmt) isStatement() {
+}
+
 type ForStmt struct {
 	SourceInfo
-	Name      string
+	Var       *VariableExpression
 	StartExpr Expression
 	StopExpr  Expression
 	StepExpr  Expression
 	Block     *Block
-
-	Ref *VarDecl // symbol resolution
 }
 
 func (ws *ForStmt) Visit(v Visitor) {
 	if !v.PreVisitForStmt(ws) {
 		return
 	}
+	ws.Var.Visit(v)
 	ws.StartExpr.Visit(v)
 	ws.StopExpr.Visit(v)
 	if ws.StepExpr != nil {
@@ -224,4 +231,52 @@ func (ws *ForStmt) Visit(v Visitor) {
 	}
 	ws.Block.Visit(v)
 	v.PostVisitForStmt(ws)
+}
+
+func (*ForStmt) isStatement() {
+}
+
+type CallStmt struct {
+	SourceInfo
+	Name string
+	Args []Expression
+
+	Ref *ModuleStmt // resolve
+}
+
+func (cs *CallStmt) Visit(v Visitor) {
+	if !v.PreVisitCallStmt(cs) {
+		return
+	}
+	for _, arg := range cs.Args {
+		arg.Visit(v)
+	}
+	v.PostVisitCallStmt(cs)
+}
+func (*CallStmt) isStatement() {
+}
+
+type ModuleStmt struct {
+	SourceInfo
+	Name   string
+	Params []*VarDecl
+	Block  *Block
+}
+
+func (ms *ModuleStmt) Visit(v Visitor) {
+	if !v.PreVisitModuleStmt(ms) {
+		return
+	}
+	for _, param := range ms.Params {
+		param.Visit(v)
+	}
+	ms.Block.Visit(v)
+	v.PostVisitModuleStmt(ms)
+}
+
+func (ms *ModuleStmt) GetName() string {
+	return ms.Name
+}
+
+func (*ModuleStmt) isStatement() {
 }

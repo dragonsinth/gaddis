@@ -13,6 +13,7 @@ const (
 	STRING
 	CHARACTER
 	BOOLEAN
+	REF
 
 	IDENT
 
@@ -60,6 +61,9 @@ const (
 	TO
 	STEP
 
+	MODULE
+	CALL
+
 	INT_LIT
 	REAL_LIT
 	STR_LIT
@@ -79,7 +83,9 @@ var tokens = []string{
 	STRING:    "STRING",
 	CHARACTER: "CHARACTER",
 	BOOLEAN:   "BOOLEAN",
-	IDENT:     "IDENT",
+	REF:       "REF",
+
+	IDENT: "IDENT",
 
 	ADD: "+",
 	SUB: "-",
@@ -126,6 +132,9 @@ var tokens = []string{
 	TO:    "TO",
 	STEP:  "STEP",
 
+	MODULE: "MODULE",
+	CALL:   "CALL",
+
 	INT_LIT:  "INT_LIT",
 	REAL_LIT: "REAL_LIT",
 	STR_LIT:  "STR_LIT",
@@ -140,6 +149,7 @@ var keywords = map[string]Token{
 	"String":    STRING,
 	"Character": CHARACTER,
 	"Boolean":   BOOLEAN,
+	"Ref":       REF,
 	"MOD":       MOD,
 	"AND":       AND,
 	"OR":        OR,
@@ -162,6 +172,8 @@ var keywords = map[string]Token{
 	"For":       FOR,
 	"To":        TO,
 	"Step":      STEP,
+	"Module":    MODULE,
+	"Call":      CALL,
 	"True":      TRUE,
 	"False":     FALSE,
 }

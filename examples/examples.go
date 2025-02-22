@@ -54,7 +54,7 @@ func RunTest(t *testing.T, filename string) error {
 
 	if !bytes.Equal(output.Bytes(), expectOut) {
 		// compare the output
-		t.Fatalf("wrong output:\n%s", output.String())
+		t.Fatalf("wrong output, got=\n%s\nwant=%s", output.String(), string(expectOut))
 	}
 	return nil
 }

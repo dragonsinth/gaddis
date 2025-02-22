@@ -1,0 +1,14 @@
+Module main()
+    Declare Integer x
+    Call countTo(x)
+    Display x
+End Module
+
+Module countTo(Integer Ref n)
+    For n = 1 To 5
+        Display "hi"
+    End For
+    For n = 1 To 5 Step 2
+        Display "bye"
+    End For
+End Module

@@ -43,17 +43,11 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 }
 
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
-	if existing, ok := v.currScope.Decls[vd.Name]; ok {
-		v.Errorf(vd, "reference error: identifier %s %s already defined in this scope", existing.Type, existing.Name)
+	if existing := v.currScope.Decls[vd.Name]; existing != nil {
+		v.Errorf(vd, "symbol %s redeclared in this scope; previous declaration: %s", vd.Name, existing.String())
+	} else {
+		v.currScope.AddVariable(vd)
 	}
-	v.currScope.Decls[vd.Name] = vd
-}
-
-func (v *Visitor) PreVisitConstantStmt(cs *ast.ConstantStmt) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitConstantStmt(cs *ast.ConstantStmt) {
 }
 
 func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
@@ -73,23 +67,13 @@ func (v *Visitor) PreVisitInputStmt(is *ast.InputStmt) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
-	is.Ref = v.currScope.Lookup(is.Name)
-	if is.Ref == nil {
-		v.Errorf(is, "unresolved symbol: %s", is.Name)
-	}
-}
+func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {}
 
 func (v *Visitor) PreVisitSetStmt(ss *ast.SetStmt) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
-	ss.Ref = v.currScope.Lookup(ss.Name)
-	if ss.Ref == nil {
-		v.Errorf(ss, "unresolved symbol: %s", ss.Name)
-	}
-}
+func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {}
 
 func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	return true
@@ -131,11 +115,31 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
-	fs.Ref = v.currScope.Lookup(fs.Name)
-	if fs.Ref == nil {
-		v.Errorf(fs, "unresolved symbol: %s", fs.Name)
+func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {}
+
+func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
+	ref := v.currScope.Lookup(cs.Name)
+	if ref == nil {
+		v.Errorf(cs, "unresolved symbol: %s", cs.Name)
+	} else if ref.ModuleStmt != nil {
+		cs.Ref = ref.ModuleStmt
+	} else {
+		v.Errorf(cs, "expected Module ref, got: %s", ref)
 	}
+}
+
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	// eagerly set the current scope for parameter scoping.
+	v.currScope = ms.Block.Scope
+	return true
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
+	v.currScope = ms.Block.Scope.Parent
 }
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
@@ -185,9 +189,13 @@ func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
 }
 
 func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
-	ve.Ref = v.currScope.Lookup(ve.Name)
-	if ve.Ref == nil {
+	ref := v.currScope.Lookup(ve.Name)
+	if ref == nil {
 		v.Errorf(ve, "unresolved symbol: %s", ve.Name)
+	} else if ref.VarDecl != nil {
+		ve.Ref = ref.VarDecl
+	} else {
+		v.Errorf(ve, "expected variable ref, got: %s", ref)
 	}
 }
 

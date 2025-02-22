@@ -43,10 +43,19 @@ func (v *Visitor) PostVisitBlock(bl *ast.Block) {
 }
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
-	v.output(vd.Name)
-	if vd.Expr != nil {
-		v.output(" = ")
-		vd.Expr.Visit(v)
+	if vd.IsParam {
+		v.output(vd.Type.String())
+		if vd.IsRef {
+			v.output(" Ref")
+		}
+		v.output(" ")
+		v.output(vd.Name)
+	} else {
+		v.output(vd.Name)
+		if vd.Expr != nil {
+			v.output(" = ")
+			vd.Expr.Visit(v)
+		}
 	}
 	return false
 }
@@ -54,27 +63,13 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 }
 
-func (v *Visitor) PreVisitConstantStmt(stmt *ast.ConstantStmt) bool {
-	v.indent()
-	v.output("Constant ")
-	v.output(stmt.Decls[0].Type.String())
-	v.output(" ")
-	for i, decl := range stmt.Decls {
-		if i > 0 {
-			v.output(", ")
-		}
-		decl.Visit(v)
-	}
-	v.output("\n")
-	return false
-}
-
-func (v *Visitor) PostVisitConstantStmt(stmt *ast.ConstantStmt) {
-}
-
 func (v *Visitor) PreVisitDeclareStmt(stmt *ast.DeclareStmt) bool {
 	v.indent()
-	v.output("Declare ")
+	if stmt.IsConst {
+		v.output("Declare ")
+	} else {
+		v.output("Constant ")
+	}
 	v.output(stmt.Decls[0].Type.String())
 	v.output(" ")
 	for i, decl := range stmt.Decls {
@@ -109,7 +104,7 @@ func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
 	v.output("Input ")
-	v.output(i.Name)
+	v.output(i.Var.Name)
 	v.output("\n")
 	return false
 }
@@ -120,7 +115,7 @@ func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	v.indent()
 	v.output("Set ")
-	v.output(s.Name)
+	v.output(s.Var.Name)
 	v.output(" = ")
 	s.Expr.Visit(v)
 	v.output("\n")
@@ -230,7 +225,7 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 
 func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.output("For ")
-	v.output(fs.Name)
+	v.output(fs.Var.Name)
 	v.output(" = ")
 	fs.StartExpr.Visit(v)
 	v.output(" To ")
@@ -248,6 +243,43 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 func (v *Visitor) PostVisitForStmt(ws *ast.ForStmt) {
 }
+
+func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	v.indent()
+	v.output("Call ")
+	v.output(cs.Name)
+	v.output("(")
+	for i, arg := range cs.Args {
+		if i > 0 {
+			v.output(", ")
+		}
+		arg.Visit(v)
+	}
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
+
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	v.indent()
+	v.output("Module ")
+	v.output(ms.Name)
+	v.output("(")
+	for i, param := range ms.Params {
+		if i > 0 {
+			v.output(", ")
+		}
+		param.Visit(v)
+	}
+	v.output(")\n")
+	ms.Block.Visit(v)
+	v.indent()
+	v.output("End Module\n")
+	return false
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	v.output(strconv.FormatInt(il.Val, 10))

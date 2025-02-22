@@ -49,3 +49,14 @@ End For
 
 For count = 0 To 100 Step 10
 End For
+
+Module getCups(Real Ref cups)
+    Display "Enter the number of cups."
+    Input cups
+End Module
+
+Module cupsToOunces(Real cups)
+    Display "That converts to ", cups * 8, " ounces."
+End Module
+
+Call cupsToOunces(8)

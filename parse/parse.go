@@ -8,8 +8,7 @@ import (
 	"strconv"
 )
 
-// TODO: defer scope creation / symbol resolution pass
-// TODO: defer type checking / type propagation
+// TODO: only allow modules and functions in the global block?
 
 const maxErrors = 20
 
@@ -119,7 +118,7 @@ func (p *Parser) safeParseStatement() ast.Statement {
 }
 
 type EmptyStatement struct {
-	ast.Node
+	ast.Statement
 }
 
 func (p *Parser) parseStatement() ast.Statement {
@@ -160,15 +159,13 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 		return &ast.DisplayStmt{SourceInfo: spanAst(r, lastExpr), Exprs: exprs}
 	case lex.INPUT:
-		id := p.parseTok(lex.IDENT)
-		name := id.Text
-		return &ast.InputStmt{SourceInfo: spanResult(r, id), Name: name}
+		varExpr := p.parseVariableExpression()
+		return &ast.InputStmt{SourceInfo: spanAst(r, varExpr), Var: varExpr}
 	case lex.SET:
-		id := p.parseTok(lex.IDENT)
-		name := id.Text
+		varExpr := p.parseVariableExpression()
 		p.parseTok(lex.ASSIGN)
 		expr := p.parseExpression()
-		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Name: name, Expr: expr}
+		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Var: varExpr, Expr: expr}
 	case lex.IF:
 		ifCond := p.parseIfCondBlock(r.Pos)
 
@@ -239,8 +236,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		rEnd := p.parseTok(lex.WHILE)
 		return &ast.WhileStmt{SourceInfo: spanResult(r, rEnd), Expr: expr, Block: block}
 	case lex.FOR:
-		rNext := p.parseTok(lex.IDENT)
-		name := rNext.Text
+		varExpr := p.parseVariableExpression()
 		p.parseTok(lex.ASSIGN)
 		startExpr := p.parseExpression()
 		p.parseTok(lex.TO)
@@ -255,7 +251,41 @@ func (p *Parser) parseStatement() ast.Statement {
 		block := p.parseBlock(lex.END)
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.FOR)
-		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
+		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Var: varExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
+	case lex.CALL:
+		rNext := p.parseTok(lex.IDENT)
+		name := rNext.Text
+
+		var args []ast.Expression
+		p.parseTok(lex.LPAREN)
+		if !p.hasTok(lex.RPAREN) {
+			args = append(args, p.parseExpression())
+		}
+		for p.hasTok(lex.COMMA) {
+			p.parseTok(lex.COMMA)
+			args = append(args, p.parseExpression())
+		}
+		rEnd := p.parseTok(lex.RPAREN)
+		return &ast.CallStmt{SourceInfo: spanResult(r, rEnd), Name: name, Args: args}
+	case lex.MODULE:
+		rNext := p.parseTok(lex.IDENT)
+		name := rNext.Text
+
+		var params []*ast.VarDecl
+		p.parseTok(lex.LPAREN)
+		if !p.hasTok(lex.RPAREN) {
+			params = append(params, p.parseParamDecl())
+		}
+		for p.hasTok(lex.COMMA) {
+			p.parseTok(lex.COMMA)
+			params = append(params, p.parseParamDecl())
+		}
+		p.parseTok(lex.RPAREN)
+		p.parseEol()
+		block := p.parseBlock(lex.END)
+		p.parseTok(lex.END)
+		rEnd := p.parseTok(lex.MODULE)
+		return &ast.ModuleStmt{SourceInfo: spanResult(r, rEnd), Name: name, Params: params, Block: block}
 	default:
 		panic(p.Errorf(r, "expected statement, got %s %q", r.Token, r.Text))
 	}
@@ -278,12 +308,24 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, Expr: expr, IsConst: isConst}
 }
 
-func (p *Parser) parseIfCondBlock(pos lex.Position) *ast.CondBlock {
+func (p *Parser) parseParamDecl() *ast.VarDecl {
+	rStart := p.Peek()
+	typ := p.parseType()
+	isRef := false
+	if p.hasTok(lex.REF) {
+		p.parseTok(lex.REF)
+		isRef = true
+	}
+	r := p.parseTok(lex.IDENT)
+	return &ast.VarDecl{SourceInfo: spanResult(rStart, r), Name: r.Text, Type: typ, IsParam: true, IsRef: isRef}
+}
+
+func (p *Parser) parseIfCondBlock(start lex.Position) *ast.CondBlock {
 	expr := p.parseExpression()
 	p.parseTok(lex.THEN)
 	p.parseEol()
 	block := p.parseBlock(lex.END, lex.ELSE)
-	return &ast.CondBlock{SourceInfo: mergeSourceInfo(expr, block), Expr: expr, Block: block}
+	return &ast.CondBlock{SourceInfo: ast.SourceInfo{Start: toPos(start), End: block.End}, Expr: expr, Block: block}
 }
 
 func (p *Parser) parseType() ast.Type {
@@ -321,19 +363,23 @@ func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 			// generate a new operation and continue
 			p.Next()
 			rhs := p.parseBinaryOperations(level - 1)
-			ret = &ast.BinaryOperation{SourceInfo: mergeSourceInfo(ret, rhs), Op: op, Typ: ast.UnresolvedType, Lhs: ret, Rhs: rhs}
+			ret = &ast.BinaryOperation{SourceInfo: mergeSourceInfo(ret, rhs), Op: op, Type: ast.UnresolvedType, Lhs: ret, Rhs: rhs}
 		} else {
 			return ret
 		}
 	}
 }
 
+func (p *Parser) parseVariableExpression() *ast.VariableExpression {
+	r := p.parseTok(lex.IDENT)
+	return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: r.Text}
+}
+
 func (p *Parser) parseTerminal() ast.Expression {
 	r := p.Next()
 	switch r.Token {
 	case lex.IDENT:
-		name := r.Text
-		return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: name}
+		return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: r.Text}
 	case lex.INT_LIT:
 		v, err := strconv.ParseInt(r.Text, 0, 64)
 		if err != nil {
@@ -364,10 +410,10 @@ func (p *Parser) parseTerminal() ast.Expression {
 		return &ast.CharacterLiteral{SourceInfo: toSourceInfo(r), Val: v[0]}
 	case lex.NOT:
 		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Typ: ast.Boolean, Expr: expr}
+		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
 	case lex.SUB:
 		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Typ: expr.Type(), Expr: expr}
+		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: expr.GetType(), Expr: expr}
 	case lex.TRUE:
 		return &ast.BooleanLiteral{SourceInfo: toSourceInfo(r), Val: true}
 	case lex.FALSE:

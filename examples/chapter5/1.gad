@@ -1,0 +1,20 @@
+Declare Integer number
+
+Module main()
+    Declare Integer counter
+    Call getNumber()
+    Display "I have some messages for you."
+    For counter = 1 To number
+        Call showNumber()
+    End For
+    Display "That's all, folks!"
+End Module
+
+Module getNumber()
+    Display "Enter a number."
+    Input number
+End Module
+
+Module showNumber()
+    Display "You entered ", number
+End Module

@@ -7,9 +7,6 @@ type Visitor interface {
 	PreVisitVarDecl(vd *VarDecl) bool
 	PostVisitVarDecl(vd *VarDecl)
 
-	PreVisitConstantStmt(cs *ConstantStmt) bool
-	PostVisitConstantStmt(cs *ConstantStmt)
-
 	PreVisitDeclareStmt(ds *DeclareStmt) bool
 	PostVisitDeclareStmt(ds *DeclareStmt)
 
@@ -40,6 +37,12 @@ type Visitor interface {
 
 	PreVisitForStmt(fs *ForStmt) bool
 	PostVisitForStmt(fs *ForStmt)
+
+	PreVisitCallStmt(cs *CallStmt) bool
+	PostVisitCallStmt(cs *CallStmt)
+
+	PreVisitModuleStmt(ms *ModuleStmt) bool
+	PostVisitModuleStmt(ms *ModuleStmt)
 
 	PreVisitIntegerLiteral(il *IntegerLiteral) bool
 	PostVisitIntegerLiteral(il *IntegerLiteral)

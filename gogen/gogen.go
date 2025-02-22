@@ -22,11 +22,61 @@ func GoGenerate(globalBlock *ast.Block) string {
 	data := strings.TrimPrefix(builtins, oldPrefix)
 	sb.WriteString(newPrefix)
 	sb.WriteString(data)
-	sb.WriteString("\nfunc main() {\n")
 	v := New("", &sb)
-	// TODO: consider special-casing the global block to declare vars in global vs. other statements in main()
-	globalBlock.Visit(v)
-	sb.WriteString("}\n")
+
+	// First, iterate the global block and emit any declarations.
+	for _, stmt := range globalBlock.Statements {
+		switch stmt := stmt.(type) {
+		case *ast.DeclareStmt:
+			// emit declaration only, not assignment
+			for _, decl := range stmt.Decls {
+				v.indent()
+				v.output("var ")
+				v.ident(decl)
+				v.output(" ")
+				v.output(goTypes[decl.Type])
+				v.output("\n")
+			}
+		case *ast.ModuleStmt:
+			stmt.Visit(v)
+		default:
+			// nothing
+		}
+	}
+
+	// Now, emit any non-declarations into the main function.
+	sb.WriteString("\nfunc main() {\n")
+	v.PreVisitBlock(globalBlock)
+	for _, stmt := range globalBlock.Statements {
+		switch stmt := stmt.(type) {
+		case *ast.DeclareStmt:
+			// emit either an assignment or a dummy assignment
+			for _, decl := range stmt.Decls {
+				v.indent()
+				if decl.Expr != nil {
+					v.ident(decl)
+					v.output(" = ")
+					v.maybeCast(decl.Type, decl.Expr)
+				} else {
+					v.output("_ = ")
+					v.ident(decl)
+				}
+				v.output("\n")
+			}
+		case *ast.ModuleStmt:
+			// nothing
+		default:
+			stmt.Visit(v)
+		}
+	}
+	// If there is a module named main with no arguments, call it at the very end.
+	ref := globalBlock.Scope.Lookup("main")
+	if ref != nil && ref.ModuleStmt != nil && len(ref.ModuleStmt.Params) == 0 {
+		v.indent()
+		v.output("main_()\n")
+	}
+	v.PostVisitBlock(globalBlock)
+	v.output("}\n")
 	return sb.String()
 }
 
@@ -55,6 +105,15 @@ func (v *Visitor) PostVisitBlock(bl *ast.Block) {
 }
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
+	if vd.IsParam {
+		v.ident(vd)
+		v.output(" ")
+		if vd.IsRef {
+			v.output("*")
+		}
+		v.output(goTypes[vd.Type])
+		return false
+	}
 	v.indent()
 	if vd.IsConst {
 		v.output("const ")
@@ -69,22 +128,17 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 		v.maybeCast(vd.Type, vd.Expr)
 	}
 	v.output("\n")
+
 	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
 	v.indent()
-	v.output("_ = ")
+	v.output("var _ = ")
 	v.ident(vd)
 	v.output("\n")
+
 	return false
 }
 
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
-}
-
-func (v *Visitor) PreVisitConstantStmt(stmt *ast.ConstantStmt) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitConstantStmt(stmt *ast.ConstantStmt) {
 }
 
 func (v *Visitor) PreVisitDeclareStmt(stmt *ast.DeclareStmt) bool {
@@ -112,10 +166,10 @@ func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
-	v.ident(i.Ref)
+	i.Var.Visit(v)
 	v.output(" = ")
 	v.output("input")
-	v.output(i.Ref.Type.String())
+	v.output(i.Var.Type.String())
 	v.output("()\n")
 	return false
 }
@@ -125,9 +179,9 @@ func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 
 func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	v.indent()
-	v.ident(s.Ref)
+	s.Var.Visit(v)
 	v.output(" = ")
-	v.maybeCast(s.Ref.Type, s.Expr)
+	v.maybeCast(s.Var.Type, s.Expr)
 	v.output("\n")
 	return false
 }
@@ -257,17 +311,17 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 
 func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.indent()
-	v.ident(fs.Ref)
+	fs.Var.Visit(v)
 	v.output(" = ")
 	fs.StartExpr.Visit(v)
 	v.output("\n")
 
 	v.indent()
 	v.output("for step")
-	refType := fs.Ref.Type
+	refType := fs.Var.Type
 	v.output(refType.String())
 	v.output("(")
-	v.ident(fs.Ref)
+	fs.Var.Visit(v)
 	v.output(", ")
 	v.maybeCast(refType, fs.StopExpr)
 	v.output(", ")
@@ -281,7 +335,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 	v.indent()
 	v.output("\t")
-	v.ident(fs.Ref)
+	fs.Var.Visit(v)
 	v.output(" += ")
 	if fs.StepExpr != nil {
 		v.maybeCast(refType, fs.StepExpr)
@@ -296,6 +350,61 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 }
+
+func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	v.indent()
+	v.ident(cs.Ref)
+	v.output("(")
+	for i, arg := range cs.Args {
+		if i > 0 {
+			v.output(", ")
+		}
+		param := cs.Ref.Params[i]
+		if param.IsRef {
+			// special case
+			// TODO: other types of references
+			ref := arg.(*ast.VariableExpression).Ref
+			if !ref.IsRef {
+				// take the address
+				v.output("&")
+			}
+			v.ident(ref)
+		} else {
+			v.maybeCast(param.Type, arg)
+		}
+	}
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
+
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	v.indent()
+	v.output("func ")
+	v.ident(ms)
+	v.output("(")
+	for i, param := range ms.Params {
+		if i > 0 {
+			v.output(", ")
+		}
+		param.Visit(v)
+	}
+	v.output(") {\n")
+	ms.Block.Visit(v)
+	v.indent()
+	v.output("}\n")
+
+	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
+	v.indent()
+	v.output("var _ = ")
+	v.ident(ms)
+	v.output("\n")
+
+	return false
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	v.output(strconv.FormatInt(il.Val, 10))
@@ -356,7 +465,7 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 }
 
 func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
-	dstType := ast.AreComparableTypes(bo.Lhs.Type(), bo.Rhs.Type())
+	dstType := ast.AreComparableTypes(bo.Lhs.GetType(), bo.Rhs.GetType())
 
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
@@ -365,7 +474,7 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 		} else {
 			v.output("exp")
 		}
-		v.output(bo.Typ.String())
+		v.output(bo.Type.String())
 		v.output("(")
 		v.maybeCast(dstType, bo.Lhs)
 		v.output(", ")
@@ -387,6 +496,10 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
+	if ve.Ref.IsRef {
+		// if we get here, we need to dereference
+		v.output("*")
+	}
 	v.ident(ve.Ref)
 	return true
 }
@@ -405,17 +518,17 @@ func (v *Visitor) output(s string) {
 	}
 }
 
-func (v *Visitor) ident(ref *ast.VarDecl) {
-	v.output(ref.Name)
+func (v *Visitor) ident(named ast.HasName) {
+	v.output(named.GetName())
 	v.output("_")
 }
 
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
-	if dstType == ast.Real && exp.Type() == ast.Integer {
+	if dstType == ast.Real && exp.GetType() == ast.Integer {
 		v.output("float64(")
 		exp.Visit(v)
 		v.output(")")
-	} else if dstType == ast.Integer && exp.Type() == ast.Real {
+	} else if dstType == ast.Integer && exp.GetType() == ast.Real {
 		v.output("int64(")
 		exp.Visit(v)
 		v.output(")")

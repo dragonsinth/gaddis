@@ -40,19 +40,6 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 }
 
-func (v *Visitor) PreVisitConstantStmt(cs *ast.ConstantStmt) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitConstantStmt(cs *ast.ConstantStmt) {
-	for _, vd := range cs.Decls {
-		if !ast.CanCoerce(cs.Type, vd.Expr.Type()) {
-			v.Errorf(vd.Expr, "%s not assignable to %s", vd.Expr.Type(), cs.Type)
-		}
-		// TODO: initializer must be a constant expression?
-	}
-}
-
 func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 	return true
 }
@@ -60,9 +47,10 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 func (v *Visitor) PostVisitDeclareStmt(ds *ast.DeclareStmt) {
 	for _, vd := range ds.Decls {
 		if vd.Expr != nil {
-			if !ast.CanCoerce(ds.Type, vd.Expr.Type()) {
-				v.Errorf(vd.Expr, "%s not assignable to %s", vd.Expr.Type(), ds.Type)
+			if !ast.CanCoerce(ds.Type, vd.Expr.GetType()) {
+				v.Errorf(vd.Expr, "%s not assignable to %s", vd.Expr.GetType(), ds.Type)
 			}
+			// TODO: initializer must be a constant expression?
 		}
 	}
 }
@@ -79,6 +67,9 @@ func (v *Visitor) PreVisitInputStmt(is *ast.InputStmt) bool {
 
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
 	// TODO: variable is non-primitive?
+	if is.Var.Ref.IsConst {
+		v.Errorf(is, "input variable may not be a constant")
+	}
 }
 
 func (v *Visitor) PreVisitSetStmt(ss *ast.SetStmt) bool {
@@ -86,10 +77,13 @@ func (v *Visitor) PreVisitSetStmt(ss *ast.SetStmt) bool {
 }
 
 func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
-	exprType := ss.Expr.Type()
-	refType := ss.Ref.Type
+	exprType := ss.Expr.GetType()
+	refType := ss.Var.Type
 	if !ast.CanCoerce(refType, exprType) {
 		v.Errorf(ss.Expr, "%s not assignable to %s", exprType, refType)
+	}
+	if ss.Var.Ref.IsConst {
+		v.Errorf(ss.Var, "loop variable may not be a constant")
 	}
 }
 
@@ -104,8 +98,8 @@ func (v *Visitor) PreVisitCondBlock(cb *ast.CondBlock) bool {
 }
 
 func (v *Visitor) PostVisitCondBlock(cb *ast.CondBlock) {
-	if cb.Expr.Type() != ast.Boolean {
-		v.Errorf(cb.Expr, "expected Boolean, got %s", cb.Expr.Type())
+	if cb.Expr.GetType() != ast.Boolean {
+		v.Errorf(cb.Expr, "expected Boolean, got %s", cb.Expr.GetType())
 	}
 }
 
@@ -114,11 +108,11 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 }
 
 func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
-	dstType := ss.Expr.Type()
+	dstType := ss.Expr.GetType()
 	for _, cb := range ss.Cases {
-		typ := ast.AreComparableTypes(dstType, cb.Expr.Type())
+		typ := ast.AreComparableTypes(dstType, cb.Expr.GetType())
 		if typ == ast.UnresolvedType {
-			v.Errorf(cb.Expr, "case %s not comparable to select %s", cb.Expr.Type(), ss.Expr.Type())
+			v.Errorf(cb.Expr, "case %s not comparable to select %s", cb.Expr.GetType(), ss.Expr.GetType())
 		} else {
 			dstType = typ
 		}
@@ -139,8 +133,8 @@ func (v *Visitor) PreVisitDoStmt(ds *ast.DoStmt) bool {
 }
 
 func (v *Visitor) PostVisitDoStmt(ds *ast.DoStmt) {
-	if ds.Expr.Type() != ast.Boolean {
-		v.Errorf(ds.Expr, "expected Boolean, got %s", ds.Expr.Type())
+	if ds.Expr.GetType() != ast.Boolean {
+		v.Errorf(ds.Expr, "expected Boolean, got %s", ds.Expr.GetType())
 	}
 }
 
@@ -149,8 +143,8 @@ func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 }
 
 func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
-	if ws.Expr.Type() != ast.Boolean {
-		v.Errorf(ws.Expr, "expected Boolean, got %s", ws.Expr.Type())
+	if ws.Expr.GetType() != ast.Boolean {
+		v.Errorf(ws.Expr, "expected Boolean, got %s", ws.Expr.GetType())
 	}
 }
 
@@ -159,22 +153,69 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 }
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
-	refType := fs.Ref.Type
+	refType := fs.Var.Type
 	if !ast.IsNumericType(refType) {
-		v.Errorf(fs, "loop variable must be a number, got %s %s", refType, fs.Ref.Name)
+		v.Errorf(fs.Var, "loop variable must be a number, got %s %s", refType, fs.Var.Name)
 	}
-	if !ast.CanCoerce(refType, fs.StartExpr.Type()) {
-		v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StartExpr.Type(), refType)
+	if fs.Var.Ref.IsConst {
+		v.Errorf(fs.Var, "loop variable may not be a constant")
 	}
-	if !ast.CanCoerce(refType, fs.StopExpr.Type()) {
-		v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StopExpr.Type(), refType)
+	if !ast.CanCoerce(refType, fs.StartExpr.GetType()) {
+		v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StartExpr.GetType(), refType)
+	}
+	if !ast.CanCoerce(refType, fs.StopExpr.GetType()) {
+		v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StopExpr.GetType(), refType)
 	}
 	if fs.StepExpr != nil {
-		if !ast.CanCoerce(refType, fs.StepExpr.Type()) {
-			v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StepExpr.Type(), refType)
+		if !ast.CanCoerce(refType, fs.StepExpr.GetType()) {
+			v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StepExpr.GetType(), refType)
 		}
 	}
 }
+
+func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
+	// check the number and type of each argument
+	args := cs.Args
+	params := cs.Ref.Params
+	for i, c := 0, min(len(args), len(params)); i < c; i++ {
+		arg, param := args[i], params[i]
+		if !ast.CanCoerce(param.Type, arg.GetType()) {
+			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
+		}
+		if param.IsRef {
+			// must be an exact type match for reference
+			if arg.GetType() != param.Type {
+				v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
+			}
+			// the argument must be referencable thing
+			switch arg := arg.(type) {
+			case *ast.VariableExpression:
+				ref := arg.Ref
+				if ref.IsConst {
+					v.Errorf(arg, "argument %d: expression may not be a constant", i+1)
+				}
+			default:
+				// TODO: array references, class field references?
+				v.Errorf(arg, "argument %d: expression must be a reference", i+1)
+			}
+		} else if !ast.CanCoerce(param.Type, arg.GetType()) {
+			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
+		}
+	}
+	if len(args) != len(params) {
+		v.Errorf(cs, "expected %d args, got %d", len(args), len(params))
+	}
+}
+
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	return true
@@ -211,7 +252,7 @@ func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 }
 
 func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
-	typ := uo.Expr.Type()
+	typ := uo.Expr.GetType()
 	ok := typ != ast.UnresolvedType // reduce error reporting spam
 	op := uo.Op
 	switch op {
@@ -233,8 +274,8 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 }
 
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
-	aTyp := bo.Lhs.Type()
-	bTyp := bo.Rhs.Type()
+	aTyp := bo.Lhs.GetType()
+	bTyp := bo.Rhs.GetType()
 	aOk := aTyp != ast.UnresolvedType
 	bOk := bTyp != ast.UnresolvedType
 	ok := aOk && bOk
@@ -253,19 +294,19 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 			if rTyp == ast.UnresolvedType {
 				v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 			}
-			bo.Typ = rTyp
+			bo.Type = rTyp
 		}
 	case ast.EQ, ast.NEQ:
 		rTyp := ast.AreComparableTypes(aTyp, bTyp)
 		if ok && rTyp == ast.UnresolvedType {
 			v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 		}
-		bo.Typ = ast.Boolean
+		bo.Type = ast.Boolean
 	case ast.LT, ast.GT, ast.LTE, ast.GTE:
 		if ok && !ast.AreComparableOrderedTypes(aTyp, bTyp) {
 			v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 		}
-		bo.Typ = ast.Boolean
+		bo.Type = ast.Boolean
 	case ast.AND, ast.OR:
 		if aOk && aTyp != ast.Boolean {
 			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be Boolean", op, aTyp)
@@ -273,7 +314,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 		if bOk && bTyp != ast.Boolean {
 			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be Boolean", op, bTyp)
 		}
-		bo.Typ = ast.Boolean
+		bo.Type = ast.Boolean
 	default:
 		panic(op)
 	}
@@ -284,7 +325,7 @@ func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
 }
 
 func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
-	ve.Typ = ve.Ref.Type
+	ve.Type = ve.Ref.Type
 }
 
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {

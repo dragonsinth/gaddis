@@ -44,13 +44,7 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 }
 
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
-}
-
-func (v *Visitor) PreVisitConstantStmt(cs *ast.ConstantStmt) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitConstantStmt(cs *ast.ConstantStmt) {
+	// defer local variable declartions until resolve pass to avoid use-before-declare.
 }
 
 func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
@@ -120,6 +114,24 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {}
 
+func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
+
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
+	if existing := v.currScope.Decls[ms.Name]; existing != nil {
+		v.Errorf(ms, "symbol %s redeclared in this scope; previous declaration: %s", ms.Name, existing)
+	} else {
+		v.currScope.AddModule(ms)
+	}
+}
+
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	return true
 }
@@ -171,6 +183,6 @@ func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {}
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.errors = append(v.errors, ast.Error{
 		SourceInfo: si.GetSourceInfo(),
-		Desc:       fmt.Sprintf("declaration error: "+fmtStr, args...),
+		Desc:       fmt.Sprintf(fmtStr, args...),
 	})
 }

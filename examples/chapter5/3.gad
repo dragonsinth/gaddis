@@ -1,0 +1,30 @@
+Module main()
+    Declare Integer x = 99
+    Declare Integer y = 100
+    Declare Integer z = 101
+    Display x
+    Display y
+    Display z
+    Call setToZero(x)
+    Call setToZero(y)
+    Display x
+    Display y
+    Display z
+
+    Declare Real cupsNeeded
+    Call getCups(cupsNeeded)
+    Call cupsToOunces(cupsNeeded)
+End Module
+
+Module setToZero(Integer Ref value)
+    Set value = 0
+End Module
+
+Module getCups(Real Ref cups)
+    Display "Enter the number of cups."
+    Input cups
+End Module
+
+Module cupsToOunces(Real cups)
+    Display "That converts to ", cups * 8, " ounces."
+End Module

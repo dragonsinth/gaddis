@@ -23,13 +23,6 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 }
 
-func (v *Visitor) PreVisitConstantStmt(cs *ast.ConstantStmt) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitConstantStmt(cs *ast.ConstantStmt) {
-}
-
 func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 	return true
 }
@@ -96,6 +89,18 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 }
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {}
+
+func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
+
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
 	return true
