@@ -9,21 +9,20 @@ import (
 )
 
 func Compile(src []byte) (*ast.Block, []ast.Comment, []ast.Error) {
+	// parse and report lex/parse errors
 	block, comments, errs := parse.Parse(src)
 	if len(errs) > 0 {
 		return block, comments, errs
 	}
 
+	// report collection and resolution errors together
 	errs = collect.Collect(block)
+	errs = append(errs, resolve.Resolve(block)...)
 	if len(errs) > 0 {
 		return block, comments, errs
 	}
 
-	errs = resolve.Resolve(block)
-	if len(errs) > 0 {
-		return block, comments, errs
-	}
-
+	// resolves types, report type checking errors
 	errs = typecheck.TypeCheck(block)
 	if len(errs) > 0 {
 		return block, comments, errs
