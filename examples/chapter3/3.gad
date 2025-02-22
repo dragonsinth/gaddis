@@ -7,18 +7,18 @@ Display "Enter a year: "
 Input year
 
 If (year MOD 400 == 0) Then
-    Set isLeapYear = True
+	Set isLeapYear = True
 Else If (year MOD 100 == 0) Then
-    Set isLeapYear = False
+	Set isLeapYear = False
 Else If (year MOD 4 == 0) Then
-    Set isLeapYear = True
+	Set isLeapYear = True
 Else
-    Set isLeapYear = False
+	Set isLeapYear = False
 End If
 
 // Display the result
 If isLeapYear Then
-    Display year, " is a leap year."
+	Display year, " is a leap year."
 Else
-    Display year, " is not a leap year."
+	Display year, " is not a leap year."
 End If

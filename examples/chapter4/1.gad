@@ -1,31 +1,31 @@
 While False
-  Display "wrong"
+	Display "wrong"
 End While
 
 Do
-  Display "right"
+	Display "right"
 While False
 
 Do
-  Display "once"
+	Display "once"
 Until True
 
 Declare Integer count
 For count = 1 To 10
-  Display count
+	Display count
 End For
 
 For count = 10 To 1 Step -1
-  Display count
+	Display count
 End For
 
 For count = 0 To 100 Step 10
-  Display count
+	Display count
 End For
 
 Display -count
 
 Declare Real fl
 For fl = 0 To 1 Step 0.1
-  Display fl
+	Display fl
 End For

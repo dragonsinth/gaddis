@@ -3,18 +3,18 @@ Display "Type a list of numbers (hitting enter between each one)."
 Display "Type -99 when you're done."
 Set counter = 0
 Do
-    Input mostRecent
-    If mostRecent < -99 Then
-       Display "Warning, low value!"
-    End If
-    If mostRecent != -99 Then
-       If mostRecent > greatest OR counter == 0 Then
-          Set greatest = mostRecent
-       End If
-       If mostRecent < least OR counter == 0 Then
-          Set least = mostRecent
-       End If
-    End If
-    Set counter = counter + 1
+	Input mostRecent
+	If mostRecent < -99 Then
+		Display "Warning, low value!"
+	End If
+	If mostRecent != -99 Then
+		If mostRecent > greatest OR counter == 0 Then
+			Set greatest = mostRecent
+		End If
+		If mostRecent < least OR counter == 0 Then
+			Set least = mostRecent
+		End If
+	End If
+	Set counter = counter + 1
 While mostRecent != -99
 Display "The biggest possible range of these numbers is ", least, " and ", greatest, "."

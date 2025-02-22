@@ -8,19 +8,19 @@ Input year
 
 // Check if the year is divisible by 4
 If (year MOD 4 == 0) Then
-    // If divisible by 100, also check if divisible by 400
-    If (year MOD 100 == 0) AND NOT (year MOD 400 == 0) Then
-        Set isLeapYear = False
-    Else
-        Set isLeapYear = True
-    End If
+	// If divisible by 100, also check if divisible by 400
+	If (year MOD 100 == 0) AND NOT (year MOD 400 == 0) Then
+		Set isLeapYear = False
+	Else
+		Set isLeapYear = True
+	End If
 Else
-    Set isLeapYear = False
+	Set isLeapYear = False
 End If
 
 // Display the result
 If isLeapYear Then
-    Display year, " is a leap year."
+	Display year, " is a leap year."
 Else
-    Display year, " is not a leap year."
+	Display year, " is not a leap year."
 End If

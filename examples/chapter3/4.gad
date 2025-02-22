@@ -1,40 +1,40 @@
 Declare Boolean flag
 Input flag
 Select flag
-   Case True:
-      Display "true"
-   Case False:
-      Display "false"
+	Case True:
+		Display "true"
+	Case False:
+		Display "false"
 End Select
 
 Declare Integer quantity
 Input quantity
 Select quantity
-   Case 0:
-      Display "zero"
-   Case 1:
-      Display "one"
-   Default:
-      Display "many"
+	Case 0:
+		Display "zero"
+	Case 1:
+		Display "one"
+	Default:
+		Display "many"
 End Select
 
 // Integer -> Real
 Select quantity
-   Case 0.1:
-      Display "zero point one"
-   Case 1.0:
-      Display "one"
-   Default:
-      Display "many"
+	Case 0.1:
+		Display "zero point one"
+	Case 1.0:
+		Display "one"
+	Default:
+		Display "many"
 End Select
 
 // Real -> Integer
 Declare Real q = quantity
 Select q
-   Case 0:
-      Display "zero"
-   Case 1:
-      Display "one"
-   Default:
-      Display "many"
+	Case 0:
+		Display "zero"
+	Case 1:
+		Display "one"
+	Default:
+		Display "many"
 End Select

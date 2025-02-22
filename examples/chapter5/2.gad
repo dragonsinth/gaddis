@@ -1,16 +1,16 @@
 Module main()
-    Call doubleNumber(4)
-    Call showSum(12, 45)
+	Call doubleNumber(4)
+	Call showSum(12, 45)
 End Module
 
 Module doubleNumber(Integer value)
-    Declare Integer result
-    Set result = value * 2
-    Display result
+	Declare Integer result
+	Set result = value * 2
+	Display result
 End Module
 
 Module showSum(Integer num1, Integer num2)
-    Declare Integer result
-    Set result = num1 + num2
-    Display result
+	Declare Integer result
+	Set result = num1 + num2
+	Display result
 End Module
