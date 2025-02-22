@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/dragonsinth/gaddis"
-	"github.com/dragonsinth/gaddis/ast"
+	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"io"
@@ -57,7 +57,7 @@ func run() error {
 	}
 
 	if *fVerbose {
-		dbgOut := ast.DebugString(block, comments)
+		dbgOut := astprint.Print(block, comments)
 		os.Stdout.WriteString(dbgOut)
 	}
 

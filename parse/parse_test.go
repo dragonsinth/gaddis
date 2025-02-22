@@ -2,7 +2,7 @@ package parse
 
 import (
 	_ "embed"
-	"github.com/dragonsinth/gaddis/ast"
+	"github.com/dragonsinth/gaddis/astprint"
 	"os"
 	"testing"
 )
@@ -21,6 +21,6 @@ func TestParse(t *testing.T) {
 		t.Fatal("parse errors")
 	}
 
-	out := ast.DebugString(block, comments)
+	out := astprint.Print(block, comments)
 	os.Stdout.WriteString(out)
 }

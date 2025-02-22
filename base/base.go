@@ -1,4 +1,4 @@
-package base_visitor
+package base
 
 import (
 	"github.com/dragonsinth/gaddis/ast"
