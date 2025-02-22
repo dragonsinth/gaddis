@@ -15,7 +15,7 @@ const maxErrors = 20
 func Parse(input []byte) (*ast.Block, []ast.Comment, []ast.Error) {
 	l := lex.New(input)
 	p := New(l)
-	ret := p.parseBlock(lex.EOF)
+	ret := p.parseGlobalBlock()
 	errs := p.errors
 	if len(errs) > maxErrors {
 		errs = errs[:maxErrors]
@@ -73,7 +73,15 @@ func (p *Parser) nextNonComment() lex.Result {
 	}
 }
 
+func (p *Parser) parseGlobalBlock() *ast.Block {
+	return p.doParseBlock(true, lex.EOF)
+}
+
 func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
+	return p.doParseBlock(false, endTokens...)
+}
+
+func (p *Parser) doParseBlock(isGlobal bool, endTokens ...lex.Token) *ast.Block {
 	var stmts []ast.Statement
 	for {
 		peek := p.SafePeek()
@@ -85,7 +93,7 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 			return &ast.Block{SourceInfo: si, Statements: stmts}
 		}
 
-		st := p.safeParseStatement()
+		st := p.safeParseStatement(isGlobal)
 		if _, ok := st.(EmptyStatement); ok {
 			// nothing
 		} else if st != nil {
@@ -103,7 +111,7 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 	}
 }
 
-func (p *Parser) safeParseStatement() ast.Statement {
+func (p *Parser) safeParseStatement(isGlobalBlock bool) ast.Statement {
 	defer func() {
 		if e := recover(); e != nil {
 			if pe, ok := e.(ast.Error); ok {
@@ -114,14 +122,14 @@ func (p *Parser) safeParseStatement() ast.Statement {
 		}
 	}()
 
-	return p.parseStatement()
+	return p.parseStatement(isGlobalBlock)
 }
 
 type EmptyStatement struct {
 	ast.Statement
 }
 
-func (p *Parser) parseStatement() ast.Statement {
+func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 	r := p.Next()
 	switch r.Token {
 	case lex.EOL, lex.EOF:
@@ -268,6 +276,9 @@ func (p *Parser) parseStatement() ast.Statement {
 		rEnd := p.parseTok(lex.RPAREN)
 		return &ast.CallStmt{SourceInfo: spanResult(r, rEnd), Name: name, Args: args}
 	case lex.MODULE:
+		if !isGlobalBlock {
+			panic(p.Errorf(r, "Module may only be declared in the global scope"))
+		}
 		rNext := p.parseTok(lex.IDENT)
 		name := rNext.Text
 
