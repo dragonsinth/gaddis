@@ -43,6 +43,10 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 }
 
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
+	if existing, ok := v.currScope.Decls[vd.Name]; ok {
+		v.Errorf(vd, "reference error: identifier %s %s already defined in this scope", existing.Type, existing.Name)
+	}
+	v.currScope.Decls[vd.Name] = vd
 }
 
 func (v *Visitor) PreVisitConstantStmt(cs *ast.ConstantStmt) bool {
@@ -190,6 +194,6 @@ func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.errors = append(v.errors, ast.Error{
 		SourceInfo: si.GetSourceInfo(),
-		Desc:       fmt.Sprintf("reference error: "+fmtStr, args...),
+		Desc:       fmt.Sprintf(fmtStr, args...),
 	})
 }

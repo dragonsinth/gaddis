@@ -6,7 +6,9 @@ import (
 	"slices"
 )
 
-// Collect constructs scopes, collects symbols.
+// TODO: collect modules, functions, classes here.
+
+// Collect constructs scopes, collects global symbols.
 func Collect(globalBlock *ast.Block) []ast.Error {
 	v := New()
 	globalBlock.Visit(v)
@@ -42,10 +44,6 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 }
 
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
-	if existing, ok := v.currScope.Decls[vd.Name]; ok {
-		v.Errorf(vd, "identifier %s %s already defined in this scope", existing.Type, existing.Name)
-	}
-	v.currScope.Decls[vd.Name] = vd
 }
 
 func (v *Visitor) PreVisitConstantStmt(cs *ast.ConstantStmt) bool {
