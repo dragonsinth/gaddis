@@ -9,9 +9,7 @@ import (
 func TypeCheck(globalBlock *ast.Block) []ast.Error {
 	// visit the statements in the global block
 	v := New()
-	for _, stmt := range globalBlock.Statements {
-		stmt.Visit(v)
-	}
+	globalBlock.Visit(v)
 	slices.SortFunc(v.errors, func(a, b ast.Error) int {
 		return a.Start.Pos - b.Start.Pos
 	})
@@ -79,7 +77,9 @@ func (v *Visitor) PreVisitInputStmt(is *ast.InputStmt) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {}
+func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
+	// TODO: variable is non-primitive?
+}
 
 func (v *Visitor) PreVisitSetStmt(ss *ast.SetStmt) bool {
 	return true
@@ -283,7 +283,9 @@ func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {}
+func (v *Visitor) PostVisitVariableExpression(ve *ast.VariableExpression) {
+	ve.Typ = ve.Ref.Type
+}
 
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.errors = append(v.errors, ast.Error{

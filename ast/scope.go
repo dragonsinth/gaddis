@@ -1,5 +1,7 @@
 package ast
 
+// TODO: more than just var decls (module, function, class).
+
 type Scope struct {
 	Parent *Scope
 	Decls  map[string]*VarDecl

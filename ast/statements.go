@@ -7,7 +7,8 @@ type Statement interface {
 type Block struct {
 	SourceInfo
 	Statements []Statement
-	Scope      *Scope
+
+	Scope *Scope // collect symbols
 }
 
 func (bl *Block) Visit(v Visitor) {
@@ -70,7 +71,8 @@ func (ds *DisplayStmt) Visit(v Visitor) {
 type InputStmt struct {
 	SourceInfo
 	Name string
-	Ref  *VarDecl
+
+	Ref *VarDecl // symbol resolution
 }
 
 func (is *InputStmt) Visit(v Visitor) {
@@ -83,8 +85,9 @@ func (is *InputStmt) Visit(v Visitor) {
 type SetStmt struct {
 	SourceInfo
 	Name string
-	Ref  *VarDecl
 	Expr Expression
+
+	Ref *VarDecl // symbol resolution
 }
 
 func (ss *SetStmt) Visit(v Visitor) {
@@ -202,11 +205,12 @@ func (ws *WhileStmt) Visit(v Visitor) {
 type ForStmt struct {
 	SourceInfo
 	Name      string
-	Ref       *VarDecl
 	StartExpr Expression
 	StopExpr  Expression
 	StepExpr  Expression
 	Block     *Block
+
+	Ref *VarDecl // symbol resolution
 }
 
 func (ws *ForStmt) Visit(v Visitor) {

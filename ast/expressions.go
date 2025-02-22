@@ -128,7 +128,9 @@ func (bo *BinaryOperation) Type() Type {
 type VariableExpression struct {
 	SourceInfo
 	Name string
-	Ref  *VarDecl
+
+	Ref *VarDecl // resolve symbols
+	Typ Type     // type checking
 }
 
 func (ve *VariableExpression) Visit(v Visitor) {
@@ -139,5 +141,5 @@ func (ve *VariableExpression) Visit(v Visitor) {
 }
 
 func (ve *VariableExpression) Type() Type {
-	return ve.Ref.Type
+	return ve.Typ
 }

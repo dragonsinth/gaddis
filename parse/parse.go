@@ -32,9 +32,8 @@ func New(l *lex.Lexer) *Parser {
 }
 
 type Parser struct {
-	lex       *lex.Lexer
-	next      *lex.Result
-	currScope *ast.Scope
+	lex  *lex.Lexer
+	next *lex.Result
 
 	comments []ast.Comment
 	errors   []ast.Error
@@ -76,12 +75,6 @@ func (p *Parser) nextNonComment() lex.Result {
 }
 
 func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
-	parentScope := p.currScope
-	defer func() {
-		p.currScope = parentScope
-	}()
-	p.currScope = ast.NewScope(parentScope)
-
 	var stmts []ast.Statement
 	for {
 		peek := p.SafePeek()
@@ -90,7 +83,7 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 			if len(stmts) > 0 {
 				si = mergeSourceInfo(stmts[0], stmts[len(stmts)-1])
 			}
-			return &ast.Block{SourceInfo: si, Scope: p.currScope, Statements: stmts}
+			return &ast.Block{SourceInfo: si, Statements: stmts}
 		}
 
 		st := p.safeParseStatement()
@@ -169,22 +162,13 @@ func (p *Parser) parseStatement() ast.Statement {
 	case lex.INPUT:
 		id := p.parseTok(lex.IDENT)
 		name := id.Text
-		ref := p.currScope.Lookup(name)
-		if ref == nil {
-			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
-		}
-		// TODO: variable is non-primitive
-		return &ast.InputStmt{SourceInfo: spanResult(r, id), Name: name, Ref: ref}
+		return &ast.InputStmt{SourceInfo: spanResult(r, id), Name: name}
 	case lex.SET:
 		id := p.parseTok(lex.IDENT)
 		name := id.Text
-		ref := p.currScope.Lookup(name)
-		if ref == nil {
-			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, name))
-		}
 		p.parseTok(lex.ASSIGN)
 		expr := p.parseExpression()
-		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Name: name, Ref: ref, Expr: expr}
+		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Name: name, Expr: expr}
 	case lex.IF:
 		ifCond := p.parseIfCondBlock(r.Pos)
 
@@ -257,10 +241,6 @@ func (p *Parser) parseStatement() ast.Statement {
 	case lex.FOR:
 		rNext := p.parseTok(lex.IDENT)
 		name := rNext.Text
-		ref := p.currScope.Lookup(name)
-		if ref == nil {
-			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, name))
-		}
 		p.parseTok(lex.ASSIGN)
 		startExpr := p.parseExpression()
 		p.parseTok(lex.TO)
@@ -275,7 +255,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		block := p.parseBlock(lex.END)
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.FOR)
-		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, Ref: ref, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
+		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Name: name, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 	default:
 		panic(p.Errorf(r, "expected statement, got %s %q", r.Token, r.Text))
 	}
@@ -295,12 +275,7 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 		r := p.Peek()
 		panic(p.Errorf(r, "expected constant initializer, got %s %q", r.Token, r.Text))
 	}
-	decl := &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, Expr: expr, IsConst: isConst}
-	if existing, ok := p.currScope.Decls[decl.Name]; ok {
-		panic(fmt.Errorf("%d:%d: identifier %s %s already defined in this scope", r.Pos.Line, r.Pos.Column, existing.Type, existing.Name))
-	}
-	p.currScope.Decls[decl.Name] = decl
-	return decl
+	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, Expr: expr, IsConst: isConst}
 }
 
 func (p *Parser) parseIfCondBlock(pos lex.Position) *ast.CondBlock {
@@ -358,11 +333,7 @@ func (p *Parser) parseTerminal() ast.Expression {
 	switch r.Token {
 	case lex.IDENT:
 		name := r.Text
-		ref := p.currScope.Lookup(name)
-		if ref == nil {
-			panic(fmt.Errorf("%d:%d: unresolved reference: %s", r.Pos.Line, r.Pos.Column, r.Text))
-		}
-		return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: name, Ref: ref}
+		return &ast.VariableExpression{SourceInfo: toSourceInfo(r), Name: name}
 	case lex.INT_LIT:
 		v, err := strconv.ParseInt(r.Text, 0, 64)
 		if err != nil {

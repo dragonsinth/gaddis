@@ -43,7 +43,7 @@ func (v *Visitor) PostVisitBlock(bl *ast.Block) {
 }
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
-	v.ident(vd)
+	v.output(vd.Name)
 	if vd.Expr != nil {
 		v.output(" = ")
 		vd.Expr.Visit(v)
@@ -109,7 +109,7 @@ func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
 	v.output("Input ")
-	v.ident(i.Ref)
+	v.output(i.Name)
 	v.output("\n")
 	return false
 }
@@ -120,7 +120,7 @@ func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	v.indent()
 	v.output("Set ")
-	v.ident(s.Ref)
+	v.output(s.Name)
 	v.output(" = ")
 	s.Expr.Visit(v)
 	v.output("\n")
@@ -322,7 +322,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpression(ve *ast.VariableExpression) bool {
-	v.ident(ve.Ref)
+	v.output(ve.Name)
 	return true
 }
 
@@ -338,8 +338,4 @@ func (v *Visitor) output(s string) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (v *Visitor) ident(ref *ast.VarDecl) {
-	v.output(ref.Name)
 }
