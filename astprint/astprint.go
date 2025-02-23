@@ -75,9 +75,9 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 	defer v.eol(ds.End)
 
 	if ds.IsConst {
-		v.output("Declare ")
-	} else {
 		v.output("Constant ")
+	} else {
+		v.output("Declare ")
 	}
 	v.output(ds.Decls[0].Type.String())
 	v.output(" ")
@@ -391,7 +391,11 @@ func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
 }
 
 func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
-	v.output(strconv.FormatBool(cl.Val))
+	if cl.Val {
+		v.output("True")
+	} else {
+		v.output("False")
+	}
 	return true
 }
 
@@ -470,15 +474,35 @@ func (v *Visitor) bol(pos ast.Position) {
 	v.col += len(v.ind)
 }
 
+func (v *Visitor) eol(pos ast.Position) {
+	if comment := v.peekComment(); comment != nil {
+		if comment.Start.Line < pos.Line {
+			panic("should not get here")
+		}
+		// Trailing line comment
+		if comment.Start.Line == pos.Line {
+			_, _ = v.out.WriteString(" // ")
+			_, _ = v.out.WriteString(commentText(*comment))
+			v.popComment()
+		}
+	}
+	if len(v.comments) > 0 && v.comments[0].Start.Line <= pos.Line {
+		v.comments = v.comments[1:]
+	}
+	_, _ = v.out.WriteString("\n")
+	v.line++
+	v.col = 0
+}
+
 func (v *Visitor) emitCommentsUpTo(line int) {
 	if v.col != 0 {
 		panic(v.col)
 	}
 	blankLines := 1
-	for v.line <= line {
+	for v.line < line {
 		if comment := v.peekComment(); comment != nil {
 			// full line comment
-			if comment.Start.Line < v.line {
+			if comment.Start.Line <= v.line {
 				_, _ = v.out.WriteString(v.ind)
 				_, _ = v.out.WriteString("// ")
 				_, _ = v.out.WriteString(commentText(*comment))
@@ -493,23 +517,6 @@ func (v *Visitor) emitCommentsUpTo(line int) {
 		v.line++
 		v.col = 0
 	}
-}
-
-func (v *Visitor) eol(pos ast.Position) {
-	if comment := v.peekComment(); comment != nil {
-		// Trailing line comment
-		if comment.Start.Line <= pos.Line {
-			_, _ = v.out.WriteString(" // ")
-			_, _ = v.out.WriteString(commentText(*comment))
-			v.popComment()
-		}
-	}
-	if len(v.comments) > 0 && v.comments[0].Start.Line <= pos.Line {
-		v.comments = v.comments[1:]
-	}
-	_, _ = v.out.WriteString("\n")
-	v.line++
-	v.col = 0
 }
 
 func (v *Visitor) peekComment() *ast.Comment {

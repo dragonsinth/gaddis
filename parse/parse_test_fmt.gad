@@ -1,6 +1,5 @@
-
-Constant Real TAX_RATE = 0.5
-Constant Integer price, quantity, subtotal
+Declare Real TAX_RATE = 0.5
+Declare Integer price, quantity, subtotal
 Display "Input price:"
 Input price
 Display "Input quantity:"
@@ -9,7 +8,7 @@ Set subtotal = (price * quantity)
 Display "Subtotal:", subtotal
 Display "Total:", (subtotal + (subtotal * TAX_RATE))
 
-Constant Boolean flag
+Declare Boolean flag
 Set flag = ((price == quantity) OR (price != quantity))
 Set flag = ((price <= quantity) AND (price < quantity))
 Set flag = ((price > quantity) AND (price > quantity))
@@ -18,9 +17,9 @@ Set flag = (flag OR flag)
 Set flag = NOT (flag)
 Input flag
 If flag Then
-	Display true
+	Display True
 Else
-	Display false
+	Display False
 End If
 
 // Comment 1
@@ -30,28 +29,28 @@ End If
 // Comment 4
 If flag Then
 	// Comment
-	Display true
+	Display True
 Else If flag Then
 	// Comment
-	Display false
+	Display False
 End If
 
 If flag Then
-	Display true
+	Display True
 Else If flag Then
-	Display false
+	Display False
 Else
-	Display false
+	Display False
 End If
 
 Select flag
-	Case true:
+	Case True:
 		Display "true"
-	Case false:
+	Case False:
 		Display "false"
 End Select
 
-Constant Integer count = 1
+Declare Integer count = 1
 Select count
 	Case 0:
 		Display "zero"
@@ -61,17 +60,17 @@ Select count
 		Display "many"
 End Select
 
-While false
+While False
 	Display "wrong"
 End While
 
 Do
 	Display "once"
-While false
+While False
 
 Do
 	Display "once"
-Until true
+Until True
 
 For count = 1 To 10
 	Display count
@@ -98,7 +97,7 @@ End Module
 
 Call cupsToOunces(8)
 
-Constant Real DISCOUNT_PERCENTAGE = 0.2
+Declare Real DISCOUNT_PERCENTAGE = 0.2
 Function Real discount(Real price)
 	Return (price * DISCOUNT_PERCENTAGE)
 End Function

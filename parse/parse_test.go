@@ -29,11 +29,9 @@ func TestParse(t *testing.T) {
 	out := astprint.Print(block, comments)
 	if out != expectOut {
 		fmt.Println(out)
-		t.Error("format changed! updating output file...")
-		_, thisFile, _, _ := runtime.Caller(0)
-		dirPath := filepath.Dir(thisFile)
-		t.Log(thisFile)
-		update := filepath.Join(dirPath, "parse_test_fmt.gad")
-		_ = os.WriteFile(update, []byte(out), 0666)
+		t.Error("format changed! updating format file...")
+		_, file, _, _ := runtime.Caller(0)
+		root := filepath.Dir(file)
+		_ = os.WriteFile(filepath.Join(root, "parse_test_fmt.gad"), []byte(out), 0666)
 	}
 }
