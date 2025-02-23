@@ -12,23 +12,30 @@ import (
 func Print(prog *ast.Program, comments []ast.Comment) string {
 	// visit the statements in the global block
 	var sb strings.Builder
-	v := New("", &sb)
+	v := &Visitor{
+		ind:      "",
+		out:      &sb,
+		line:     1,
+		col:      0,
+		comments: comments,
+	}
 	for _, stmt := range prog.Block.Statements {
 		stmt.Visit(v)
 	}
-	return sb.String()
-}
-
-func New(indent string, out io.StringWriter) *Visitor {
-	return &Visitor{
-		ind: indent,
-		out: out,
+	// handle any trailing comments
+	if len(v.comments) > 0 {
+		v.emitCommentsUpTo(v.comments[len(v.comments)-1].Start.Line + 1)
 	}
+	return sb.String()
 }
 
 type Visitor struct {
 	ind string
 	out io.StringWriter
+
+	line     int
+	col      int
+	comments []ast.Comment
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -447,23 +454,78 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 }
 
-func (v *Visitor) indent() {
-	v.output(v.ind)
+func (v *Visitor) output(s string) {
+	if strings.ContainsFunc(s, func(r rune) bool {
+		return r == '\n'
+	}) {
+		panic("newline in output")
+	}
+	v.col += len(s)
+	_, _ = v.out.WriteString(s)
 }
 
-func (v *Visitor) output(s string) {
-	_, err := v.out.WriteString(s)
-	if err != nil {
-		panic(err)
+func (v *Visitor) bol(pos ast.Position) {
+	v.emitCommentsUpTo(pos.Line)
+	_, _ = v.out.WriteString(v.ind)
+	v.col += len(v.ind)
+}
+
+func (v *Visitor) emitCommentsUpTo(line int) {
+	if v.col != 0 {
+		panic(v.col)
+	}
+	blankLines := 1
+	for v.line <= line {
+		if comment := v.peekComment(); comment != nil {
+			// full line comment
+			if comment.Start.Line < v.line {
+				_, _ = v.out.WriteString(v.ind)
+				_, _ = v.out.WriteString("// ")
+				_, _ = v.out.WriteString(commentText(*comment))
+				v.popComment()
+				blankLines = 0
+			}
+		}
+		if blankLines < 2 {
+			_, _ = v.out.WriteString("\n")
+		}
+		blankLines++
+		v.line++
+		v.col = 0
 	}
 }
 
-func (v *Visitor) bol(node ast.Position) {
-	// TODO: extra newlines to catch up.
-	v.indent()
+func (v *Visitor) eol(pos ast.Position) {
+	if comment := v.peekComment(); comment != nil {
+		// Trailing line comment
+		if comment.Start.Line <= pos.Line {
+			_, _ = v.out.WriteString(" // ")
+			_, _ = v.out.WriteString(commentText(*comment))
+			v.popComment()
+		}
+	}
+	if len(v.comments) > 0 && v.comments[0].Start.Line <= pos.Line {
+		v.comments = v.comments[1:]
+	}
+	_, _ = v.out.WriteString("\n")
+	v.line++
+	v.col = 0
 }
 
-func (v *Visitor) eol(node ast.Position) {
-	// TODO: trailing comment?
-	v.output("\n")
+func (v *Visitor) peekComment() *ast.Comment {
+	if len(v.comments) > 0 {
+		return &v.comments[0]
+	}
+	return nil
+}
+
+func (v *Visitor) popComment() {
+	v.comments = v.comments[1:]
+}
+
+func commentText(comment ast.Comment) string {
+	text := comment.Text
+	text = strings.TrimPrefix(text, "//")
+	text = strings.TrimSpace(text)
+	return text
 }
