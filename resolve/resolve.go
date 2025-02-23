@@ -3,7 +3,6 @@ package resolve
 import (
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
-	"slices"
 )
 
 // TODO: ensure the resolved thing is the correct type of thing.
@@ -13,9 +12,6 @@ func Resolve(prog *ast.Program) []ast.Error {
 	v := New()
 	v.currScope = prog.Scope
 	prog.Block.Visit(v)
-	slices.SortFunc(v.errors, func(a, b ast.Error) int {
-		return a.Start.Pos - b.Start.Pos
-	})
 	return v.errors
 }
 

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/dragonsinth/gaddis"
+	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
@@ -50,7 +51,7 @@ func run() error {
 
 	prog, comments, errs := gaddis.Compile(gadSrc)
 	if len(errs) > 0 {
-		for _, err := range errs {
+		for _, err := range ast.ErrorSort(errs) {
 			log.Println(err)
 		}
 		os.Exit(1)

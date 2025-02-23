@@ -3,16 +3,12 @@ package typecheck
 import (
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
-	"slices"
 )
 
 func TypeCheck(program *ast.Program) []ast.Error {
 	// visit the statements in the global block
 	v := New()
 	program.Block.Visit(v)
-	slices.SortFunc(v.errors, func(a, b ast.Error) int {
-		return a.Start.Pos - b.Start.Pos
-	})
 	return v.errors
 }
 

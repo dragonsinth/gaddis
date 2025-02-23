@@ -1,6 +1,9 @@
 package ast
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type Node interface {
 	HasSourceInfo
@@ -38,4 +41,13 @@ type Error struct {
 func (err Error) Error() string {
 	start := err.SourceInfo.Start
 	return fmt.Sprintf("%d:%d %s", start.Line, start.Column, err.Desc)
+}
+
+func ErrorSort(errors []Error) []Error {
+	slices.SortFunc(errors, func(a, b Error) int {
+		return a.Start.Pos - b.Start.Pos
+	})
+	return slices.CompactFunc(errors, func(a, b Error) bool {
+		return a.Error() == b.Error()
+	})
 }

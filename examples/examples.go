@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/dragonsinth/gaddis"
+	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"io"
@@ -21,7 +22,7 @@ func RunTest(t *testing.T, filename string) error {
 
 	block, _, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
-		for _, err := range errs {
+		for _, err := range ast.ErrorSort(errs) {
 			t.Error(err)
 		}
 		t.Fatalf("%s: failed to compile", filename)

@@ -3,7 +3,6 @@ package collect
 import (
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
-	"slices"
 )
 
 // TODO: collect modules, functions, classes here.
@@ -14,9 +13,6 @@ func Collect(prog *ast.Program) []ast.Error {
 	prog.Scope = ast.NewGlobalScope()
 	v.currScope = prog.Scope
 	prog.Block.Visit(v)
-	slices.SortFunc(v.errors, func(a, b ast.Error) int {
-		return a.Start.Pos - b.Start.Pos
-	})
 	return v.errors
 }
 

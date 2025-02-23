@@ -16,11 +16,11 @@ func Parse(input []byte) (*ast.Program, []ast.Comment, []ast.Error) {
 	l := lex.New(input)
 	p := New(l)
 	ret := p.parseGlobalBlock()
-	errs := p.errors
-	if len(errs) > maxErrors {
-		errs = errs[:maxErrors]
+	errors := p.errors
+	if len(errors) > maxErrors {
+		errors = errors[:maxErrors]
 	}
-	return ret, p.comments, errs
+	return ret, p.comments, errors
 }
 
 func New(l *lex.Lexer) *Parser {
@@ -74,7 +74,7 @@ func (p *Parser) nextNonComment() lex.Result {
 }
 
 func (p *Parser) parseGlobalBlock() *ast.Program {
-	bl := p.doParseBlock(true, lex.EOF)
+	bl := p.doParseBlock(true)
 	return &ast.Program{Block: bl}
 }
 
@@ -86,7 +86,7 @@ func (p *Parser) doParseBlock(isGlobal bool, endTokens ...lex.Token) *ast.Block 
 	var stmts []ast.Statement
 	for {
 		peek := p.SafePeek()
-		if slices.Contains(endTokens, peek.Token) {
+		if peek.Token == lex.EOF || slices.Contains(endTokens, peek.Token) {
 			si := toSourceInfo(peek)
 			if len(stmts) > 0 {
 				si = mergeSourceInfo(stmts[0], stmts[len(stmts)-1])
