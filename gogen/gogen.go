@@ -191,14 +191,21 @@ func (v *Visitor) PostVisitSetStmt(s *ast.SetStmt) {
 
 func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	v.indent()
-	is.If.Visit(v)
 
-	for _, cb := range is.ElseIf {
-		v.output(" else ")
-		cb.Visit(v)
-	}
-	if is.Else != nil {
-		is.Else.Visit(v)
+	for i, cb := range is.Cases {
+		if i > 0 {
+			v.output(" else ")
+		}
+		if cb.Expr != nil {
+			v.output("if ")
+			cb.Expr.Visit(v)
+			v.output(" {\n")
+		} else {
+			v.output("{\n")
+		}
+		cb.Block.Visit(v)
+		v.indent()
+		v.output("}")
 	}
 	v.output("\n")
 	return false
@@ -208,16 +215,6 @@ func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
 }
 
 func (v *Visitor) PreVisitCondBlock(cb *ast.CondBlock) bool {
-	if cb.Expr != nil {
-		v.output("if ")
-		cb.Expr.Visit(v)
-		v.output(" {\n")
-	} else {
-		v.output(" else {\n")
-	}
-	cb.Block.Visit(v)
-	v.indent()
-	v.output("}")
 	return false
 }
 

@@ -119,21 +119,17 @@ func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 }
 
 func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
-	count := 1 + len(is.ElseIf)
-	if is.Else != nil {
-		count++
-	}
-
 	alt := alternatives{}
-	pl := v.popList(count)
+	pl := v.popList(len(is.Cases))
 
-	alt.Add(pl.pop(is.If.Block))
-	for _, elseIf := range is.ElseIf {
-		alt.Add(pl.pop(elseIf.Block))
+	hasDefault := false
+	for _, cb := range is.Cases {
+		alt.Add(pl.pop(cb.Block))
+		if cb.Expr == nil {
+			hasDefault = true
+		}
 	}
-	if is.Else != nil {
-		alt.Add(pl.pop(is.Else.Block))
-	} else {
+	if !hasDefault {
 		alt.Add(CONTINUE) // every alternative could be skipped
 	}
 	v.push(is, alt.Result())

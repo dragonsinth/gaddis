@@ -176,29 +176,28 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		expr := p.parseExpression()
 		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Var: varExpr, Expr: expr}
 	case lex.IF:
-		ifCond := p.parseIfCondBlock(r.Pos)
+		cases := []*ast.CondBlock{p.parseIfCondBlock(r.Pos)}
 
 		// loop for else-if
-		var elseIfs []*ast.CondBlock
-		var elseCond *ast.CondBlock
 		for p.hasTok(lex.ELSE) {
 			r := p.parseTok(lex.ELSE)
 			if p.hasTok(lex.IF) {
 				// an else if block
 				p.parseTok(lex.IF)
 				elseIfCond := p.parseIfCondBlock(r.Pos)
-				elseIfs = append(elseIfs, elseIfCond)
+				cases = append(cases, elseIfCond)
 			} else {
 				// this is the final else block
 				p.parseEol()
 				elseBlock := p.parseBlock(lex.END)
-				elseCond = &ast.CondBlock{SourceInfo: spanAst(r, elseBlock), Block: elseBlock}
+				elseCond := &ast.CondBlock{SourceInfo: spanAst(r, elseBlock), Block: elseBlock}
+				cases = append(cases, elseCond)
 			}
 		}
 
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.IF)
-		return &ast.IfStmt{SourceInfo: spanResult(r, rEnd), If: ifCond, ElseIf: elseIfs, Else: elseCond}
+		return &ast.IfStmt{SourceInfo: spanResult(r, rEnd), Cases: cases}
 	case lex.SELECT:
 		expr := p.parseExpression()
 		p.parseEol()

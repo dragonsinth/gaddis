@@ -77,24 +77,17 @@ func (ss *SetStmt) Visit(v Visitor) {
 func (*SetStmt) isStatement() {
 }
 
-// TODO(scottb): could actually super clean this up like select statements.
 type IfStmt struct {
 	SourceInfo
-	If     *CondBlock
-	ElseIf []*CondBlock
-	Else   *CondBlock
+	Cases []*CondBlock // may end with an else block
 }
 
 func (is *IfStmt) Visit(v Visitor) {
 	if !v.PreVisitIfStmt(is) {
 		return
 	}
-	is.If.Visit(v)
-	for _, cb := range is.ElseIf {
+	for _, cb := range is.Cases {
 		cb.Visit(v)
-	}
-	if is.Else != nil {
-		is.Else.Visit(v)
 	}
 	v.PostVisitIfStmt(is)
 }
