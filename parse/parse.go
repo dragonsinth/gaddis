@@ -299,9 +299,6 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		rEnd := p.parseTok(lex.MODULE)
 		return &ast.ModuleStmt{SourceInfo: spanResult(r, rEnd), Name: name, Params: params, Block: block}
 	case lex.RETURN:
-		if isGlobalBlock {
-			panic(p.Errorf(r, "Return may not be declared in the global scope"))
-		}
 		expr := p.parseExpression()
 		return &ast.ReturnStmt{SourceInfo: spanAst(r, expr), Expr: expr}
 

@@ -19,3 +19,5 @@ func (bl *Block) Visit(v Visitor) {
 	}
 	v.PostVisitBlock(bl)
 }
+
+func (bl *Block) isStatement() {}
