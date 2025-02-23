@@ -52,7 +52,7 @@ func run() error {
 	prog, comments, errs := gaddis.Compile(gadSrc)
 	if len(errs) > 0 {
 		for _, err := range ast.ErrorSort(errs) {
-			log.Println(err)
+			_, _ = fmt.Fprintf(os.Stderr, "%s:%v\n", filename, err)
 		}
 		os.Exit(1)
 	}
