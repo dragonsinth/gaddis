@@ -1,10 +1,12 @@
 package base
 
 import (
+	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
 )
 
 type Visitor struct {
+	Errors []ast.Error
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -167,3 +169,10 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 }
 
 func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}
+
+func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
+	v.Errors = append(v.Errors, ast.Error{
+		SourceInfo: si.GetSourceInfo(),
+		Desc:       fmt.Sprintf(fmtStr, args...),
+	})
+}

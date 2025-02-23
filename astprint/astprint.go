@@ -74,7 +74,7 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 	v.bol(ds.Start)
 	defer v.eol(ds.End)
 
-	if ds.IsConst {
+	if ds.Decls[0].IsConst {
 		v.output("Constant ")
 	} else {
 		v.output("Declare ")

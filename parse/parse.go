@@ -145,7 +145,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			lastDecl = p.parseVarDecl(typ, true)
 			decls = append(decls, lastDecl)
 		}
-		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, Decls: decls}
+		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Decls: decls}
 	case lex.DECLARE:
 		typ := p.parseType()
 		var decls []*ast.VarDecl
@@ -156,7 +156,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			lastDecl = p.parseVarDecl(typ, false)
 			decls = append(decls, lastDecl)
 		}
-		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, Decls: decls}
+		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Decls: decls}
 	case lex.DISPLAY:
 		var exprs []ast.Expression
 		lastExpr := p.parseExpression()

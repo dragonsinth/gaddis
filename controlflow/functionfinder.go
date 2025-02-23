@@ -12,10 +12,6 @@ type FunctionFinder struct {
 
 var _ ast.Visitor = &FunctionFinder{}
 
-func (v *FunctionFinder) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
-	return true
-}
-
 func (v *FunctionFinder) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
 	v.functions = append(v.functions, fs)
 }

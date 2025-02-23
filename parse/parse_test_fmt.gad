@@ -1,4 +1,4 @@
-Declare Real TAX_RATE = 0.5
+Constant Real TAX_RATE = 0.5
 Declare Integer price, quantity, subtotal
 Display "Input price:"
 Input price
@@ -97,7 +97,7 @@ End Module
 
 Call cupsToOunces(8)
 
-Declare Real DISCOUNT_PERCENTAGE = 0.2
+Constant Real DISCOUNT_PERCENTAGE = 0.2
 Function Real discount(Real price)
 	Return (price * DISCOUNT_PERCENTAGE)
 End Function

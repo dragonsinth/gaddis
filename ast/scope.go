@@ -3,6 +3,7 @@ package ast
 import "fmt"
 
 // TODO: more than just var decls (module, function, class).
+// TODO: construct scopes during Parse? Automatically manage scope in base visitor?
 
 type Scope struct {
 	Parent       *Scope
