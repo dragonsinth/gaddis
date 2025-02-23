@@ -2,6 +2,7 @@ package parse
 
 import (
 	_ "embed"
+	"fmt"
 	"github.com/dragonsinth/gaddis/astprint"
 	"os"
 	"testing"
@@ -10,6 +11,8 @@ import (
 var (
 	//go:embed parse_test.gad
 	program string
+	//go:embed parse_test_fmt.gad
+	expectOut string
 )
 
 func TestParse(t *testing.T) {
@@ -22,5 +25,9 @@ func TestParse(t *testing.T) {
 	}
 
 	out := astprint.Print(block, comments)
-	os.Stdout.WriteString(out)
+	if out != expectOut {
+		fmt.Println(out)
+		t.Error("format changed")
+		os.WriteFile("parse_test_fmt.gad", []byte(out), 0666)
+	}
 }

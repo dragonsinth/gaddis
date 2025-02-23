@@ -94,7 +94,7 @@ func (v *Visitor) PreVisitCondBlock(cb *ast.CondBlock) bool {
 }
 
 func (v *Visitor) PostVisitCondBlock(cb *ast.CondBlock) {
-	if cb.Expr.GetType() != ast.Boolean {
+	if cb.Expr != nil && cb.Expr.GetType() != ast.Boolean {
 		v.Errorf(cb.Expr, "expected Boolean, got %s", cb.Expr.GetType())
 	}
 }
@@ -106,13 +106,14 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
 	dstType := ss.Expr.GetType()
 	for _, cb := range ss.Cases {
-		typ := ast.AreComparableTypes(dstType, cb.Expr.GetType())
-		if typ == ast.UnresolvedType {
-			v.Errorf(cb.Expr, "case %s not comparable to select %s", cb.Expr.GetType(), ss.Expr.GetType())
-		} else {
-			dstType = typ
+		if cb.Expr != nil {
+			typ := ast.AreComparableTypes(dstType, cb.Expr.GetType())
+			if typ == ast.UnresolvedType {
+				v.Errorf(cb.Expr, "case %s not comparable to select %s", cb.Expr.GetType(), ss.Expr.GetType())
+			} else {
+				dstType = typ
+			}
 		}
-		cb.Visit(v)
 	}
 	ss.Type = dstType
 }

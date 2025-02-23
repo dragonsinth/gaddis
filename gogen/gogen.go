@@ -198,10 +198,7 @@ func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 		cb.Visit(v)
 	}
 	if is.Else != nil {
-		v.output(" else {\n")
 		is.Else.Visit(v)
-		v.indent()
-		v.output("}")
 	}
 	v.output("\n")
 	return false
@@ -211,9 +208,13 @@ func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
 }
 
 func (v *Visitor) PreVisitCondBlock(cb *ast.CondBlock) bool {
-	v.output("if ")
-	cb.Expr.Visit(v)
-	v.output(" {\n")
+	if cb.Expr != nil {
+		v.output("if ")
+		cb.Expr.Visit(v)
+		v.output(" {\n")
+	} else {
+		v.output(" else {\n")
+	}
 	cb.Block.Visit(v)
 	v.indent()
 	v.output("}")
@@ -240,11 +241,6 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 	for _, cb := range ss.Cases {
 		cb.Visit(v)
 	}
-	if ss.Default != nil {
-		v.indent()
-		v.output("default:\n")
-		ss.Default.Visit(v)
-	}
 
 	v.ind = oldInd
 	v.indent()
@@ -257,9 +253,13 @@ func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
 
 func (v *Visitor) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
 	v.indent()
-	v.output("case ")
-	v.maybeCast(v.selectType, cb.Expr)
-	v.output(":\n")
+	if cb.Expr != nil {
+		v.output("case ")
+		v.maybeCast(v.selectType, cb.Expr)
+		v.output(":\n")
+	} else {
+		v.output("default:\n")
+	}
 	cb.Block.Visit(v)
 	return false
 }

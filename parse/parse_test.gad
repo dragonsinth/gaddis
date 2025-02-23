@@ -22,9 +22,12 @@ Else
   Display False
 End If
 
+// Comment
 If flag Then
+  // Comment
   Display True
 Else If flag Then
+  // Comment
   Display False
 End If
 

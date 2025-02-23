@@ -132,7 +132,7 @@ func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
 		alt.Add(pl.pop(elseIf.Block))
 	}
 	if is.Else != nil {
-		alt.Add(pl.pop(is.Else))
+		alt.Add(pl.pop(is.Else.Block))
 	} else {
 		alt.Add(CONTINUE) // every alternative could be skipped
 	}
@@ -151,19 +151,17 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 
 func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
 	count := len(ss.Cases)
-	if ss.Default != nil {
-		count++
-	}
-
 	alt := alternatives{}
 	pl := v.popList(count)
 
+	hasDefault := false
 	for _, cas := range ss.Cases {
 		alt.Add(pl.pop(cas.Block))
+		if cas.Expr == nil {
+			hasDefault = true
+		}
 	}
-	if ss.Default != nil {
-		alt.Add(pl.pop(ss.Default))
-	} else {
+	if !hasDefault {
 		alt.Add(CONTINUE) // every alternative could be skipped
 	}
 	v.push(ss, alt.Result())

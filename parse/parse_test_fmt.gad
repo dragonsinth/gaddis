@@ -1,0 +1,81 @@
+Constant Real TAX_RATE = 0.5
+Constant Integer price, quantity, subtotal
+Display "Input price:"
+Input price
+Display "Input quantity:"
+Input quantity
+Set subtotal = (price * quantity)
+Display "Subtotal:", subtotal
+Display "Total:", (subtotal + (subtotal * TAX_RATE))
+Constant Boolean flag
+Set flag = ((price == quantity) OR (price != quantity))
+Set flag = ((price <= quantity) AND (price < quantity))
+Set flag = ((price > quantity) AND (price > quantity))
+Set flag = (flag AND flag)
+Set flag = (flag OR flag)
+Set flag = NOT (flag)
+Input flag
+If flag Then
+	Display true
+Else
+	Display false
+End If
+If flag Then
+	Display true
+Else If flag Then
+	Display false
+End If
+If flag Then
+	Display true
+Else If flag Then
+	Display false
+Else
+	Display false
+End If
+Select flag
+	Case true:
+		Display "true"
+	Case false:
+		Display "false"
+End Select
+Constant Integer count = 1
+Select count
+	Case 0:
+		Display "zero"
+	Case 1:
+		Display "one"
+	Default:
+		Display "many"
+End Select
+While false
+	Display "wrong"
+End While
+Do
+	Display "once"
+While false
+Do
+	Display "once"
+Until true
+For count = 1 To 10
+	Display count
+End For
+For count = 10 To 1 Step -1
+	Display count
+End For
+For count = 0 To 100 Step 10
+	Display count
+End For
+Display -(count)
+Module getCups(Real Ref cups)
+	Display "Enter the number of cups."
+	Input cups
+End Module
+Module cupsToOunces(Real cups)
+	Display "That converts to ", (cups * 8), " ounces."
+End Module
+Call cupsToOunces(8)
+Constant Real DISCOUNT_PERCENTAGE = 0.2
+Function Real discount(Real price)
+	Return (price * DISCOUNT_PERCENTAGE)
+End Function
+Display discount(1)

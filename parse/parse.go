@@ -180,27 +180,30 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 
 		// loop for else-if
 		var elseIfs []*ast.CondBlock
-		var elseBlock *ast.Block
+		var elseCond *ast.CondBlock
 		for p.hasTok(lex.ELSE) {
-			p.parseTok(lex.ELSE)
+			r := p.parseTok(lex.ELSE)
 			if p.hasTok(lex.IF) {
 				// an else if block
-				r := p.parseTok(lex.IF)
+				p.parseTok(lex.IF)
 				elseIfCond := p.parseIfCondBlock(r.Pos)
 				elseIfs = append(elseIfs, elseIfCond)
 			} else {
 				// this is the final else block
 				p.parseEol()
-				elseBlock = p.parseBlock(lex.END)
+				elseBlock := p.parseBlock(lex.END)
+				elseCond = &ast.CondBlock{SourceInfo: spanAst(r, elseBlock), Block: elseBlock}
 			}
 		}
 
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.IF)
-		return &ast.IfStmt{SourceInfo: spanResult(r, rEnd), If: ifCond, ElseIf: elseIfs, Else: elseBlock}
+		return &ast.IfStmt{SourceInfo: spanResult(r, rEnd), If: ifCond, ElseIf: elseIfs, Else: elseCond}
 	case lex.SELECT:
 		expr := p.parseExpression()
 		p.parseEol()
+
+		// TODO: does the default block have to be last?
 
 		var cases []*ast.CaseBlock
 		for p.hasTok(lex.CASE) {
@@ -212,17 +215,17 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			cases = append(cases, &ast.CaseBlock{SourceInfo: spanAst(cr, block), Expr: caseExpr, Block: block})
 		}
 
-		var def *ast.Block
 		if p.hasTok(lex.DEFAULT) {
-			p.parseTok(lex.DEFAULT)
+			cr := p.parseTok(lex.DEFAULT)
 			p.parseTok(lex.COLON)
 			p.parseEol()
-			def = p.parseBlock(lex.END)
+			block := p.parseBlock(lex.END)
+			cases = append(cases, &ast.CaseBlock{SourceInfo: spanAst(cr, block), Expr: nil, Block: block})
 		}
 
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.SELECT)
-		return &ast.SelectStmt{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, Expr: expr, Cases: cases, Default: def}
+		return &ast.SelectStmt{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, Expr: expr, Cases: cases}
 	case lex.DO:
 		p.parseEol()
 		block := p.parseBlock(lex.WHILE, lex.UNTIL)
