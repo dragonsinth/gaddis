@@ -355,6 +355,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
 	v.ident(cs.Ref)
 	v.outputArguments(cs.Args, cs.Ref.Params)
+	v.output("\n")
 	return false
 }
 
