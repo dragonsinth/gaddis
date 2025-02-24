@@ -159,14 +159,20 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Decls: decls}
 	case lex.DISPLAY:
 		var exprs []ast.Expression
-		lastExpr := p.parseExpression()
-		exprs = append(exprs, lastExpr)
-		for p.hasTok(lex.COMMA) {
-			p.parseTok(lex.COMMA)
-			lastExpr = p.parseExpression()
-			exprs = append(exprs, lastExpr)
+		si := toSourceInfo(r)
+		if peek := p.Peek(); peek.Token != lex.EOL && peek.Token != lex.EOF {
+			for {
+				expr := p.parseExpression()
+				exprs = append(exprs, expr)
+				si = spanAst(r, expr)
+				if p.hasTok(lex.COMMA) {
+					p.parseTok(lex.COMMA)
+				} else {
+					break
+				}
+			}
 		}
-		return &ast.DisplayStmt{SourceInfo: spanAst(r, lastExpr), Exprs: exprs}
+		return &ast.DisplayStmt{SourceInfo: si, Exprs: exprs}
 	case lex.INPUT:
 		varExpr := p.parseVariableExpression()
 		return &ast.InputStmt{SourceInfo: spanAst(r, varExpr), Var: varExpr}

@@ -97,11 +97,12 @@ func (v *Visitor) PreVisitDisplayStmt(ds *ast.DisplayStmt) bool {
 	v.bol(ds.Start)
 	defer v.eol(ds.End)
 
-	v.output("Display ")
+	v.output("Display")
 	for i, arg := range ds.Exprs {
 		if i > 0 {
-			v.output(", ")
+			v.output(",")
 		}
+		v.output(" ")
 		arg.Visit(v)
 	}
 	return false

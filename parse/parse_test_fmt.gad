@@ -7,6 +7,7 @@ Input quantity
 Set subtotal = price * quantity
 Display "Subtotal:", subtotal
 Display "Total:", subtotal + subtotal * TAX_RATE
+Display
 
 Declare Boolean flag
 Set flag = price == quantity OR price != quantity

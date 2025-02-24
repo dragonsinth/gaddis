@@ -5,7 +5,8 @@ string> What state do you live in?
 string> What’s your zipcode?
 integer> What’s your phone number?
 string> What’s your college major?
-string> Name: Johnny Depp
+string> 
+Name: Johnny Depp
 Address:
 123 Main Street
 Los Angeles, CA 12345
