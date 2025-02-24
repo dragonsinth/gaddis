@@ -20,8 +20,10 @@ import (
 )
 
 var (
-	fVerbose = flag.Bool("v", false, "verbose logging to stderr")
-	fTest    = flag.Bool("t", false, "run in test mode; capture")
+	fVerbose  = flag.Bool("v", false, "verbose logging to stderr")
+	fTest     = flag.Bool("t", false, "run in test mode; capture")
+	fNoFormat = flag.Bool("no-format", false, "do not reformat")
+	fNoRun    = flag.Bool("no-run", false, "compile only, do not run")
 )
 
 func main() {
@@ -44,10 +46,11 @@ func run() error {
 	}
 
 	filename := flag.Arg(0)
-	gadSrc, err := os.ReadFile(filename)
+	gadBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("read file %s: %w", filename, err)
 	}
+	gadSrc := string(gadBytes)
 
 	prog, comments, errs := gaddis.Compile(gadSrc)
 	if len(errs) > 0 {
@@ -57,14 +60,21 @@ func run() error {
 		os.Exit(1)
 	}
 
+	outSrc := astprint.Print(prog, comments)
 	if *fVerbose {
-		dbgOut := astprint.Print(prog, comments)
-		os.Stdout.WriteString(dbgOut)
+		os.Stdout.WriteString(outSrc)
+	}
+	if !*fNoFormat {
+		_ = os.WriteFile(filename, []byte(outSrc), 0666)
 	}
 
 	goSrc := gogen.GoGenerate(prog)
 	if *fVerbose {
 		os.Stdout.WriteString(goSrc)
+	}
+
+	if *fNoRun {
+		return nil
 	}
 
 	var terminalInput bool

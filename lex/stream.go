@@ -1,7 +1,7 @@
 package lex
 
 type Stream struct {
-	buf    []byte
+	buf    string
 	pos    int
 	line   int
 	column int

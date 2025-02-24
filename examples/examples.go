@@ -16,10 +16,11 @@ import (
 )
 
 func RunTest(t *testing.T, filename string) error {
-	src, err := os.ReadFile(filename)
+	srcBytes, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatalf("failed to read file %s: %v", filename, err)
 	}
+	src := string(srcBytes)
 
 	prog, comments, errs := gaddis.Compile(src)
 	if len(errs) > 0 {

@@ -12,7 +12,7 @@ import (
 
 const maxErrors = 20
 
-func Parse(input []byte) (*ast.Program, []ast.Comment, []ast.Error) {
+func Parse(input string) (*ast.Program, []ast.Comment, []ast.Error) {
 	l := lex.New(input)
 	p := New(l)
 	ret := p.parseGlobalBlock()

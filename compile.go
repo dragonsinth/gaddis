@@ -9,7 +9,7 @@ import (
 	"github.com/dragonsinth/gaddis/typecheck"
 )
 
-func Compile(src []byte) (*ast.Program, []ast.Comment, []ast.Error) {
+func Compile(src string) (*ast.Program, []ast.Comment, []ast.Error) {
 	// parse and report lex/parse errors
 	prog, comments, errs := parse.Parse(src)
 	if len(errs) > 0 {

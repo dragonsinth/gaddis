@@ -18,7 +18,7 @@ var (
 )
 
 func TestParse(t *testing.T) {
-	block, comments, errs := Parse([]byte(program))
+	block, comments, errs := Parse(program)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			t.Error(err)
