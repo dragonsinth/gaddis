@@ -16,13 +16,18 @@ var (
 const oldPrefix = "package main_template\n"
 const newPrefix = "package main\n"
 
-func GoGenerate(prog *ast.Program) string {
+func GoGenerate(prog *ast.Program, isTest bool) string {
 	var sb strings.Builder
 
 	data := strings.TrimPrefix(builtins, oldPrefix)
 	sb.WriteString(newPrefix)
 	sb.WriteString(data)
 	v := New("", &sb)
+
+	if isTest {
+		// Lock the rng in test mode.
+		v.output("func init() { random.Seed(0) }\n")
+	}
 
 	// First, iterate the global block and emit any declarations.
 	for _, stmt := range prog.Block.Statements {
@@ -544,8 +549,12 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
-	v.indent()
-	v.ident(ce.Ref)
+	if ce.Ref.IsExternal {
+		v.output("Lib.")
+		v.output(ce.Ref.Name)
+	} else {
+		v.ident(ce.Ref)
+	}
 	v.outputArguments(ce.Args, ce.Ref.Params)
 	return false
 }

@@ -1,0 +1,4 @@
+Declare Integer x
+For x = 1 To 20
+	Display random(-10, 10)
+End For

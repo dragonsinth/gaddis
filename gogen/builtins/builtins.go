@@ -6,14 +6,18 @@ import (
 	"io"
 	"log"
 	"math"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
-type Builtins struct{}
+type builtin struct{}
 
-func (Builtins) Display(args ...any) {
+var Builtin = builtin{}
+
+func (builtin) Display(args ...any) {
 	var sb strings.Builder
 	tabCount := 0
 	for _, arg := range args {
@@ -37,7 +41,7 @@ func (Builtins) Display(args ...any) {
 	_, _ = fmt.Fprintln(stdout, sb.String())
 }
 
-func (Builtins) InputInteger() int64 {
+func (builtin) InputInteger() int64 {
 	for {
 		_, _ = fmt.Fprint(stdout, "integer> ")
 		input := readLine()
@@ -49,7 +53,7 @@ func (Builtins) InputInteger() int64 {
 	}
 }
 
-func (Builtins) InputReal() float64 {
+func (builtin) InputReal() float64 {
 	for {
 		_, _ = fmt.Fprint(stdout, "real> ")
 		input := readLine()
@@ -61,13 +65,13 @@ func (Builtins) InputReal() float64 {
 	}
 }
 
-func (Builtins) InputString() string {
+func (builtin) InputString() string {
 	_, _ = fmt.Fprint(stdout, "string> ")
 	input := readLine()
 	return input
 }
 
-func (Builtins) InputBoolean() bool {
+func (builtin) InputBoolean() bool {
 	for {
 		_, _ = fmt.Fprint(stdout, "boolean> ")
 		input := readLine()
@@ -79,11 +83,11 @@ func (Builtins) InputBoolean() bool {
 	}
 }
 
-func (Builtins) ModInteger(a, b int64) int64 {
+func (builtin) ModInteger(a, b int64) int64 {
 	return a % b
 }
 
-func (Builtins) ExpInteger(base, exp int64) int64 {
+func (builtin) ExpInteger(base, exp int64) int64 {
 	if exp < 0 {
 		return 0 // Or handle negative exponents as needed (e.g., return 1 / intPow(base, -exp))
 	}
@@ -105,15 +109,15 @@ func (Builtins) ExpInteger(base, exp int64) int64 {
 	return result
 }
 
-func (Builtins) ModReal(a, b float64) float64 {
+func (builtin) ModReal(a, b float64) float64 {
 	return math.Mod(a, b)
 }
 
-func (Builtins) ExpReal(base, exp float64) float64 {
+func (builtin) ExpReal(base, exp float64) float64 {
 	return math.Pow(base, exp)
 }
 
-func (Builtins) StepInteger(ref int64, stop int64, step int64) bool {
+func (builtin) StepInteger(ref int64, stop int64, step int64) bool {
 	if step < 0 {
 		return ref >= stop
 	} else {
@@ -121,7 +125,7 @@ func (Builtins) StepInteger(ref int64, stop int64, step int64) bool {
 	}
 }
 
-func (Builtins) StepReal(ref float64, stop float64, step float64) bool {
+func (builtin) StepReal(ref float64, stop float64, step float64) bool {
 	if step < 0 {
 		return ref >= stop
 	} else {
@@ -158,4 +162,12 @@ type tabDisplay struct{}
 // "Magic" Tab keyword when passed directly to [Builtins.Display].
 var TabDisplay = tabDisplay{}
 
-var Builtin = Builtins{}
+type lib struct{}
+
+var Lib = lib{}
+
+var random = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func (lib) Random(lo int64, hi int64) int64 {
+	return lo + random.Int63n(hi-lo+1)
+}

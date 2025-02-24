@@ -30,7 +30,7 @@ func RunTest(t *testing.T, filename string) error {
 		t.Fatalf("%s: failed to compile", filename)
 	}
 
-	goSrc := gogen.GoGenerate(prog)
+	goSrc := gogen.GoGenerate(prog, true)
 
 	var input bytes.Buffer
 	var output bytes.Buffer

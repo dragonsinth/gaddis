@@ -7,6 +7,7 @@ import "fmt"
 
 type Scope struct {
 	Parent       *Scope
+	IsExternal   bool          // if true, external scope
 	IsGlobal     bool          // if true, global scope
 	ModuleStmt   *ModuleStmt   // if true, enclosing module
 	FunctionStmt *FunctionStmt // if true, enclosing function
@@ -14,7 +15,9 @@ type Scope struct {
 }
 
 func (s *Scope) String() string {
-	if s.IsGlobal {
+	if s.IsExternal {
+		return "External Scope"
+	} else if s.IsGlobal {
 		return "Global Scope"
 	} else if s.ModuleStmt != nil {
 		return fmt.Sprintf("Module %s Scope", s.ModuleStmt.Name)
@@ -35,7 +38,11 @@ func (d *Decl) String() string {
 	if d.ModuleStmt != nil {
 		return fmt.Sprintf("Module %s", d.ModuleStmt.Name)
 	} else if d.FunctionStmt != nil {
-		return fmt.Sprintf("Function %s %s", d.FunctionStmt.Type, d.FunctionStmt.Name)
+		if d.FunctionStmt.IsExternal {
+			return fmt.Sprintf("External Function %s %s", d.FunctionStmt.Type, d.FunctionStmt.Name)
+		} else {
+			return fmt.Sprintf("Function %s %s", d.FunctionStmt.Type, d.FunctionStmt.Name)
+		}
 	} else if d.VarDecl != nil {
 		if d.VarDecl.IsParam {
 			if d.VarDecl.IsRef {
@@ -89,6 +96,7 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 
 func NewGlobalScope() *Scope {
 	return &Scope{
+		Parent:   ExternalScope,
 		IsGlobal: true,
 		Decls:    map[string]*Decl{},
 	}

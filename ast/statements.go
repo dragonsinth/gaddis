@@ -283,6 +283,8 @@ type FunctionStmt struct {
 	Params []*VarDecl
 	Block  *Block
 
+	IsExternal bool
+
 	Scope *Scope // collect
 }
 

@@ -68,7 +68,7 @@ func run() error {
 		_ = os.WriteFile(filename, []byte(outSrc), 0666)
 	}
 
-	goSrc := gogen.GoGenerate(prog)
+	goSrc := gogen.GoGenerate(prog, *fTest)
 	if *fVerbose {
 		os.Stdout.WriteString(goSrc)
 	}
