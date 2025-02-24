@@ -138,3 +138,5 @@ func stepReal(ref float64, stop float64, step float64) bool {
 		return ref <= stop
 	}
 }
+
+const Tab = "\t"

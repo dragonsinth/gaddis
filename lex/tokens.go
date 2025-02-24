@@ -70,6 +70,8 @@ const (
 	REAL_LIT
 	STR_LIT
 	CHR_LIT
+	TAB_LIT
+
 	TRUE
 	FALSE
 )
@@ -143,8 +145,10 @@ var tokens = []string{
 	REAL_LIT: "REAL_LIT",
 	STR_LIT:  "STR_LIT",
 	CHR_LIT:  "CHR_LIT",
-	TRUE:     "TRUE",
-	FALSE:    "FALSE",
+	TAB_LIT:  "TAB_LIT",
+
+	TRUE:  "TRUE",
+	FALSE: "FALSE",
 }
 
 var keywords = map[string]Token{
@@ -180,6 +184,7 @@ var keywords = map[string]Token{
 	"Call":      CALL,
 	"Function":  FUNCTION,
 	"Return":    RETURN,
+	"Tab":       TAB_LIT,
 	"True":      TRUE,
 	"False":     FALSE,
 }

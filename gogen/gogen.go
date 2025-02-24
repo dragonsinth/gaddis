@@ -456,6 +456,13 @@ func (v *Visitor) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
 func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
 }
 
+func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
+	v.output("Tab")
+	return false
+}
+
+func (v *Visitor) PostVisitTabLiteral(tl *ast.TabLiteral) {}
+
 func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
 	v.output(strconv.FormatBool(cl.Val))
 	return true

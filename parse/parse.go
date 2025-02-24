@@ -473,6 +473,8 @@ func (p *Parser) parseTerminal() ast.Expression {
 			panic(p.Errorf(r, "invalid Character literal %s", r.Text))
 		}
 		return &ast.CharacterLiteral{SourceInfo: toSourceInfo(r), Val: v[0]}
+	case lex.TAB_LIT:
+		return &ast.TabLiteral{SourceInfo: toSourceInfo(r)}
 	case lex.NOT:
 		expr := p.parseExpression()
 		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}

@@ -78,6 +78,23 @@ func (cl CharacterLiteral) GetType() Type {
 
 func (*CharacterLiteral) isExpression() {}
 
+type TabLiteral struct {
+	SourceInfo
+}
+
+func (tl *TabLiteral) Visit(v Visitor) {
+	if !v.PreVisitTabLiteral(tl) {
+		return
+	}
+	v.PostVisitTabLiteral(tl)
+}
+
+func (tl *TabLiteral) GetType() Type {
+	return String
+}
+
+func (*TabLiteral) isExpression() {}
+
 type BooleanLiteral struct {
 	SourceInfo
 	Val bool

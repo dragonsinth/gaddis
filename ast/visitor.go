@@ -62,6 +62,9 @@ type Visitor interface {
 	PreVisitCharacterLiteral(cl *CharacterLiteral) bool
 	PostVisitCharacterLiteral(cl *CharacterLiteral)
 
+	PreVisitTabLiteral(tl *TabLiteral) bool
+	PostVisitTabLiteral(tl *TabLiteral)
+
 	PreVisitBooleanLiteral(bl *BooleanLiteral) bool
 	PostVisitBooleanLiteral(bl *BooleanLiteral)
 

@@ -400,6 +400,13 @@ func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
 	return true
 }
 
+func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
+	v.output("Tab")
+	return false
+}
+
+func (v *Visitor) PostVisitTabLiteral(tl *ast.TabLiteral) {}
+
 func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
 }
 

@@ -15,9 +15,9 @@ Input phone
 Display "What’s your college major?"
 Input major
 Display
-Display "Name: ", username
+Display "Name:", Tab, Tab, username
 Display "Address:"
 Display address
 Display city, ", ", state, " ", zip
-Display "Phone number: ", phone
-Display "College major: ", major
+Display "Phone number:", Tab, Tab, phone
+Display "College major:", Tab, Tab, major

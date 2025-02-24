@@ -1,3 +1,4 @@
+// Start
 Constant Real TAX_RATE = 0.5
 Declare Integer price, quantity, subtotal
 Display "Input price:"
@@ -5,8 +6,8 @@ Input price
 Display "Input quantity:"
 Input quantity
 Set subtotal = price * quantity
-Display "Subtotal:", subtotal
-Display "Total:", subtotal + subtotal * TAX_RATE
+Display "Subtotal:", Tab, subtotal
+Display "Total:", Tab, subtotal + subtotal * TAX_RATE
 Display
 
 Declare Boolean flag

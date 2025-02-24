@@ -140,6 +140,12 @@ func (v *Visitor) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
 
 func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {}
 
+func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitTabLiteral(tl *ast.TabLiteral) {}
+
 func (v *Visitor) PreVisitBooleanLiteral(bl *ast.BooleanLiteral) bool {
 	return true
 }
