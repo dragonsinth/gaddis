@@ -96,6 +96,25 @@ func (bl BooleanLiteral) GetType() Type {
 
 func (*BooleanLiteral) isExpression() {}
 
+type ParenExpr struct {
+	SourceInfo
+	Expr Expression
+}
+
+func (pe *ParenExpr) Visit(v Visitor) {
+	if !v.PreVisitParenExpr(pe) {
+		return
+	}
+	pe.Expr.Visit(v)
+	v.PostVisitParenExpr(pe)
+}
+
+func (pe *ParenExpr) GetType() Type {
+	return pe.Expr.GetType()
+}
+
+func (*ParenExpr) isExpression() {}
+
 type UnaryOperation struct {
 	SourceInfo
 	Op   Operator

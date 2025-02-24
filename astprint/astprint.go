@@ -141,16 +141,16 @@ func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	defer v.eol(is.End)
 
 	for i, cb := range is.Cases {
-		if i > 0 {
-			v.output("Else")
-		}
 		if cb.Expr != nil {
 			if i > 0 {
-				v.output(" ")
+				v.output("Else ")
 			}
 			v.output("If ")
 			cb.Expr.Visit(v)
 			v.output(" Then")
+		} else {
+			v.bol(cb.Start)
+			v.output("Else")
 		}
 		v.eol(cb.Start)
 		cb.Block.Visit(v)
@@ -402,6 +402,15 @@ func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
 func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
 }
 
+func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
+	v.output("(")
+	pe.Expr.Visit(v)
+	v.output(")")
+	return false
+}
+
+func (v *Visitor) PostVisitParenExpr(pe *ast.ParenExpr) {}
+
 func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 	switch uo.Op {
 	case ast.NOT:
@@ -411,9 +420,7 @@ func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 	default:
 		panic(uo.Op)
 	}
-	v.output("(")
 	uo.Expr.Visit(v)
-	v.output(")")
 	return false
 }
 
@@ -421,13 +428,11 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 }
 
 func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
-	v.output("(")
 	bo.Lhs.Visit(v)
 	v.output(" ")
 	v.output(bo.Op.String())
 	v.output(" ")
 	bo.Rhs.Visit(v)
-	v.output(")")
 	return false
 }
 

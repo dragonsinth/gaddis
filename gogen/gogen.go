@@ -464,6 +464,13 @@ func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
 func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
 }
 
+func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
+	// unary/binary operation emit parens to force order of operations
+	return true
+}
+
+func (v *Visitor) PostVisitParenExpr(pe *ast.ParenExpr) {}
+
 func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 	switch uo.Op {
 	case ast.NOT:

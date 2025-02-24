@@ -63,9 +63,8 @@ func RunTest(t *testing.T, filename string) error {
 	inSrc := string(src)
 	outSrc := astprint.Print(prog, comments)
 	if inSrc != outSrc {
-		t.Logf("warning, source file changed")
-		//t.Error("format changed! updating source file...")
-		//_ = os.WriteFile(filename, []byte(outSrc), 0666)
+		t.Error("format changed! updating source file...")
+		_ = os.WriteFile(filename, []byte(outSrc), 0666)
 	}
 
 	return nil

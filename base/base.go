@@ -146,6 +146,12 @@ func (v *Visitor) PreVisitBooleanLiteral(bl *ast.BooleanLiteral) bool {
 
 func (v *Visitor) PostVisitBooleanLiteral(bl *ast.BooleanLiteral) {}
 
+func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitParenExpr(pe *ast.ParenExpr) {}
+
 func (v *Visitor) PreVisitUnaryOperation(uo *ast.UnaryOperation) bool {
 	return true
 }

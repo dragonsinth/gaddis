@@ -1,5 +1,5 @@
 // Global constant for the discount percentage.
-Constant Real DISCOUNT_PERCENTAGE = 0.20
+Constant Real DISCOUNT_PERCENTAGE = 0.2
 
 // The main module is the program's starting point.
 Module main()

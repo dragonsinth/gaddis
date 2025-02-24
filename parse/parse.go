@@ -479,8 +479,8 @@ func (p *Parser) parseTerminal() ast.Expression {
 		return &ast.BooleanLiteral{SourceInfo: toSourceInfo(r), Val: false}
 	case lex.LPAREN:
 		expr := p.parseExpression()
-		p.parseTok(lex.RPAREN)
-		return expr
+		rEnd := p.parseTok(lex.RPAREN)
+		return &ast.ParenExpr{SourceInfo: spanResult(r, rEnd), Expr: expr}
 	default:
 		panic(p.Errorf(r, "expected expression, got %s %q", r.Token, r.Text))
 	}

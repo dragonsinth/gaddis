@@ -65,6 +65,9 @@ type Visitor interface {
 	PreVisitBooleanLiteral(bl *BooleanLiteral) bool
 	PostVisitBooleanLiteral(bl *BooleanLiteral)
 
+	PreVisitParenExpr(pe *ParenExpr) bool
+	PostVisitParenExpr(pe *ParenExpr)
+
 	PreVisitUnaryOperation(uo *UnaryOperation) bool
 	PostVisitUnaryOperation(uo *UnaryOperation)
 
