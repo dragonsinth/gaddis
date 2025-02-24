@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type syncWriter interface {
@@ -19,19 +20,27 @@ var stdin = bufio.NewScanner(os.Stdin)
 var stdout = syncWriter(os.Stdout)
 
 func display(args ...any) {
+	var sb strings.Builder
+	tabCount := 0
 	for _, arg := range args {
 		switch typedArg := arg.(type) {
 		case bool:
 			if typedArg {
-				arg = "True"
+				sb.WriteString("True")
 			} else {
-				arg = "False"
+				sb.WriteString("False")
 			}
-			// TODO: special formatting for floats maybe?
+		case tabDisplay:
+			tabCount++
+			for sb.Len() < 8*tabCount {
+				sb.WriteByte(' ')
+			}
+		// TODO: special formatting for floats maybe?
+		default:
+			fmt.Fprint(&sb, arg)
 		}
-		_, _ = fmt.Fprint(stdout, arg)
 	}
-	_, _ = fmt.Fprintln(stdout)
+	_, _ = fmt.Fprintln(stdout, sb.String())
 }
 
 func readLine() string {
@@ -140,3 +149,7 @@ func stepReal(ref float64, stop float64, step float64) bool {
 }
 
 const Tab = "\t"
+
+type tabDisplay struct{}
+
+var TabDisplay = tabDisplay{}

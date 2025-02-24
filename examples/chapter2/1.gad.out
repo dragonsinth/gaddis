@@ -6,9 +6,9 @@ string> What’s your zipcode?
 integer> What’s your phone number?
 string> What’s your college major?
 string> 
-Name:		Johnny Depp
+Name:           Johnny Depp
 Address:
 123 Main Street
 Los Angeles, CA 12345
-Phone number:		999-123-4567
-College major:		Drama
+Phone number:   999-123-4567
+College major:  Drama

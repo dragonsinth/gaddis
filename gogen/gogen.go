@@ -155,7 +155,11 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 		if i > 0 {
 			v.output(", ")
 		}
-		arg.Visit(v)
+		if _, ok := arg.(*ast.TabLiteral); ok {
+			v.output("TabDisplay")
+		} else {
+			arg.Visit(v)
+		}
 	}
 	v.output(")\n")
 	return false
