@@ -150,7 +150,7 @@ func (v *Visitor) PostVisitDeclareStmt(stmt *ast.DeclareStmt) {
 
 func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 	v.indent()
-	v.output("display(")
+	v.output("Builtin.Display(")
 	for i, arg := range d.Exprs {
 		if i > 0 {
 			v.output(", ")
@@ -172,7 +172,7 @@ func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
 	i.Var.Visit(v)
 	v.output(" = ")
-	v.output("input")
+	v.output(" Builtin.Input")
 	v.output(i.Var.Type.String())
 	v.output("()\n")
 	return false
@@ -318,7 +318,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.output("\n")
 
 	v.indent()
-	v.output("for step")
+	v.output("for Builtin.Step")
 	refType := fs.Var.Type
 	v.output(refType.String())
 	v.output("(")
@@ -506,9 +506,9 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
 		if bo.Op == ast.MOD {
-			v.output("mod")
+			v.output("Builtin.Mod")
 		} else {
-			v.output("exp")
+			v.output("Builtin.Exp")
 		}
 		v.output(bo.Type.String())
 		v.output("(")

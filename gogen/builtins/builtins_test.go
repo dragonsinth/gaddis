@@ -22,7 +22,7 @@ func TestDisplay(t *testing.T) {
 	defer func() { stdout = oldStdout }()
 	stdout = noopSyncWriter{&outbuf}
 
-	display("the score is ", 17, " to ", 21.5, " is ", false)
+	Builtin.Display("the score is ", 17, " to ", 21.5, " is ", false)
 	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
 }
 
@@ -36,7 +36,7 @@ func TestInputInteger(t *testing.T) {
 	defer func() { stdin = oldStdin }()
 	stdin = bufio.NewScanner(strings.NewReader("not a number\n123\n"))
 
-	got := inputInteger()
+	got := Builtin.InputInteger()
 	assertEqual(t, int64(123), got)
 	if stdin.Scan() {
 		t.Error("extra input:", stdin.Text())
@@ -54,7 +54,7 @@ func TestInputReal(t *testing.T) {
 	defer func() { stdin = oldStdin }()
 	stdin = bufio.NewScanner(strings.NewReader("not a number\n123.456\n"))
 
-	got := inputReal()
+	got := Builtin.InputReal()
 	assertEqual(t, float64(123.456), got)
 	if stdin.Scan() {
 		t.Error("extra input:", stdin.Text())
@@ -72,7 +72,7 @@ func TestInputBoolean(t *testing.T) {
 	defer func() { stdin = oldStdin }()
 	stdin = bufio.NewScanner(strings.NewReader("not a boolean\ntrue\n"))
 
-	got := inputBoolean()
+	got := Builtin.InputBoolean()
 	assertEqual(t, true, got)
 	if stdin.Scan() {
 		t.Error("extra input:", stdin.Text())
@@ -90,7 +90,7 @@ func TestInputString(t *testing.T) {
 	defer func() { stdin = oldStdin }()
 	stdin = bufio.NewScanner(strings.NewReader("David\n"))
 
-	got := inputString()
+	got := Builtin.InputString()
 	assertEqual(t, "David", got)
 	if stdin.Scan() {
 		t.Error("extra input:", stdin.Text())
@@ -99,51 +99,51 @@ func TestInputString(t *testing.T) {
 }
 
 func TestModInteger(t *testing.T) {
-	assertEqual(t, 0, modInteger(5, 1))
-	assertEqual(t, 1, modInteger(5, 2))
-	assertEqual(t, 2, modInteger(5, 3))
+	assertEqual(t, 0, Builtin.ModInteger(5, 1))
+	assertEqual(t, 1, Builtin.ModInteger(5, 2))
+	assertEqual(t, 2, Builtin.ModInteger(5, 3))
 	// TODO: zero, negative behavior spec?
 }
 
 func TestModReal(t *testing.T) {
-	assertEqual(t, 0.5, modReal(5.5, 1))
-	assertEqual(t, 1.5, modReal(5.5, 2))
-	assertEqual(t, 2.5, modReal(5.5, 3))
+	assertEqual(t, 0.5, Builtin.ModReal(5.5, 1))
+	assertEqual(t, 1.5, Builtin.ModReal(5.5, 2))
+	assertEqual(t, 2.5, Builtin.ModReal(5.5, 3))
 	// TODO: zero, negative behavior spec?
 }
 
 func TestExpInteger(t *testing.T) {
-	assertEqual(t, 5, expInteger(5, 1))
-	assertEqual(t, 25, expInteger(5, 2))
-	assertEqual(t, 125, expInteger(5, 3))
+	assertEqual(t, 5, Builtin.ExpInteger(5, 1))
+	assertEqual(t, 25, Builtin.ExpInteger(5, 2))
+	assertEqual(t, 125, Builtin.ExpInteger(5, 3))
 	// TODO: zero, negative behavior spec?
 }
 
 func TestExpReal(t *testing.T) {
-	assertEqual(t, 0.5, expReal(0.5, 1))
-	assertEqual(t, 0.25, expReal(0.5, 2))
-	assertEqual(t, 0.125, expReal(0.5, 3))
+	assertEqual(t, 0.5, Builtin.ExpReal(0.5, 1))
+	assertEqual(t, 0.25, Builtin.ExpReal(0.5, 2))
+	assertEqual(t, 0.125, Builtin.ExpReal(0.5, 3))
 	// TODO: zero, negative behavior spec?
 }
 
 func TestStepInteger(t *testing.T) {
-	assertEqual(t, true, stepInteger(0, 1, 1))
-	assertEqual(t, true, stepInteger(1, 1, 1))
-	assertEqual(t, false, stepInteger(2, 1, 1))
+	assertEqual(t, true, Builtin.StepInteger(0, 1, 1))
+	assertEqual(t, true, Builtin.StepInteger(1, 1, 1))
+	assertEqual(t, false, Builtin.StepInteger(2, 1, 1))
 
-	assertEqual(t, true, stepInteger(2, 1, -1))
-	assertEqual(t, true, stepInteger(1, 1, -1))
-	assertEqual(t, false, stepInteger(0, 1, -1))
+	assertEqual(t, true, Builtin.StepInteger(2, 1, -1))
+	assertEqual(t, true, Builtin.StepInteger(1, 1, -1))
+	assertEqual(t, false, Builtin.StepInteger(0, 1, -1))
 }
 
 func TestStepReal(t *testing.T) {
-	assertEqual(t, true, stepReal(0, 1, 1))
-	assertEqual(t, true, stepReal(1, 1, 1))
-	assertEqual(t, false, stepReal(2, 1, 1))
+	assertEqual(t, true, Builtin.StepReal(0, 1, 1))
+	assertEqual(t, true, Builtin.StepReal(1, 1, 1))
+	assertEqual(t, false, Builtin.StepReal(2, 1, 1))
 
-	assertEqual(t, true, stepReal(2, 1, -1))
-	assertEqual(t, true, stepReal(1, 1, -1))
-	assertEqual(t, false, stepReal(0, 1, -1))
+	assertEqual(t, true, Builtin.StepReal(2, 1, -1))
+	assertEqual(t, true, Builtin.StepReal(1, 1, -1))
+	assertEqual(t, false, Builtin.StepReal(0, 1, -1))
 }
 
 func assertEqual[T comparable](t *testing.T, want T, got T) {

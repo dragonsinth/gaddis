@@ -11,15 +11,9 @@ import (
 	"strings"
 )
 
-type syncWriter interface {
-	io.Writer
-	Sync() error
-}
+type Builtins struct{}
 
-var stdin = bufio.NewScanner(os.Stdin)
-var stdout = syncWriter(os.Stdout)
-
-func display(args ...any) {
+func (Builtins) Display(args ...any) {
 	var sb strings.Builder
 	tabCount := 0
 	for _, arg := range args {
@@ -43,20 +37,7 @@ func display(args ...any) {
 	_, _ = fmt.Fprintln(stdout, sb.String())
 }
 
-func readLine() string {
-	_ = stdout.Sync() // ensure any prompts are flushed
-	if !stdin.Scan() {
-		log.Fatal(io.EOF)
-	}
-	input, err := stdin.Text(), stdin.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-	_ = stdout.Sync() // ensure user's newline is flushed to the terminal
-	return input
-}
-
-func inputInteger() int64 {
+func (Builtins) InputInteger() int64 {
 	for {
 		_, _ = fmt.Fprint(stdout, "integer> ")
 		input := readLine()
@@ -68,7 +49,7 @@ func inputInteger() int64 {
 	}
 }
 
-func inputReal() float64 {
+func (Builtins) InputReal() float64 {
 	for {
 		_, _ = fmt.Fprint(stdout, "real> ")
 		input := readLine()
@@ -80,13 +61,13 @@ func inputReal() float64 {
 	}
 }
 
-func inputString() string {
+func (Builtins) InputString() string {
 	_, _ = fmt.Fprint(stdout, "string> ")
 	input := readLine()
 	return input
 }
 
-func inputBoolean() bool {
+func (Builtins) InputBoolean() bool {
 	for {
 		_, _ = fmt.Fprint(stdout, "boolean> ")
 		input := readLine()
@@ -98,11 +79,11 @@ func inputBoolean() bool {
 	}
 }
 
-func modInteger(a, b int64) int64 {
+func (Builtins) ModInteger(a, b int64) int64 {
 	return a % b
 }
 
-func expInteger(base, exp int64) int64 {
+func (Builtins) ExpInteger(base, exp int64) int64 {
 	if exp < 0 {
 		return 0 // Or handle negative exponents as needed (e.g., return 1 / intPow(base, -exp))
 	}
@@ -124,15 +105,15 @@ func expInteger(base, exp int64) int64 {
 	return result
 }
 
-func modReal(a, b float64) float64 {
+func (Builtins) ModReal(a, b float64) float64 {
 	return math.Mod(a, b)
 }
 
-func expReal(base, exp float64) float64 {
+func (Builtins) ExpReal(base, exp float64) float64 {
 	return math.Pow(base, exp)
 }
 
-func stepInteger(ref int64, stop int64, step int64) bool {
+func (Builtins) StepInteger(ref int64, stop int64, step int64) bool {
 	if step < 0 {
 		return ref >= stop
 	} else {
@@ -140,7 +121,7 @@ func stepInteger(ref int64, stop int64, step int64) bool {
 	}
 }
 
-func stepReal(ref float64, stop float64, step float64) bool {
+func (Builtins) StepReal(ref float64, stop float64, step float64) bool {
 	if step < 0 {
 		return ref >= stop
 	} else {
@@ -148,8 +129,33 @@ func stepReal(ref float64, stop float64, step float64) bool {
 	}
 }
 
+type syncWriter interface {
+	io.Writer
+	Sync() error
+}
+
+var stdin = bufio.NewScanner(os.Stdin)
+var stdout = syncWriter(os.Stdout)
+
+func readLine() string {
+	_ = stdout.Sync() // ensure any prompts are flushed
+	if !stdin.Scan() {
+		log.Fatal(io.EOF)
+	}
+	input, err := stdin.Text(), stdin.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = stdout.Sync() // ensure user's newline is flushed to the terminal
+	return input
+}
+
+// Literal string Tab keyword.
 const Tab = "\t"
 
 type tabDisplay struct{}
 
+// "Magic" Tab keyword when passed directly to [Builtins.Display].
 var TabDisplay = tabDisplay{}
+
+var Builtin = Builtins{}
