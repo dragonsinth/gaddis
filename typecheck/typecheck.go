@@ -216,7 +216,7 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 		}
 	}
 	if len(args) != len(params) {
-		v.Errorf(si, "expected %d args, got %d", len(args), len(params))
+		v.Errorf(si, "expected %d args, got %d", len(params), len(args))
 	}
 }
 

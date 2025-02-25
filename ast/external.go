@@ -1,9 +1,8 @@
 package ast
 
 import (
-	main_template "github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/lib"
 	"reflect"
-	"strings"
 )
 
 var ExternalScope = computeExternalScope()
@@ -15,27 +14,24 @@ func computeExternalScope() *Scope {
 		Decls:      map[string]*Decl{},
 	}
 
-	libType := reflect.TypeOf(main_template.Lib)
-	for i := 0; i < libType.NumMethod(); i++ {
-		fs := translateMethod(libType.Method(i))
+	for name, f := range lib.External {
+		fs := translateMethod(name, reflect.TypeOf(f))
 		fs.Scope = ret
-		lower := strings.ToLower(fs.Name)
-		camel := lower[:1] + fs.Name[1:]
-		ret.Decls[camel] = &Decl{FunctionStmt: fs}
+		ret.Decls[name] = &Decl{FunctionStmt: fs}
 	}
 
 	return ret
 }
 
-func translateMethod(m reflect.Method) *FunctionStmt {
-	if m.Type.NumOut() != 1 {
-		panic(m)
+func translateMethod(name string, methodType reflect.Type) *FunctionStmt {
+	if methodType.NumOut() != 1 {
+		panic(name)
 	}
-	returnType := translateType(m.Type.Out(0))
+	returnType := translateType(methodType.Out(0))
 
 	var params []*VarDecl
-	for i := 1; i < m.Type.NumIn(); i++ {
-		p := m.Type.In(i)
+	for i := 0; i < methodType.NumIn(); i++ {
+		p := methodType.In(i)
 		params = append(params, &VarDecl{
 			Type:    translateType(p),
 			IsParam: true,
@@ -44,7 +40,7 @@ func translateMethod(m reflect.Method) *FunctionStmt {
 
 	return &FunctionStmt{
 		SourceInfo: SourceInfo{},
-		Name:       m.Name,
+		Name:       name,
 		Type:       returnType,
 		Params:     params,
 		IsExternal: true,

@@ -3,7 +3,9 @@ package gogen
 import (
 	_ "embed"
 	"github.com/dragonsinth/gaddis/ast"
+	"github.com/dragonsinth/gaddis/lib"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -13,20 +15,31 @@ var (
 	builtins string
 )
 
-const oldPrefix = "package main_template\n"
-const newPrefix = "package main\n"
-
 func GoGenerate(prog *ast.Program, isTest bool) string {
 	var sb strings.Builder
+	sb.WriteString("package main\n")
 
-	data := strings.TrimPrefix(builtins, oldPrefix)
-	sb.WriteString(newPrefix)
-	sb.WriteString(data)
+	var imports, code []string
+	parseGoCode(lib.Source, &imports, &code)
+	parseGoCode(builtins, &imports, &code)
+
+	slices.Sort(imports)
+	imports = slices.Compact(imports)
+	for _, imp := range imports {
+		sb.WriteString(imp)
+		sb.WriteByte('\n')
+	}
+	for _, c := range code {
+		sb.WriteString(c)
+		sb.WriteByte('\n')
+	}
+	sb.WriteByte('\n')
+
 	v := New("", &sb)
 
 	if isTest {
 		// Lock the rng in test mode.
-		v.output("func init() { random.Seed(0) }\n")
+		v.output("func init() { rng.Seed(0) }\n\n")
 	}
 
 	// First, iterate the global block and emit any declarations.
@@ -83,6 +96,20 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 	v.PostVisitBlock(prog.Block)
 	v.output("}\n")
 	return sb.String()
+}
+
+func parseGoCode(source string, imports *[]string, code *[]string) {
+	for _, line := range strings.Split(source, "\n") {
+		if strings.HasPrefix(line, "package ") {
+			continue //skip the package statement
+		} else if strings.HasPrefix(line, "import (") {
+			panic("don't use block import! use individual imports only")
+		} else if strings.HasPrefix(line, "import ") {
+			*imports = append(*imports, line)
+		} else {
+			*code = append(*code, line)
+		}
+	}
 }
 
 func New(indent string, out io.StringWriter) *Visitor {
@@ -155,7 +182,7 @@ func (v *Visitor) PostVisitDeclareStmt(stmt *ast.DeclareStmt) {
 
 func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 	v.indent()
-	v.output("Builtin.Display(")
+	v.output("Display(")
 	for i, arg := range d.Exprs {
 		if i > 0 {
 			v.output(", ")
@@ -177,7 +204,7 @@ func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
 	i.Var.Visit(v)
 	v.output(" = ")
-	v.output(" Builtin.Input")
+	v.output(" Input")
 	v.output(i.Var.Type.String())
 	v.output("()\n")
 	return false
@@ -323,7 +350,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.output("\n")
 
 	v.indent()
-	v.output("for Builtin.Step")
+	v.output("for Step")
 	refType := fs.Var.Type
 	v.output(refType.String())
 	v.output("(")
@@ -511,9 +538,9 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
 		if bo.Op == ast.MOD {
-			v.output("Builtin.Mod")
+			v.output("Mod")
 		} else {
-			v.output("Builtin.Exp")
+			v.output("Exp")
 		}
 		v.output(bo.Type.String())
 		v.output("(")
@@ -550,7 +577,6 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	if ce.Ref.IsExternal {
-		v.output("Lib.")
 		v.output(ce.Ref.Name)
 	} else {
 		v.ident(ce.Ref)
