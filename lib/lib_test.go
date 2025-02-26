@@ -18,7 +18,7 @@ func TestCurrencyFormat(t *testing.T) {
 		{1234567.891, "$1,234,567.89"},
 		{-9876.54, "-$9,876.54"},
 	} {
-		got := currencyFormat(tc.in)
+		got := string(currencyFormat(tc.in))
 		if got != tc.want {
 			t.Errorf("currencyFormat(%f) = %s, want %s", tc.in, got, tc.want)
 		}
@@ -39,7 +39,7 @@ func TestSubstring(t *testing.T) {
 		{"abcd", 1, 3, "bcd"},
 		{"abcd", 2, 3, "cd"},
 	} {
-		got := substring(tc.in, tc.start, tc.end)
+		got := string(substring([]byte(tc.in), tc.start, tc.end))
 		if got != tc.want {
 			t.Errorf("substring(%s) = %s, want %s", tc.in, got, tc.want)
 		}

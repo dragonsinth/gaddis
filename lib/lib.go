@@ -1,10 +1,10 @@
 package lib
 
+import "bytes"
 import "math"
-import "strconv"
-import "strings"
-import "time"
 import "math/rand"
+import "strconv"
+import "time"
 
 var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -30,8 +30,8 @@ func toReal(x int64) float64 {
 	return float64(x)
 }
 
-func currencyFormat(amount float64) string {
-	var sb strings.Builder
+func currencyFormat(amount float64) []byte {
+	var sb bytes.Buffer
 	cents := int64(math.Round(amount * 100))
 	if cents < 0 {
 		sb.WriteByte('-')
@@ -63,50 +63,50 @@ func currencyFormat(amount float64) string {
 	sb.WriteByte('.')
 	sb.WriteByte('0' + pennies/10)
 	sb.WriteByte('0' + pennies%10)
-	return sb.String()
+	return sb.Bytes()
 }
 
-func length(s string) int64 {
+func length(s []byte) int64 {
 	return int64(len(s))
 }
 
-func append(a, b string) string {
-	return a + b
+func append(a, b []byte) []byte {
+	return []byte(string(a) + string(b))
 }
 
 var (
-	toUpper = strings.ToUpper
-	toLower = strings.ToLower
+	toUpper = bytes.ToUpper
+	toLower = bytes.ToLower
 )
 
-func substring(s string, start int64, end int64) string {
+func substring(s []byte, start int64, end int64) []byte {
 	return s[start : end+1]
 }
 
-var contains = strings.Contains
+var contains = bytes.Contains
 
-func stringToInteger(s string) int64 {
-	v, err := strconv.ParseInt(s, 10, 64)
+func stringToInteger(s []byte) int64 {
+	v, err := strconv.ParseInt(string(s), 10, 64)
 	if err != nil {
 		panic(err)
 	}
 	return v
 }
 
-func stringToReal(s string) float64 {
-	v, err := strconv.ParseFloat(s, 64)
+func stringToReal(s []byte) float64 {
+	v, err := strconv.ParseFloat(string(s), 64)
 	if err != nil {
 		panic(err)
 	}
 	return v
 }
 
-func isInteger(s string) bool {
-	_, err := strconv.ParseInt(s, 10, 64)
+func isInteger(s []byte) bool {
+	_, err := strconv.ParseInt(string(s), 10, 64)
 	return err == nil
 }
 
-func isReal(s string) bool {
-	_, err := strconv.ParseFloat(s, 64)
+func isReal(s []byte) bool {
+	_, err := strconv.ParseFloat(string(s), 64)
 	return err == nil
 }

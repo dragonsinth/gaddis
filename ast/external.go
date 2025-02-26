@@ -49,9 +49,9 @@ func translateMethod(name string, methodType reflect.Type) *FunctionStmt {
 }
 
 func translateType(inType reflect.Type) Type {
-	t, ok := reverseTypeMap[inType.Name()]
+	t, ok := reverseTypeMap[inType.String()]
 	if !ok {
-		panic(inType)
+		panic(inType.String())
 	}
 	return t
 }
@@ -59,7 +59,7 @@ func translateType(inType reflect.Type) Type {
 var reverseTypeMap = map[string]Type{
 	"int64":   Integer,
 	"float64": Real,
-	"string":  String,
+	"[]uint8": String,
 	"byte":    Character,
 	"bool":    Boolean,
 }

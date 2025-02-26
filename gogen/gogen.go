@@ -1,18 +1,12 @@
 package gogen
 
 import (
-	_ "embed"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/lib"
 	"io"
 	"slices"
 	"strconv"
 	"strings"
-)
-
-var (
-	//go:embed builtins/builtins.go
-	builtins string
 )
 
 func GoGenerate(prog *ast.Program, isTest bool) string {
@@ -33,6 +27,7 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 		sb.WriteString(c)
 		sb.WriteByte('\n')
 	}
+
 	sb.WriteByte('\n')
 
 	v := New("", &sb)
@@ -96,20 +91,6 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 	v.PostVisitBlock(prog.Block)
 	v.output("}\n")
 	return sb.String()
-}
-
-func parseGoCode(source string, imports *[]string, code *[]string) {
-	for _, line := range strings.Split(source, "\n") {
-		if strings.HasPrefix(line, "package ") {
-			continue //skip the package statement
-		} else if strings.HasPrefix(line, "import (") {
-			panic("don't use block import! use individual imports only")
-		} else if strings.HasPrefix(line, "import ") {
-			*imports = append(*imports, line)
-		} else {
-			*code = append(*code, line)
-		}
-	}
 }
 
 func New(indent string, out io.StringWriter) *Visitor {
@@ -477,7 +458,9 @@ func (v *Visitor) PostVisitRealLiteral(l *ast.RealLiteral) {
 }
 
 func (v *Visitor) PreVisitStringLiteral(sl *ast.StringLiteral) bool {
+	v.output("String(")
 	v.output(strconv.Quote(sl.Val))
+	v.output(")")
 	return true
 }
 
@@ -643,7 +626,7 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 var goTypes = [...]string{
 	ast.Integer:   "int64",
 	ast.Real:      "float64",
-	ast.String:    "string",
+	ast.String:    "String",
 	ast.Character: "character",
 	ast.Boolean:   "bool",
 }

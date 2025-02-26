@@ -1,5 +1,6 @@
 package builtins
 
+import "bytes"
 import "bufio"
 import "fmt"
 import "io"
@@ -7,10 +8,11 @@ import "log"
 import "math"
 import "os"
 import "strconv"
-import "strings"
+
+type String = []byte
 
 func Display(args ...any) {
-	var sb strings.Builder
+	var sb bytes.Buffer
 	tabCount := 0
 	for _, arg := range args {
 		switch typedArg := arg.(type) {
@@ -25,19 +27,24 @@ func Display(args ...any) {
 			for sb.Len() < 8*tabCount {
 				sb.WriteByte(' ')
 			}
+		case string:
+			sb.WriteString(typedArg)
+		case String:
+			sb.Write(typedArg)
 		// TODO: special formatting for floats maybe?
 		default:
 			_, _ = fmt.Fprint(&sb, arg)
 		}
 	}
-	_, _ = fmt.Fprintln(stdout, sb.String())
+	sb.WriteByte('\n')
+	stdout.Write(sb.Bytes())
 }
 
 func InputInteger() int64 {
 	for {
 		_, _ = fmt.Fprint(stdout, "integer> ")
 		input := readLine()
-		v, err := strconv.ParseInt(input, 10, 64)
+		v, err := strconv.ParseInt(string(input), 10, 64)
 		if err == nil {
 			return v
 		}
@@ -49,7 +56,7 @@ func InputReal() float64 {
 	for {
 		_, _ = fmt.Fprint(stdout, "real> ")
 		input := readLine()
-		v, err := strconv.ParseFloat(input, 64)
+		v, err := strconv.ParseFloat(string(input), 64)
 		if err == nil {
 			return v
 		}
@@ -57,7 +64,7 @@ func InputReal() float64 {
 	}
 }
 
-func InputString() string {
+func InputString() String {
 	_, _ = fmt.Fprint(stdout, "string> ")
 	input := readLine()
 	return input
@@ -67,7 +74,7 @@ func InputBoolean() bool {
 	for {
 		_, _ = fmt.Fprint(stdout, "boolean> ")
 		input := readLine()
-		v, err := strconv.ParseBool(input)
+		v, err := strconv.ParseBool(string(input))
 		if err == nil {
 			return v
 		}
@@ -133,12 +140,12 @@ type syncWriter interface {
 var stdin = bufio.NewScanner(os.Stdin)
 var stdout = syncWriter(os.Stdout)
 
-func readLine() string {
+func readLine() String {
 	_ = stdout.Sync() // ensure any prompts are flushed
 	if !stdin.Scan() {
 		log.Fatal(io.EOF)
 	}
-	input, err := stdin.Text(), stdin.Err()
+	input, err := stdin.Bytes(), stdin.Err()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -147,7 +154,7 @@ func readLine() string {
 }
 
 // Literal string Tab keyword.
-const Tab = "\t"
+var Tab = String("\t")
 
 type tabDisplay struct{}
 

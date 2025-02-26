@@ -91,7 +91,7 @@ func TestInputString(t *testing.T) {
 	stdin = bufio.NewScanner(strings.NewReader("David\n"))
 
 	got := InputString()
-	assertEqual(t, "David", got)
+	assertEqual(t, "David", string(got))
 	if stdin.Scan() {
 		t.Error("extra input:", stdin.Text())
 	}
