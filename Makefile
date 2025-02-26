@@ -55,7 +55,7 @@ ineffassign:
 .PHONY: predeclared
 predeclared:
 	@go install github.com/nishanths/predeclared@245576f9a85c96ea16c750df3887f1d827f01e9c
-	predeclared ./...
+	predeclared -ignore append ./...
 
 # Intentionally omitted from CI, but target here for ad-hoc reports.
 .PHONY: golint
