@@ -31,7 +31,7 @@ type Lexer struct {
 
 func New(input string) *Lexer {
 	return &Lexer{
-		stream: &Stream{buf: input, pos: 0, line: 1, column: 0},
+		stream: &Stream{buf: input, pos: 0, line: 1, column: 1},
 	}
 }
 

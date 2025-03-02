@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"testing"
 )
 
@@ -47,9 +46,22 @@ func RunTest(t *testing.T, filename string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	err = goexec.Run(ctx, goSrc, filepath.Dir(filename), io.NopCloser(&input), &output, &errput)
+	br, err := goexec.Build(ctx, goSrc, filename)
+	defer func() {
+		if br.GoFile != "" {
+			_ = os.Remove(br.GoFile)
+		}
+		if br.ExeFile != "" {
+			_ = os.Remove(br.ExeFile)
+		}
+	}()
 	if err != nil {
-		t.Fatalf("failed to exec %s: %v", filename, err)
+		t.Fatalf("failed to build %s: %v", filename, err)
+	}
+
+	err = goexec.Run(ctx, br.ExeFile, io.NopCloser(&input), &output, &errput)
+	if err != nil {
+		t.Fatalf("failed to exec %s: %v", br.ExeFile, err)
 	}
 	if errput.Len() > 0 {
 		t.Fatalf("stderr:\n%s", errput.String())

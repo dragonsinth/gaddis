@@ -2,45 +2,38 @@ package goexec
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sync"
 )
 
-func Run(ctx context.Context, goSrc string, dir string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) error {
-	goBytes := []byte(goSrc)
-	hash := sha256.New()
-	hash.Write(goBytes)
-	sum := hash.Sum(nil)
-	sha := hex.EncodeToString(sum)
+type BuildResult struct {
+	GoFile  string
+	ExeFile string
+}
 
-	var goFile = filepath.Join(dir, fmt.Sprintf("main-%s.tmp.go", sha))
-	if err := os.WriteFile(goFile, goBytes, 0644); err != nil {
-		return fmt.Errorf("could not write %s: %w", goFile, err)
+func Build(ctx context.Context, goSrc string, basename string) (BuildResult, error) {
+	var ret BuildResult
+	var goFile = basename + ".go"
+	if err := os.WriteFile(goFile, []byte(goSrc), 0644); err != nil {
+		return ret, fmt.Errorf("could not write %s: %w", goFile, err)
 	}
-	defer func() {
-		_ = os.Remove(goFile)
-	}()
+	ret.GoFile = goFile
 
-	// Compile the Go program
-	var execFile = filepath.Join(dir, fmt.Sprintf("main-%s.tmp.exec", sha))
+	var execFile = basename + ".exe"
 	compileCmd := exec.CommandContext(ctx, "go", "build", "-o", execFile, goFile)
-	compileCmd.Dir = dir
 	if compileOut, err := compileCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("compile failed: %w\n%s", err, string(compileOut))
+		return ret, fmt.Errorf("compile failed: %w\n%s", err, string(compileOut))
 	}
-	defer func() {
-		_ = os.Remove(execFile)
-	}()
+	ret.ExeFile = execFile
+	return ret, nil
+}
 
+func Run(ctx context.Context, execFile string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) error {
 	// Run the compiled binary
 	runCmd := exec.CommandContext(ctx, execFile)
-	runCmd.Dir = dir
 	stdinPipe, _ := runCmd.StdinPipe()
 	stdoutPipe, _ := runCmd.StdoutPipe()
 	stderrPipe, _ := runCmd.StderrPipe()

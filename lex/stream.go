@@ -17,7 +17,7 @@ func (s *Stream) Next() byte {
 	s.column++
 	if ret == '\n' {
 		s.line++
-		s.column = 0
+		s.column = 1
 	}
 	return ret
 }
