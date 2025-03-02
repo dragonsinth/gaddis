@@ -1,7 +1,6 @@
-import * as os from 'os';
 import * as child_process from 'child_process';
-import * as path from 'path';
 import * as vscode from 'vscode';
+import {getGaddisExecutablePath} from './platform';
 
 export function activate(context: vscode.ExtensionContext) {
     const window = vscode.window
@@ -15,8 +14,11 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const format = vscode.languages.registerDocumentFormattingEditProvider('gaddis', {
+    subs.push(vscode.languages.registerDocumentFormattingEditProvider('gaddis', {
         async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+            if (document.languageId !== 'gaddis') {
+                return [];
+            }
             try {
                 return await formatDocument(gaddisCmd, document);
             } catch (error) {
@@ -24,14 +26,16 @@ export function activate(context: vscode.ExtensionContext) {
                 return []; // Return an empty array to indicate no edits.
             }
         },
-    });
-    subs.push(format);
+    }));
 
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('gaddis');
 
     const dirty: Record<string, vscode.TextDocument> = {}
 
-    async function runDiagnostics(document: vscode.TextDocument, reason: string) {
+    async function runDiagnostics(document: vscode.TextDocument) {
+        if (document.languageId !== 'gaddis') {
+            return [];
+        }
         try {
             if (document.isClosed) {
                 return
@@ -52,14 +56,14 @@ export function activate(context: vscode.ExtensionContext) {
         const todo = Object.entries(dirty)
         flushTimeout = null;
         for (const entry of todo) {
-            runDiagnostics(entry[1], 'flush').catch(() => {
+            runDiagnostics(entry[1]).catch(() => {
             });
         }
     }
 
     // Run diagnostics on document open, save, and change
-    vscode.workspace.onDidOpenTextDocument(d => runDiagnostics(d, 'open'));
-    vscode.workspace.onDidSaveTextDocument(d => runDiagnostics(d, 'save'));
+    vscode.workspace.onDidOpenTextDocument(d => runDiagnostics(d));
+    vscode.workspace.onDidSaveTextDocument(d => runDiagnostics(d));
     vscode.workspace.onDidChangeTextDocument((event) => {
         const doc = event.document;
         dirty[doc.fileName] = doc;
@@ -71,7 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Run diagnostics on activation for the active document.
     if (window.activeTextEditor) {
-        runDiagnostics(window.activeTextEditor.document, 'activate');
+        runDiagnostics(window.activeTextEditor.document);
     }
     subs.push(diagnosticCollection);
 }
@@ -145,31 +149,4 @@ async function runCheck(gaddisCmd: string, document: vscode.TextDocument): Promi
         process.stdin.write(document.getText());
         process.stdin.end();
     });
-}
-
-
-const OS_MAP: { [key: string]: string } = {
-    win32: 'windows',
-    darwin: 'darwin',
-    linux: 'linux',
-};
-
-const ARCH_MAP: { [key: string]: string } = {
-    arm64: 'arm64',
-    x64: 'amd64',
-};
-
-function getGaddisExecutablePath(context: vscode.ExtensionContext): string {
-    const platform = os.platform();
-    const arch = os.arch();
-
-    const goOS = OS_MAP[platform];
-    if (!goOS) {
-        throw new Error(`Unsupported platform: ${platform}`);
-    }
-    const goArch = ARCH_MAP[arch];
-    if (!goArch) {
-        throw new Error(`Unsupported architecture: ${arch}`);
-    }
-    return path.join(context.extensionPath, 'bin', `gaddis-${goOS}-${goArch}`);
 }
