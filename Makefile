@@ -73,3 +73,16 @@ errcheck:
 test:
 	# The race detector requires CGO: https://github.com/golang/go/issues/6508
 	CGO_ENABLED=1 go test -race ./...
+
+.PHONY: plugin
+plugin:
+	npm --prefix vscode-gaddis install
+	npm --prefix vscode-gaddis run compile
+	mkdir -p vscode-gaddis/bin
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-darwin-arm64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-darwin-amd64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-linux-arm64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-linux-amd64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-windows-arm64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-windows-amd64 ./cmd/gaddis
+	cd vscode-gaddis && npx vsce package

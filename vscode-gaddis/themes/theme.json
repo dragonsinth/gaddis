@@ -1,0 +1,36 @@
+{
+    "$schema": "vscode://schemas/color-theme",
+    "name": "My Gaddis Theme",
+    "type": "light",
+    "include": "./light_vs.json",
+    "tokenColors": [
+        {
+            "name": "Operators",
+            "scope": "keyword.operator.gaddis",
+            "settings": {
+                "foreground": "#800000"
+            }
+        },
+        {
+            "name": "Storage",
+            "scope": "storage.type.gaddis",
+            "settings": {
+                "foreground": "#0000DD"
+            }
+        },
+        {
+            "name": "Support",
+            "scope": "support.function.gaddis",
+            "settings": {
+                "foreground": "#1111DD"
+            }
+        },
+        {
+            "name": "Variables",
+            "scope": "variable.other.gaddis",
+            "settings": {
+                "foreground": "#004000"
+            }
+        }
+    ]
+}

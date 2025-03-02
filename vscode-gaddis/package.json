@@ -1,0 +1,59 @@
+{
+  "name": "dragonsinth-gaddis-vscode",
+  "displayName": "dragonsinth-gaddis-vscode",
+  "description": "Provides language definitions for Gaddis Pseudocode.",
+  "version": "0.0.1",
+  "publisher": "dragonsinth",
+  "repository": "https://github.com/dragonsinth/gaddis/vscode-gaddis",
+  "engines": {
+    "vscode": "^1.97.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/gaddis.js",
+  "activationEvents": [
+    "onLanguage:gaddis"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "gaddis",
+        "aliases": [
+          "Gaddis Pseudocode",
+          "gaddis"
+        ],
+        "extensions": [
+          ".gad",
+          ".gaddis"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gaddis",
+        "scopeName": "source.gaddis",
+        "path": "./syntaxes/gaddis.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "Gaddis Theme",
+        "uiTheme": "vs",
+        "path": "./themes/theme.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.8",
+    "@types/vscode": "^1.97.0",
+    "typescript": "^5.8.2",
+    "vsce": "^2.15.0"
+  }
+}

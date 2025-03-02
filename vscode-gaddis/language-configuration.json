@@ -1,0 +1,32 @@
+{
+    "comments": {
+        "lineComment": "//"
+    },
+    "brackets": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"]
+    ],
+    "autoClosingPairs": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""],
+        ["'", "'"]
+    ],
+    "surroundingPairs": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""],
+        ["'", "'"]
+    ],
+    "indentationRules": {
+        "increaseIndentPattern": "^((?!\\/\\/).)*(\\{[^}\"']*|\\([^)\"']*|\\[[^\\]\"']*)$",
+        "decreaseIndentPattern": "^((?!\\/\\/).)*(\\}|\\)|\\])$"
+    },
+    "indentation": {
+        "tabSize": 4,
+        "insertSpaces": false
+    }
+}

@@ -1,0 +1,166 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Gaddis Pseudolanguage",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#whitespace"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#operators"
+		},
+		{
+			"include": "#booleans"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#storage"
+		},
+		{
+			"include": "#support"
+		},
+		{
+			"include": "#variables"
+		}
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-slash.gaddis",
+					"match": "(//).*$\n?",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.comment.gaddis"
+						}
+					}
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.gaddis",
+					"begin": "\"",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.begin.gaddis"
+						}
+					},
+					"end": "\"|$",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.end.gaddis"
+						}
+					},
+					"patterns": [
+						{
+							"name": "constant.character.escape.gaddis",
+							"match": "\\\\."
+						}
+					]		
+				},
+				{
+					"name": "string.quoted.single.gaddis",
+					"begin": "'",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.begin.gaddis"
+						}
+					},
+					"end": "'|$",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.end.gaddis"
+						}
+					},
+					"patterns": [
+						{
+							"name": "constant.character.escape.gaddis",
+							"match": "\\\\."
+						}
+					]		
+				}
+			]
+		},
+		"whitespace": {
+			"patterns": [
+				{
+					"name": "invalid.illegal.whitespace.gaddis",
+					"match": "\\s+"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.gaddis",
+					"match": "\\b(If|Then|Else|End|While|Do|Until|For|Module|Function|Class|New|Declare|Constant|To|In|Each|Select|Case|Default)\\b"
+				}
+			]
+		},
+		"operators": {
+			"patterns": [
+				{
+					"name": "keyword.operator.gaddis",
+					"match": "\\b(AND|OR|NOT|MOD)\\b"
+				},
+				{
+					"name": "keyword.operator.gaddis",
+					"match": "=|>=|<=|==|!=|>|<|\\+|\\-|\\*|/|\\^"
+				}
+			]
+		},
+		"booleans": {
+			"patterns": [
+				{
+					"name": "constant.language.gaddis",
+					"match": "\\b(True|False)\\b"
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.gaddis",
+					"match": "\\b(\\-?[0-9]+(\\.[0-9]+)?)\\b"
+				}
+			]
+		},
+		"storage": {
+			"patterns": [
+				{
+					"name": "storage.type.gaddis",
+					"match": "\\b(Integer|Real|String|Float|Boolean)\\b"
+				}
+			]
+		},
+		"support": {
+			"patterns": [
+				{
+					"name": "support.function.gaddis",
+					"match": "\\b(Set|Input|Display|Call|Open|Read|Write|Close|Rename|Delete)\\b"
+				}
+			]
+		},
+		"variables": {
+			"patterns": [
+				{
+					"name": "variable.other.gaddis",
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b"
+				}
+			]
+		}
+	},
+	"scopeName": "source.gaddis"
+}
