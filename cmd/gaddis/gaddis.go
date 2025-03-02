@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -108,7 +109,7 @@ func readSourceFromArgs(args []string) (*source, error) {
 			isStdin:  true,
 		}, nil
 	case 1:
-		filename := flag.Arg(0)
+		filename := args[0]
 		buf, err := os.ReadFile(filename)
 		if err != nil {
 			return nil, fmt.Errorf("read file %s: %w", filename, err)
@@ -131,8 +132,8 @@ func format(args []string) error {
 
 	// parse and report lex/parse errors only
 	prog, comments, errs := parse.Parse(src.src)
+	reportErrors(errs, src.desc(), *fJson, os.Stderr)
 	if len(errs) > 0 {
-		reportErrors(errs, src.desc(), *fJson, os.Stderr)
 		os.Exit(1)
 	}
 
@@ -155,12 +156,7 @@ func check(args []string) error {
 
 	// Only check errors; output to stdout
 	_, _, errs := gaddis.Compile(src.src)
-	if len(errs) > 0 {
-		reportErrors(errs, src.desc(), *fJson, os.Stdout)
-	} else if *fJson {
-		fmt.Println("[]")
-	}
-
+	reportErrors(errs, src.desc(), *fJson, os.Stdout)
 	return nil
 }
 
@@ -171,10 +167,8 @@ func run(args []string, stopAfterBuild bool, isTest bool, leaveBuildOutputs bool
 	}
 
 	prog, comments, errs := gaddis.Compile(src.src)
+	reportErrors(errs, src.desc(), *fJson, os.Stdout)
 	if len(errs) > 0 {
-		for _, err := range ast.ErrorSort(errs) {
-			_, _ = fmt.Fprintf(os.Stderr, "%s:%v\n", src.desc(), err)
-		}
 		os.Exit(1)
 	}
 
@@ -299,11 +293,45 @@ func run(args []string, stopAfterBuild bool, isTest bool, leaveBuildOutputs bool
 	return nil
 }
 
+type Diagnostic struct {
+	Range    Range  `json:"range"`
+	Message  string `json:"message"`
+	Severity int    `json:"severity"`
+	Source   string `json:"source,omitempty"`
+}
+
+type Range struct {
+	Start Position `json:"start"`
+	End   Position `json:"end"`
+}
+
+type Position struct {
+	Line      int `json:"line"`
+	Character int `json:"character"`
+}
+
 func reportErrors(errs []ast.Error, desc string, asJson bool, dst io.Writer) {
 	if asJson {
-		panic("todo")
-	}
-	for _, err := range ast.ErrorSort(errs) {
-		_, _ = fmt.Fprintf(dst, "%s:%v\n", desc, err)
+		ret := make([]Diagnostic, 0, len(errs))
+		for _, e := range errs {
+			ret = append(ret, Diagnostic{
+				Range: Range{
+					Start: Position{Line: e.Start.Line - 1, Character: e.Start.Column - 1},
+					End:   Position{Line: e.End.Line - 1, Character: e.End.Column - 1},
+				},
+				Message:  e.Desc,
+				Severity: 0, // TODO: severities?
+				Source:   "gaddis",
+			})
+		}
+		buf, err := json.Marshal(ret)
+		if err != nil {
+			panic(err)
+		}
+		_, _ = os.Stdout.Write(buf)
+	} else {
+		for _, err := range ast.ErrorSort(errs) {
+			_, _ = fmt.Fprintf(dst, "%s:%v\n", desc, err)
+		}
 	}
 }
