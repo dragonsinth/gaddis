@@ -22,7 +22,7 @@ func TestDisplay(t *testing.T) {
 	defer func() { stdout = oldStdout }()
 	stdout = noopSyncWriter{&outbuf}
 
-	Display("the score is ", 17, " to ", 21.5, " is ", false)
+	Display([]byte("the score is "), 17, []byte(" to "), 21.5, []byte(" is "), false)
 	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
 }
 

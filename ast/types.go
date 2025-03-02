@@ -1,9 +1,35 @@
 package ast
 
-type Type int
+type TypeKey string
+
+type Type interface {
+	IsPrimitive() bool
+	AsPrimitive() PrimitiveType
+	Key() TypeKey
+	String() string
+	IsNumeric() bool
+	isType()
+}
+
+type PrimitiveType int
+
+func (t PrimitiveType) IsPrimitive() bool {
+	return true
+}
+
+func (t PrimitiveType) AsPrimitive() PrimitiveType {
+	return t
+}
+
+func (t PrimitiveType) IsNumeric() bool {
+	return t == Integer || t == Real
+}
+
+func (t PrimitiveType) isType() {
+}
 
 const (
-	UnresolvedType = Type(iota)
+	UnresolvedType = PrimitiveType(iota)
 	Integer
 	Real
 	String
@@ -13,12 +39,14 @@ const (
 
 var typeNames = [...]string{"INVALID", "Integer", "Real", "String", "Character", "Boolean"}
 
-func (t Type) String() string {
-	return typeNames[t]
+var _ Type = UnresolvedType
+
+func (t PrimitiveType) Key() TypeKey {
+	return TypeKey(typeNames[t])
 }
 
-func IsNumericType(t Type) bool {
-	return t == Integer || t == Real
+func (t PrimitiveType) String() string {
+	return typeNames[t]
 }
 
 func CanCoerce(dst Type, src Type) bool {
@@ -35,7 +63,7 @@ func AreComparableTypes(a Type, b Type) Type {
 	if a == b {
 		return a
 	}
-	if IsNumericType(a) && IsNumericType(b) {
+	if a.IsNumeric() && b.IsNumeric() {
 		return Real // promote
 	}
 	return UnresolvedType

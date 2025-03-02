@@ -47,7 +47,7 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 				v.output("var ")
 				v.ident(decl)
 				v.output(" ")
-				v.output(goTypes[decl.Type])
+				v.typeName(decl.Type)
 				v.output("\n")
 			}
 		case *ast.ModuleStmt, *ast.FunctionStmt:
@@ -124,7 +124,7 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 		if vd.IsRef {
 			v.output("*")
 		}
-		v.output(goTypes[vd.Type])
+		v.typeName(vd.Type)
 		return false
 	}
 	v.indent()
@@ -135,7 +135,7 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	}
 	v.ident(vd)
 	v.output(" ")
-	v.output(goTypes[vd.Type])
+	v.typeName(vd.Type)
 	if vd.Expr != nil {
 		v.output(" = ")
 		v.maybeCast(vd.Type, vd.Expr)
@@ -424,7 +424,7 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 		param.Visit(v)
 	}
 	v.output(") ")
-	v.output(goTypes[fs.Type])
+	v.typeName(fs.Type)
 	v.output("{\n")
 	fs.Block.Visit(v)
 	v.indent()
@@ -621,6 +621,13 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 		}
 	}
 	v.output(")")
+}
+
+func (v *Visitor) typeName(t ast.Type) {
+	if !t.IsPrimitive() {
+		panic("TODO: implement non-primitive types")
+	}
+	v.output(goTypes[t.AsPrimitive()])
 }
 
 var goTypes = [...]string{

@@ -28,7 +28,7 @@ func Display(args ...any) {
 				sb.WriteByte(' ')
 			}
 		case string:
-			sb.WriteString(typedArg)
+			panic(typedArg) // should be impossible
 		case String:
 			sb.Write(typedArg)
 		// TODO: special formatting for floats maybe?
@@ -37,7 +37,7 @@ func Display(args ...any) {
 		}
 	}
 	sb.WriteByte('\n')
-	stdout.Write(sb.Bytes())
+	_, _ = stdout.Write(sb.Bytes())
 }
 
 func InputInteger() int64 {
@@ -153,10 +153,10 @@ func readLine() String {
 	return input
 }
 
-// Literal string Tab keyword.
+// Tab keyword.
 var Tab = String("\t")
 
 type tabDisplay struct{}
 
-// "Magic" Tab keyword when passed directly to [Builtins.Display].
+// TabDisplay is "Magic" when passed directly to [Builtins.Display].
 var TabDisplay = tabDisplay{}

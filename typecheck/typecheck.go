@@ -80,7 +80,7 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 	refType := fs.Var.Type
-	if !ast.IsNumericType(refType) {
+	if !refType.IsNumeric() {
 		v.Errorf(fs.Var, "loop variable must be a number, got %s %s", refType, fs.Var.Name)
 	}
 	if fs.Var.Ref.IsConst {
@@ -122,7 +122,7 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 			v.Errorf(uo.Expr, "operator %s expects operand of type %s to be Boolean", op, typ)
 		}
 	case ast.NEG:
-		if ok && !ast.IsNumericType(typ) {
+		if ok && !typ.IsNumeric() {
 			v.Errorf(uo.Expr, "operator %s expects operand of type %s to be numeric", op, typ)
 		}
 	default:
@@ -140,10 +140,10 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 	switch op {
 	case ast.ADD, ast.SUB, ast.MUL, ast.DIV, ast.EXP, ast.MOD:
 		// TODO: special case ADD as concat?
-		if aOk && !ast.IsNumericType(aTyp) {
+		if aOk && !aTyp.IsNumeric() {
 			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be numeric", op, aTyp)
 		}
-		if bOk && !ast.IsNumericType(bTyp) {
+		if bOk && !bTyp.IsNumeric() {
 			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be numeric", op, bTyp)
 		}
 		if ok {
