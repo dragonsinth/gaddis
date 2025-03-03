@@ -22,8 +22,9 @@ updatedeps:
 	go mod tidy
 
 .PHONY: install
-install:
+install: plugin
 	go install -ldflags '-X "main.version=dev build $(dev_build_version)"' ./...
+	code --install-extension vscode-gaddis/dragonsinth-gaddis-vscode-*.vsix || echo "warning: failed to install into vscode"
 
 .PHONY: release
 release:
@@ -85,4 +86,5 @@ plugin:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-linux-amd64 ./cmd/gaddis
 	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-windows-arm64 ./cmd/gaddis
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-windows-amd64 ./cmd/gaddis
+	@rm -f vscode-gaddis/dragonsinth-gaddis-vscode-*.vsix
 	cd vscode-gaddis && npx vsce package
