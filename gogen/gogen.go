@@ -531,6 +531,15 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 		v.output(", ")
 		v.maybeCast(dstType, bo.Rhs)
 		v.output(")")
+	} else if dstType == ast.String {
+		// force byte[] to string for comparisons
+		v.output("(string(")
+		v.maybeCast(dstType, bo.Lhs)
+		v.output(") ")
+		v.output(goBinaryOperators[bo.Op])
+		v.output(" string(")
+		v.maybeCast(dstType, bo.Rhs)
+		v.output("))")
 	} else {
 		v.output("(")
 		v.maybeCast(dstType, bo.Lhs)

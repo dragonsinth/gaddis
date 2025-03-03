@@ -16,6 +16,21 @@
     "onLanguage:gaddis"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "gaddis.runTask",
+        "title": "Gaddis Run"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorLangId == gaddis",
+          "command": "gaddis.runTask",
+          "group": "navigation"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "gaddis",

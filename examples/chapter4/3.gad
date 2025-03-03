@@ -1,0 +1,41 @@
+Declare String primColorLeft, primColorRight, finalColor
+
+// This loop exits after valid primary color is entered.
+While primColorLeft != "red" AND primColorLeft != "yellow" AND primColorLeft != "blue"
+	Display "What's the first primary color you want to add to the mixer?"
+	Display "(Type lowercase red, yellow, or blue.)"
+	Input primColorLeft
+
+	// Error message with invalid selection
+	If primColorLeft != "red" AND primColorLeft != "yellow" AND primColorLeft != "blue" Then
+		Display "Try again!"
+	End If
+End While
+
+// Similar conditions but also requires two different primary colors to exit loop.
+While (primColorRight != "red" AND primColorRight != "yellow" AND primColorRight != "blue") OR primColorLeft == primColorRight
+	Display "You entered ", primColorLeft, ". What's the second primary color you want to add to the mixer?"
+	Display "(Type (a different color) lowercase red, yellow, or blue.)"
+	Input primColorRight
+
+	// Error message with invalid selection
+	If primColorRight != "red" AND primColorRight != "yellow" AND primColorRight != "blue" Then
+		Display "Try again!"
+	End If
+
+	// Different error message with the same color used again
+	If primColorLeft == primColorRight Then
+		Display "Try again with a different color."
+	End If
+End While
+
+If primColorLeft != "red" AND primColorRight != "red" Then
+	Set finalColor = "green"
+End If
+If primColorLeft != "yellow" AND primColorRight != "yellow" Then
+	Set finalColor = "purple"
+End If
+If primColorLeft != "blue" AND primColorRight != "blue" Then
+	Set finalColor = "orange"
+End If
+Display "Result: ", finalColor, "!"

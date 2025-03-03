@@ -1,0 +1,11 @@
+What's the first primary color you want to add to the mixer?
+(Type lowercase red, yellow, or blue.)
+string> Try again!
+What's the first primary color you want to add to the mixer?
+(Type lowercase red, yellow, or blue.)
+string> You entered red. What's the second primary color you want to add to the mixer?
+(Type (a different color) lowercase red, yellow, or blue.)
+string> Try again with a different color.
+You entered red. What's the second primary color you want to add to the mixer?
+(Type (a different color) lowercase red, yellow, or blue.)
+string> Result: purple!

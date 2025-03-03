@@ -23,5 +23,5 @@ go.work.sum
 dist/
 
 # project
-*.tmp.go
-*.tmp.exec
+*.gad.go
+*.gad.exe
