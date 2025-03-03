@@ -1,4 +1,3 @@
-bin
 .gitignore
 .vscode/**
 *.vsix

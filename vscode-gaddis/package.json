@@ -2,7 +2,7 @@
   "name": "dragonsinth-gaddis-vscode",
   "displayName": "dragonsinth-gaddis-vscode",
   "description": "Provides language definitions for Gaddis Pseudocode.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "dragonsinth",
   "repository": "https://github.com/dragonsinth/gaddis/vscode-gaddis",
   "engines": {
