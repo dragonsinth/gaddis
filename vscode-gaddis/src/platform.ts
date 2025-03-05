@@ -25,5 +25,6 @@ export function getGaddisExecutablePath(context: vscode.ExtensionContext): strin
     if (!goArch) {
         throw new Error(`Unsupported architecture: ${arch}`);
     }
-    return path.join(context.extensionPath, 'bin', `gaddis-${goOS}-${goArch}`);
+    const ext = (goOS == 'windows') ? '.exe' : ''
+    return path.join(context.extensionPath, 'bin', `gaddis-${goOS}-${goArch}${ext}`);
 }

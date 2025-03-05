@@ -1,4 +1,5 @@
 dev_build_version=$(shell git describe --tags --always --dirty)
+short_version := $(subst v,,$(word 1,$(subst -, ,$(dev_build_version))))
 
 # Disable CGO for improved compatibility across distros
 export CGO_ENABLED=0
@@ -24,7 +25,8 @@ updatedeps:
 .PHONY: install
 install: plugin
 	go install -ldflags '-X "main.version=dev build $(dev_build_version)"' ./...
-	code --install-extension vscode-gaddis/dragonsinth-gaddis-vscode-*.vsix || echo "warning: failed to install into vscode"
+	@code --uninstall-extension dragonsinth.gaddis-vscode > /dev/null 2>&1 && echo "uninstalled previous extension" || echo "no problem"
+	@code --install-extension vscode-gaddis/gaddis-vscode.vsix || echo "warning: failed to install into vscode"
 
 .PHONY: release
 release:
@@ -77,14 +79,14 @@ test:
 
 .PHONY: plugin
 plugin:
-	npm --prefix vscode-gaddis install
-	npm --prefix vscode-gaddis run compile
+	cd vscode-gaddis && npm install
+	cd vscode-gaddis && npm run compile
 	mkdir -p vscode-gaddis/bin
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-darwin-arm64 ./cmd/gaddis
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-darwin-amd64 ./cmd/gaddis
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-linux-arm64 ./cmd/gaddis
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-linux-amd64 ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-windows-arm64 ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-windows-amd64 ./cmd/gaddis
-	@rm -f vscode-gaddis/dragonsinth-gaddis-vscode-*.vsix
-	cd vscode-gaddis && npx vsce package
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-windows-arm64.exe ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-windows-amd64.exe ./cmd/gaddis
+	@rm -f vscode-gaddis/gaddis-vscode-*.vsix
+	cd vscode-gaddis && npx vsce package -o gaddis-vscode.vsix $(short_version)
