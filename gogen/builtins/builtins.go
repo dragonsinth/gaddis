@@ -4,14 +4,24 @@ import "bytes"
 import "bufio"
 import "fmt"
 import "io"
-import "log"
 import "math"
 import "os"
 import "strconv"
 
 type String = []byte
 
-func Display(args ...any) {
+type SyncWriter interface {
+	io.Writer
+	Sync() error
+}
+
+type IoContext struct {
+	Stdin  *bufio.Scanner
+	Stdout SyncWriter
+	Stderr SyncWriter
+}
+
+func (ctx IoContext) Display(args ...any) {
 	var sb bytes.Buffer
 	tabCount := 0
 	for _, arg := range args {
@@ -37,50 +47,77 @@ func Display(args ...any) {
 		}
 	}
 	sb.WriteByte('\n')
-	_, _ = stdout.Write(sb.Bytes())
+	_, _ = ctx.Stdout.Write(sb.Bytes())
 }
 
-func InputInteger() int64 {
+func (ctx IoContext) InputInteger() int64 {
 	for {
-		_, _ = fmt.Fprint(stdout, "integer> ")
-		input := readLine()
+		_, _ = fmt.Fprint(ctx.Stdout, "integer> ")
+		input := ctx.readLine()
 		v, err := strconv.ParseInt(string(input), 10, 64)
 		if err == nil {
 			return v
 		}
-		_, _ = fmt.Fprintln(stdout, "error, invalid integer, try again")
+		_, _ = fmt.Fprintln(ctx.Stdout, "error, invalid integer, try again")
 	}
 }
 
-func InputReal() float64 {
+func (ctx IoContext) InputReal() float64 {
 	for {
-		_, _ = fmt.Fprint(stdout, "real> ")
-		input := readLine()
+		_, _ = fmt.Fprint(ctx.Stdout, "real> ")
+		input := ctx.readLine()
 		v, err := strconv.ParseFloat(string(input), 64)
 		if err == nil {
 			return v
 		}
-		_, _ = fmt.Fprintln(stdout, "error, invalid real, try again")
+		_, _ = fmt.Fprintln(ctx.Stdout, "error, invalid real, try again")
 	}
 }
 
-func InputString() String {
-	_, _ = fmt.Fprint(stdout, "string> ")
-	input := readLine()
+func (ctx IoContext) InputString() String {
+	_, _ = fmt.Fprint(ctx.Stdout, "string> ")
+	input := ctx.readLine()
 	return input
 }
 
-func InputBoolean() bool {
+func (ctx IoContext) InputBoolean() bool {
 	for {
-		_, _ = fmt.Fprint(stdout, "boolean> ")
-		input := readLine()
+		_, _ = fmt.Fprint(ctx.Stdout, "boolean> ")
+		input := ctx.readLine()
 		v, err := strconv.ParseBool(string(input))
 		if err == nil {
 			return v
 		}
-		_, _ = fmt.Fprintln(stdout, "error, invalid boolean, try again")
+		_, _ = fmt.Fprintln(ctx.Stdout, "error, invalid boolean, try again")
 	}
 }
+
+func (ctx IoContext) readLine() String {
+	_ = ctx.Stdout.Sync() // ensure any prompts are flushed
+	if !ctx.Stdin.Scan() {
+		panic(io.EOF)
+	}
+	input, err := ctx.Stdin.Bytes(), ctx.Stdin.Err()
+	if err != nil {
+		panic(err)
+	}
+	_ = ctx.Stdout.Sync() // ensure user's newline is flushed to the terminal
+	return input
+}
+
+var defaultCtx = IoContext{
+	Stdin:  bufio.NewScanner(os.Stdin),
+	Stdout: os.Stdout,
+	Stderr: os.Stderr,
+}
+
+var (
+	Display      = defaultCtx.Display
+	InputInteger = defaultCtx.InputInteger
+	InputReal    = defaultCtx.InputReal
+	InputString  = defaultCtx.InputString
+	InputBoolean = defaultCtx.InputBoolean
+)
 
 func ModInteger(a, b int64) int64 {
 	return a % b
@@ -116,41 +153,40 @@ func ExpReal(base, exp float64) float64 {
 	return math.Pow(base, exp)
 }
 
-func StepInteger(ref int64, stop int64, step int64) bool {
+func ForInteger(ref *int64, start, stop, step int64) bool {
+	*ref = start
 	if step < 0 {
-		return ref >= stop
+		return *ref >= stop
 	} else {
-		return ref <= stop
+		return *ref <= stop
 	}
 }
 
-func StepReal(ref float64, stop float64, step float64) bool {
+func StepInteger(ref *int64, stop, step int64) bool {
+	*ref += step
 	if step < 0 {
-		return ref >= stop
+		return *ref >= stop
 	} else {
-		return ref <= stop
+		return *ref <= stop
 	}
 }
 
-type syncWriter interface {
-	io.Writer
-	Sync() error
+func ForReal(ref *float64, start, stop, step float64) bool {
+	*ref = start
+	if step < 0 {
+		return *ref >= stop
+	} else {
+		return *ref <= stop
+	}
 }
 
-var stdin = bufio.NewScanner(os.Stdin)
-var stdout = syncWriter(os.Stdout)
-
-func readLine() String {
-	_ = stdout.Sync() // ensure any prompts are flushed
-	if !stdin.Scan() {
-		log.Fatal(io.EOF)
+func StepReal(ref *float64, stop, step float64) bool {
+	*ref += step
+	if step < 0 {
+		return *ref >= stop
+	} else {
+		return *ref <= stop
 	}
-	input, err := stdin.Bytes(), stdin.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-	_ = stdout.Sync() // ensure user's newline is flushed to the terminal
-	return input
 }
 
 // Tab keyword.

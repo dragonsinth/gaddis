@@ -70,8 +70,12 @@ func length(s []byte) int64 {
 	return int64(len(s))
 }
 
-func append(a, b []byte) []byte {
-	return []byte(string(a) + string(b))
+func appendString(a, b []byte) []byte {
+	// make a copy
+	ret := make([]byte, 0, len(a)+len(b))
+	ret = append(ret, a...)
+	ret = append(ret, b...)
+	return ret
 }
 
 var (

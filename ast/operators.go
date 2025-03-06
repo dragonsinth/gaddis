@@ -44,3 +44,26 @@ var operators = [...]string{
 func (op Operator) String() string {
 	return operators[op]
 }
+
+var names = [...]string{
+	ADD: "add",
+	SUB: "sub",
+	MUL: "mul",
+	DIV: "div",
+	EXP: "exp",
+	MOD: "mod",
+	EQ:  "eq",
+	NEQ: "neq",
+	LT:  "lt",
+	LTE: "lte",
+	GT:  "gt",
+	GTE: "gte",
+	AND: "and",
+	OR:  "or",
+	NOT: "not",
+	NEG: "neg",
+}
+
+func (op Operator) Name() string {
+	return names[op]
+}

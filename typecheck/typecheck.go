@@ -128,6 +128,7 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 	default:
 		panic(op)
 	}
+	uo.Type = typ
 }
 
 func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
@@ -152,6 +153,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 				v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 			}
 			bo.Type = rTyp
+			bo.ArgType = rTyp
 		}
 	case ast.EQ, ast.NEQ:
 		rTyp := ast.AreComparableTypes(aTyp, bTyp)
@@ -159,11 +161,14 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 			v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 		}
 		bo.Type = ast.Boolean
+		bo.ArgType = rTyp
 	case ast.LT, ast.GT, ast.LTE, ast.GTE:
-		if ok && !ast.AreComparableOrderedTypes(aTyp, bTyp) {
+		rTyp := ast.AreComparableTypes(aTyp, bTyp)
+		if ok && !ast.IsOrderedType(rTyp) {
 			v.Errorf(bo, "operator %s not supported for types %s and %s", op, aTyp, bTyp)
 		}
 		bo.Type = ast.Boolean
+		bo.ArgType = rTyp
 	case ast.AND, ast.OR:
 		if aOk && aTyp != ast.Boolean {
 			v.Errorf(bo.Lhs, "operator %s expects left hand operand of type %s to be Boolean", op, aTyp)
@@ -172,6 +177,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 			v.Errorf(bo.Rhs, "operator %s expects right hand operand of type %s to be Boolean", op, bTyp)
 		}
 		bo.Type = ast.Boolean
+		bo.ArgType = ast.Boolean
 	default:
 		panic(op)
 	}

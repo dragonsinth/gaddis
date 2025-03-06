@@ -23,5 +23,6 @@ go.work.sum
 dist/
 
 # project
+*.gad.asm
 *.gad.go
 *.gad.exe

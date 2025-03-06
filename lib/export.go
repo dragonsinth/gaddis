@@ -21,7 +21,7 @@ var External = map[string]any{
 	"currencyFormat": currencyFormat,
 
 	"length":          length,
-	"append":          append,
+	"append":          appendString,
 	"toUpper":         toUpper,
 	"toLower":         toLower,
 	"substring":       substring,

@@ -28,6 +28,20 @@ func (si SourceInfo) GetSourceInfo() SourceInfo {
 	return si
 }
 
+func (si SourceInfo) Head() SourceInfo {
+	return SourceInfo{
+		Start: si.Start,
+		End:   si.Start,
+	}
+}
+
+func (si SourceInfo) Tail() SourceInfo {
+	return SourceInfo{
+		Start: si.End,
+		End:   si.End,
+	}
+}
+
 type Comment struct {
 	SourceInfo
 	Text string

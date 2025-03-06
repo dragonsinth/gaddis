@@ -69,13 +69,9 @@ func AreComparableTypes(a Type, b Type) Type {
 	return UnresolvedType
 }
 
-func AreComparableOrderedTypes(a Type, b Type) bool {
-	typ := AreComparableTypes(a, b)
-	if typ == UnresolvedType {
-		return false // must be comparable
-	}
-	if typ == Boolean {
+func IsOrderedType(typ Type) bool {
+	if typ == UnresolvedType || typ == Boolean {
 		return false // cannot order booleans
 	}
-	return true
+	return typ.IsPrimitive() // the other primitive types are ordered
 }

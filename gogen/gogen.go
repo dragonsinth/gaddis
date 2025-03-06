@@ -101,9 +101,8 @@ func New(indent string, out io.StringWriter) *Visitor {
 }
 
 type Visitor struct {
-	ind        string
-	out        io.StringWriter
-	selectType ast.Type // type of most recently enclosing select statement
+	ind string
+	out io.StringWriter
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -245,18 +244,19 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 	v.maybeCast(ss.Type, ss.Expr)
 	v.output(") {\n")
 
-	oldInd, oldType := v.ind, v.selectType
 	v.ind += "\t"
-	v.selectType = ss.Type
-	defer func() {
-		v.ind, v.selectType = oldInd, oldType
-	}()
-
 	for _, cb := range ss.Cases {
-		cb.Visit(v)
+		v.indent()
+		if cb.Expr != nil {
+			v.output("case ")
+			v.maybeCast(ss.Type, cb.Expr)
+			v.output(":\n")
+		} else {
+			v.output("default:\n")
+		}
+		cb.Block.Visit(v)
 	}
-
-	v.ind = oldInd
+	v.ind = v.ind[:len(v.ind)-1]
 	v.indent()
 	v.output("}\n")
 	return false
@@ -266,15 +266,6 @@ func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
 }
 
 func (v *Visitor) PreVisitCaseBlock(cb *ast.CaseBlock) bool {
-	v.indent()
-	if cb.Expr != nil {
-		v.output("case ")
-		v.maybeCast(v.selectType, cb.Expr)
-		v.output(":\n")
-	} else {
-		v.output("default:\n")
-	}
-	cb.Block.Visit(v)
 	return false
 }
 
@@ -324,17 +315,46 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 }
 
 func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
+	/*
+		if ForInteger(&count_, 1, 10, 1) {
+			for {
+				Display(count_)
+				if !StepInteger(&count_, 10, 1) {
+					break
+				}
+			}
+		}
+	*/
+
+	refType := fs.Var.Type
 	v.indent()
+	v.output("if For")
+	v.output(refType.String())
+	v.output("(&")
 	fs.Var.Visit(v)
-	v.output(" = ")
+	v.output(", ")
 	fs.StartExpr.Visit(v)
-	v.output("\n")
+	v.output(", ")
+	v.maybeCast(refType, fs.StopExpr)
+	v.output(", ")
+	if fs.StepExpr != nil {
+		v.maybeCast(refType, fs.StepExpr)
+	} else {
+		v.output("1")
+	}
+	v.output(") {\n")
+
+	v.ind += "\t"
+	v.indent()
+	v.output("for {\n")
+	fs.Block.Visit(v)
+
+	v.ind += "\t"
 
 	v.indent()
-	v.output("for Step")
-	refType := fs.Var.Type
+	v.output("if !Step")
 	v.output(refType.String())
-	v.output("(")
+	v.output("(&")
 	fs.Var.Visit(v)
 	v.output(", ")
 	v.maybeCast(refType, fs.StopExpr)
@@ -345,18 +365,15 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 		v.output("1")
 	}
 	v.output(") {\n")
-	fs.Block.Visit(v)
-
 	v.indent()
-	v.output("\t")
-	fs.Var.Visit(v)
-	v.output(" += ")
-	if fs.StepExpr != nil {
-		v.maybeCast(refType, fs.StepExpr)
-	} else {
-		v.output("1")
-	}
-	v.output("\n")
+	v.output("\tbreak\n")
+	v.indent()
+	v.output("}\n")
+	v.ind = v.ind[:len(v.ind)-1]
+	v.indent()
+	v.output("}\n")
+
+	v.ind = v.ind[:len(v.ind)-1]
 	v.indent()
 	v.output("}\n")
 	return false
@@ -516,7 +533,7 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 }
 
 func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
-	dstType := ast.AreComparableTypes(bo.Lhs.GetType(), bo.Rhs.GetType())
+	argType := bo.ArgType
 
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
@@ -527,26 +544,26 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 		}
 		v.output(bo.Type.String())
 		v.output("(")
-		v.maybeCast(dstType, bo.Lhs)
+		v.maybeCast(argType, bo.Lhs)
 		v.output(", ")
-		v.maybeCast(dstType, bo.Rhs)
+		v.maybeCast(argType, bo.Rhs)
 		v.output(")")
-	} else if dstType == ast.String {
+	} else if argType == ast.String {
 		// force byte[] to string for comparisons
 		v.output("(string(")
-		v.maybeCast(dstType, bo.Lhs)
+		v.maybeCast(argType, bo.Lhs)
 		v.output(") ")
 		v.output(goBinaryOperators[bo.Op])
 		v.output(" string(")
-		v.maybeCast(dstType, bo.Rhs)
+		v.maybeCast(argType, bo.Rhs)
 		v.output("))")
 	} else {
 		v.output("(")
-		v.maybeCast(dstType, bo.Lhs)
+		v.maybeCast(argType, bo.Lhs)
 		v.output(" ")
 		v.output(goBinaryOperators[bo.Op])
 		v.output(" ")
-		v.maybeCast(dstType, bo.Rhs)
+		v.maybeCast(argType, bo.Rhs)
 		v.output(")")
 	}
 	return false
@@ -569,7 +586,11 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	if ce.Ref.IsExternal {
-		v.output(ce.Ref.Name)
+		if ce.Ref.Name == "append" {
+			v.output("appendString") // special case append vice builtin append
+		} else {
+			v.output(ce.Ref.Name)
+		}
 	} else {
 		v.ident(ce.Ref)
 	}

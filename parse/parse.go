@@ -187,6 +187,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		// loop for else-if
 		for p.hasTok(lex.ELSE) {
 			r := p.parseTok(lex.ELSE)
+			cases[len(cases)-1].SourceInfo.End = toSourceInfo(r).End
 			if p.hasTok(lex.IF) {
 				// an else if block
 				p.parseTok(lex.IF)
@@ -203,6 +204,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.IF)
+		cases[len(cases)-1].SourceInfo.End = toSourceInfo(rEnd).End
 		return &ast.IfStmt{SourceInfo: spanResult(r, rEnd), Cases: cases}
 	case lex.SELECT:
 		expr := p.parseExpression()

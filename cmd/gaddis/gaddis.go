@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -12,12 +13,17 @@ import (
 	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
+	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/interp"
 	"github.com/dragonsinth/gaddis/parse"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 )
 
 var (
@@ -25,6 +31,7 @@ var (
 	fTest  = flag.Bool("t", false, "legacy: run in test mode; capture")
 	fNoRun = flag.Bool("no-run", false, "compile only, do not run")
 	fJson  = flag.Bool("json", false, "emit errors as json")
+	fGogen = flag.Bool("gogen", false, "run using go compile")
 )
 
 const help = `Usage: gaddis <command> [options] [arguments]
@@ -48,6 +55,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	opts := runOpts{
+		stopAfterBuild:    *fNoRun,
+		isTest:            *fTest,
+		leaveBuildOutputs: *fDebug,
+		goGen:             *fGogen,
+	}
+
 	var err error
 	switch args[0] {
 	case "help":
@@ -60,13 +74,16 @@ func main() {
 		err = check(args[1:])
 	case "build":
 		// always leave build outputs on build command
-		err = run(args[1:], true, false, true)
+		opts.stopAfterBuild = true
+		opts.leaveBuildOutputs = true
+		err = run(args[1:], opts)
 	case "test":
-		err = run(args[1:], false, true, *fDebug)
+		opts.isTest = true
+		err = run(args[1:], opts)
 	case "run":
-		err = run(args[1:], false, false, *fDebug)
+		err = run(args[1:], opts)
 	default:
-		err = run(args, *fNoRun, *fTest, *fDebug)
+		err = run(args, opts)
 	}
 
 	type hasExitCode interface {
@@ -141,8 +158,10 @@ func format(args []string) error {
 	outSrc := astprint.Print(prog, comments)
 	if src.isStdin {
 		_, _ = os.Stdout.WriteString(outSrc)
-	} else if err = os.WriteFile(src.filename, []byte(outSrc), 0666); err != nil {
-		return fmt.Errorf("writing to %s: %w", src.filename, err)
+	} else if src.src != outSrc {
+		if err = os.WriteFile(src.filename, []byte(outSrc), 0666); err != nil {
+			return fmt.Errorf("writing to %s: %w", src.filename, err)
+		}
 	}
 
 	return nil
@@ -160,7 +179,14 @@ func check(args []string) error {
 	return nil
 }
 
-func run(args []string, stopAfterBuild bool, isTest bool, leaveBuildOutputs bool) error {
+type runOpts struct {
+	stopAfterBuild    bool
+	isTest            bool
+	leaveBuildOutputs bool
+	goGen             bool
+}
+
+func run(args []string, opts runOpts) error {
 	src, err := readSourceFromArgs(args)
 	if err != nil {
 		return err
@@ -174,40 +200,67 @@ func run(args []string, stopAfterBuild bool, isTest bool, leaveBuildOutputs bool
 
 	// auto format
 	outSrc := astprint.Print(prog, comments)
-	if !src.isStdin {
+	if !src.isStdin && src.src != outSrc {
 		if err = os.WriteFile(src.filename, []byte(outSrc), 0666); err != nil {
 			return fmt.Errorf("writing to %s: %w", src.filename, err)
 		}
 	}
 
-	goSrc := gogen.GoGenerate(prog, isTest)
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
-	br, err := goexec.Build(ctx, goSrc, src.desc())
-	defer func() {
-		if !leaveBuildOutputs {
-			if br.GoFile != "" {
-				_ = os.Remove(br.GoFile)
+	var cp *interp.Compilation
+	var exeFile string
+	ctx := context.Background()
+	if !opts.goGen {
+		cp = interp.Compile(prog)
+		if opts.leaveBuildOutputs {
+			asmFile := src.desc() + ".asm"
+			var sb bytes.Buffer
+			for i, inst := range cp.Code {
+				si := inst.GetSourceInfo()
+				line := si.Start.Line
+				text := strings.TrimSpace(src.src[si.Start.Pos:si.End.Pos])
+				lhs := fmt.Sprintf("%3d: %s", i, inst)
+				_, _ = fmt.Fprintf(&sb, "%-40s; %3d: %s\n", lhs, line, strings.SplitN(text, "\n", 2)[0])
 			}
-			if br.ExeFile != "" {
-				_ = os.Remove(br.ExeFile)
+			if err := os.WriteFile(asmFile, sb.Bytes(), 0644); err != nil {
+				return fmt.Errorf("writing to %s: %w", asmFile, err)
 			}
 		}
-	}()
-	if err != nil {
-		return fmt.Errorf("building %s: %w", src.desc(), err)
+
+		if opts.stopAfterBuild {
+			return nil
+		}
+	} else {
+		goSrc := gogen.GoGenerate(prog, opts.isTest)
+
+		var cancel context.CancelFunc
+		ctx, cancel = signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+
+		br, err := goexec.Build(ctx, goSrc, src.desc())
+		defer func() {
+			if !opts.leaveBuildOutputs {
+				if br.GoFile != "" {
+					_ = os.Remove(br.GoFile)
+				}
+				if br.ExeFile != "" {
+					_ = os.Remove(br.ExeFile)
+				}
+			}
+		}()
+		if err != nil {
+			return fmt.Errorf("building %s: %w", src.desc(), err)
+		}
+		exeFile = br.ExeFile
 	}
 
-	if stopAfterBuild {
+	if opts.stopAfterBuild {
 		return nil
 	}
 
 	var terminalInput bool
 	var input bytes.Buffer
 	var stdin io.ReadCloser
-	if isTest {
+	if opts.isTest {
 		if inBytes, err := os.ReadFile(src.filename + ".in"); err == nil {
 			// use input file as input
 			terminalInput = false
@@ -240,7 +293,7 @@ func run(args []string, stopAfterBuild bool, isTest bool, leaveBuildOutputs bool
 	}
 
 	// echo output to terminal if we need terminal input; or if we're not running test mode
-	terminalOutput := terminalInput || !isTest
+	terminalOutput := terminalInput || !opts.isTest
 	var output bytes.Buffer
 	var errput bytes.Buffer
 
@@ -256,28 +309,50 @@ func run(args []string, stopAfterBuild bool, isTest bool, leaveBuildOutputs bool
 		stderr = &errput
 	}
 
-	err = goexec.Run(ctx, br.ExeFile, stdin, stdout, stderr)
-	if err != nil {
-		// If we were running silent and anything failed, spit the output to console
-		if !terminalOutput {
-			if output.Len() > 0 {
-				_, _ = os.Stdout.Write(output.Bytes())
-			}
-			if errput.Len() > 0 {
-				_, _ = os.Stderr.Write(errput.Bytes())
-			}
+	if cp != nil {
+		var seed int64
+		if !opts.isTest {
+			seed = time.Now().UnixNano()
 		}
-		return err
+
+		ec := &interp.ExecutionContext{
+			Rng: rand.New(rand.NewSource(seed)),
+			IoContext: builtins.IoContext{
+				Stdin:  bufio.NewScanner(stdin),
+				Stdout: gaddis.Synced(stdout),
+				Stderr: gaddis.Synced(stderr),
+			},
+		}
+
+		p := cp.NewProgram(ec)
+		if err := p.Run(); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+			_, _ = fmt.Fprintln(os.Stderr, p.GetStackTrace(src.desc()))
+			os.Exit(1)
+		}
+	} else {
+		if err := goexec.Run(ctx, exeFile, stdin, stdout, stderr); err != nil {
+			// If we were running silent and anything failed, spit the output to console
+			if !terminalOutput {
+				if output.Len() > 0 {
+					_, _ = os.Stdout.Write(output.Bytes())
+				}
+				if errput.Len() > 0 {
+					_, _ = os.Stderr.Write(errput.Bytes())
+				}
+			}
+			return err
+		}
 	}
 
 	// if we were running test mode and captured any input, dump it to an input file
-	if isTest && terminalInput && input.Len() > 0 {
+	if opts.isTest && terminalInput && input.Len() > 0 {
 		// drop the captured input into a
 		_ = os.WriteFile(src.desc()+".in", input.Bytes(), 0644)
 	}
 
 	// if we were running test mode, either save or compare output
-	if isTest {
+	if opts.isTest {
 		gotOutput := output.Bytes()
 		if expectOut, err := os.ReadFile(src.desc() + ".out"); err != nil {
 			// dump the output we got, if any

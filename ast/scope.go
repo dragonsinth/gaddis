@@ -12,6 +12,8 @@ type Scope struct {
 	ModuleStmt   *ModuleStmt   // if true, enclosing module
 	FunctionStmt *FunctionStmt // if true, enclosing function
 	Decls        map[string]*Decl
+	Params       []*VarDecl
+	Locals       []*VarDecl
 }
 
 func (s *Scope) String() string {
@@ -91,7 +93,15 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	if s.Decls[name] != nil {
 		panic(name)
 	}
+	if !vd.IsConst {
+		if vd.IsParam {
+			s.Params = append(s.Params, vd)
+		} else {
+			s.Locals = append(s.Locals, vd)
+		}
+	}
 	s.Decls[name] = &Decl{VarDecl: vd}
+	vd.Scope = s
 }
 
 func NewGlobalScope() *Scope {

@@ -12,6 +12,7 @@ type VarDecl struct {
 	IsConst bool
 	IsParam bool
 	IsRef   bool // TODO: should this be part of the type?
+	Scope   *Scope
 }
 
 func (vd *VarDecl) Visit(v Visitor) {

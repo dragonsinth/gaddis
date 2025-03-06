@@ -3,6 +3,7 @@ package ast
 type Expression interface {
 	Node
 	GetType() Type
+	ConstEval() any
 	isExpression()
 }
 
@@ -20,6 +21,10 @@ func (il *IntegerLiteral) Visit(v Visitor) {
 
 func (il *IntegerLiteral) GetType() Type {
 	return Integer
+}
+
+func (il *IntegerLiteral) ConstEval() any {
+	return il.Val
 }
 
 func (*IntegerLiteral) isExpression() {}
@@ -40,6 +45,10 @@ func (rl *RealLiteral) GetType() Type {
 	return Real
 }
 
+func (rl *RealLiteral) ConstEval() any {
+	return rl.Val
+}
+
 func (*RealLiteral) isExpression() {}
 
 type StringLiteral struct {
@@ -56,6 +65,10 @@ func (sl *StringLiteral) Visit(v Visitor) {
 
 func (sl *StringLiteral) GetType() Type {
 	return String
+}
+
+func (sl *StringLiteral) ConstEval() any {
+	return sl.Val
 }
 
 func (*StringLiteral) isExpression() {}
@@ -76,6 +89,10 @@ func (cl CharacterLiteral) GetType() Type {
 	return Character
 }
 
+func (cl CharacterLiteral) ConstEval() any {
+	return cl.Val
+}
+
 func (*CharacterLiteral) isExpression() {}
 
 type TabLiteral struct {
@@ -91,6 +108,10 @@ func (tl *TabLiteral) Visit(v Visitor) {
 
 func (tl *TabLiteral) GetType() Type {
 	return String
+}
+
+func (tl *TabLiteral) ConstEval() any {
+	return "\t"
 }
 
 func (*TabLiteral) isExpression() {}
@@ -111,6 +132,10 @@ func (bl BooleanLiteral) GetType() Type {
 	return Boolean
 }
 
+func (bl *BooleanLiteral) ConstEval() any {
+	return bl.Val
+}
+
 func (*BooleanLiteral) isExpression() {}
 
 type ParenExpr struct {
@@ -128,6 +153,10 @@ func (pe *ParenExpr) Visit(v Visitor) {
 
 func (pe *ParenExpr) GetType() Type {
 	return pe.Expr.GetType()
+}
+
+func (pe *ParenExpr) ConstEval() any {
+	return pe.Expr.ConstEval()
 }
 
 func (*ParenExpr) isExpression() {}
@@ -151,14 +180,38 @@ func (uo *UnaryOperation) GetType() Type {
 	return uo.Type
 }
 
+func (uo *UnaryOperation) ConstEval() any {
+	switch uo.Op {
+	case NEG:
+		switch v := uo.Expr.ConstEval().(type) {
+		case int64:
+			return -v
+		case float64:
+			return -v
+		default:
+			panic(v)
+		}
+	case NOT:
+		switch v := uo.Expr.ConstEval().(type) {
+		case bool:
+			return !v
+		default:
+			panic(v)
+		}
+	default:
+		panic(uo.Op)
+	}
+}
+
 func (*UnaryOperation) isExpression() {}
 
 type BinaryOperation struct {
 	SourceInfo
-	Op   Operator
-	Type Type
-	Lhs  Expression
-	Rhs  Expression
+	Op      Operator
+	Type    Type
+	Lhs     Expression
+	Rhs     Expression
+	ArgType Type
 }
 
 func (bo *BinaryOperation) Visit(v Visitor) {
@@ -172,6 +225,10 @@ func (bo *BinaryOperation) Visit(v Visitor) {
 
 func (bo *BinaryOperation) GetType() Type {
 	return bo.Type
+}
+
+func (bo *BinaryOperation) ConstEval() any {
+	panic("not implemented")
 }
 
 func (*BinaryOperation) isExpression() {}
@@ -193,6 +250,13 @@ func (ve *VariableExpr) Visit(v Visitor) {
 
 func (ve *VariableExpr) GetType() Type {
 	return ve.Type
+}
+
+func (ve *VariableExpr) ConstEval() any {
+	if ve.Ref.IsConst {
+		return ve.Ref.Expr.ConstEval()
+	}
+	panic(ve.Ref)
 }
 
 func (*VariableExpr) isExpression() {}
@@ -218,6 +282,10 @@ func (ce *CallExpr) Visit(v Visitor) {
 
 func (ce *CallExpr) GetType() Type {
 	return ce.Type
+}
+
+func (ce *CallExpr) ConstEval() any {
+	panic(ce)
 }
 
 func (*CallExpr) isExpression() {
