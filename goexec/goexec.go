@@ -35,10 +35,17 @@ func Build(ctx context.Context, goSrc string, basename string) (BuildResult, err
 	return ret, nil
 }
 
-func Run(ctx context.Context, execFile string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) error {
+func Run(ctx context.Context, execFile string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	// pipe so we can force a break
+	inPipe, stdinWriter := io.Pipe()
+	go func() {
+		_, _ = io.Copy(stdinWriter, stdin)
+		_ = stdinWriter.Close()
+	}()
+
 	// Run the compiled binary
 	runCmd := exec.CommandContext(ctx, execFile)
-	stdinPipe, _ := runCmd.StdinPipe()
+	runCmd.Stdin = inPipe
 	stdoutPipe, _ := runCmd.StdoutPipe()
 	stderrPipe, _ := runCmd.StderrPipe()
 
@@ -57,16 +64,7 @@ func Run(ctx context.Context, execFile string, stdin io.ReadCloser, stdout io.Wr
 
 	go func() {
 		wgOut.Wait()
-		_ = stdin.Close()
-	}()
-
-	var wgIn sync.WaitGroup
-	defer wgIn.Wait()
-	wgIn.Add(1)
-	go func() {
-		defer wgIn.Done()
-		_, _ = io.Copy(stdinPipe, stdin)
-		_ = stdinPipe.Close()
+		_ = stdinWriter.Close()
 	}()
 
 	if err := runCmd.Start(); err != nil {

@@ -4,12 +4,16 @@ import (
 	"io"
 )
 
-type SyncWriter interface {
-	io.Writer
+type Syncer interface {
 	Sync() error
 }
 
-func Synced(w io.Writer) SyncWriter {
+type SyncWriter interface {
+	io.Writer
+	Syncer
+}
+
+func NoopSyncWriter(w io.Writer) SyncWriter {
 	if sw, ok := w.(SyncWriter); ok {
 		return sw
 	}
@@ -22,4 +26,16 @@ type noopSyncWriter struct {
 
 func (noopSyncWriter) Sync() error {
 	return nil
+}
+
+func WriteSync(w io.Writer, sync Syncer) SyncWriter {
+	return writeSync{
+		Writer: w,
+		Syncer: sync,
+	}
+}
+
+type writeSync struct {
+	io.Writer
+	Syncer
 }

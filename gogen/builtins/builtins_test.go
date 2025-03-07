@@ -13,8 +13,8 @@ func TestDisplay(t *testing.T) {
 	var outbuf, errbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.Synced(&outbuf),
-		Stderr: gaddis.Synced(&errbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 	ctx.Display([]byte("the score is "), 17, []byte(" to "), 21.5, []byte(" is "), false)
 	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
@@ -25,8 +25,8 @@ func TestInputInteger(t *testing.T) {
 	var outbuf, errbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.Synced(&outbuf),
-		Stderr: gaddis.Synced(&errbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputInteger()
@@ -42,8 +42,8 @@ func TestInputReal(t *testing.T) {
 	var outbuf, errbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.Synced(&outbuf),
-		Stderr: gaddis.Synced(&errbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputReal()
@@ -59,8 +59,8 @@ func TestInputBoolean(t *testing.T) {
 	var outbuf, errbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.Synced(&outbuf),
-		Stderr: gaddis.Synced(&errbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputBoolean()
@@ -76,8 +76,8 @@ func TestInputString(t *testing.T) {
 	var outbuf, errbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.Synced(&outbuf),
-		Stderr: gaddis.Synced(&errbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputString()
