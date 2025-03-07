@@ -363,6 +363,7 @@ func run(args []string, opts runOpts) error {
 			// compare the output
 			return fmt.Errorf("wrong output:\n%s", output.String())
 		}
+		fmt.Println("PASSED")
 	}
 
 	return nil
