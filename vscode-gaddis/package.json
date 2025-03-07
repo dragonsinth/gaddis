@@ -40,6 +40,14 @@
         }
       ]
     },
+    "taskDefinitions": [
+      {
+        "type": "gaddis.run"
+      },
+      {
+        "type": "gaddis.test"
+      }
+    ],
     "languages": [
       {
         "id": "gaddis",

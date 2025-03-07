@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+import { makeTask } from './task';
 
 export class GaddisTestProvider implements vscode.TaskProvider {
     private gaddisExecutablePath: string;
@@ -18,22 +18,6 @@ export class GaddisTestProvider implements vscode.TaskProvider {
         if (!editor || editor.document.languageId !== 'gaddis') {
             return [];
         }
-
-        const filePath = editor.document.uri.fsPath;
-        const fileName = path.basename(filePath);
-
-        const task = new vscode.Task(
-            { type: 'gaddisTest' },
-            vscode.TaskScope.Workspace,
-            `Test ${fileName}`,
-            'Gaddis',
-            new vscode.ShellExecution(`${this.gaddisExecutablePath} test "${filePath}"`)
-        );
-
-        task.group = vscode.TaskGroup.Build;
-        task.presentationOptions.reveal = vscode.TaskRevealKind.Always;
-        task.presentationOptions.panel = vscode.TaskPanelKind.New;
-
-        return [task];
+        return [makeTask(this.gaddisExecutablePath, 'test', editor.document.uri)]
     }
 }

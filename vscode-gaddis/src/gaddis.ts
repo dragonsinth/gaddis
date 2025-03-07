@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { getGaddisExecutablePath } from './platform';
 import { GaddisRunProvider } from "./run_provider";
 import { GaddisTestProvider } from "./test_provider";
+import { makeTask } from './task';
 
 export function activate(context: vscode.ExtensionContext) {
     const window = vscode.window
@@ -81,27 +82,31 @@ export function activate(context: vscode.ExtensionContext) {
     }
     subs.push(diagnosticCollection);
 
-    const gaddisRunProvider = new GaddisRunProvider(gaddisCmd);
-    subs.push(vscode.tasks.registerTaskProvider('gaddisRun', gaddisRunProvider));
-
-    subs.push(vscode.commands.registerCommand('gaddis.runTask', () => {
-        vscode.tasks.fetchTasks({ type: 'gaddisRun' }).then((tasks) => {
+    subs.push(vscode.tasks.registerTaskProvider('gaddis.run', new GaddisRunProvider(gaddisCmd)));
+    subs.push(vscode.commands.registerCommand('gaddis.runTask', (fileUri: vscode.Uri) => {
+        if (fileUri) {
+            vscode.tasks.executeTask(makeTask(gaddisCmd, 'run', fileUri));
+            return;
+        }
+        vscode.tasks.fetchTasks({ type: 'gaddis.run' }).then((tasks) => {
             if (tasks && tasks.length > 0) {
                 vscode.tasks.executeTask(tasks[0]);
             }
         });
     }));
 
-    const gaddisTestProvider = new GaddisTestProvider(gaddisCmd);
-    subs.push(vscode.tasks.registerTaskProvider('gaddisTest', gaddisTestProvider));
-    subs.push(vscode.commands.registerCommand('gaddis.testTask', () => {
-        vscode.tasks.fetchTasks({ type: 'gaddisTest' }).then((tasks) => {
+    subs.push(vscode.tasks.registerTaskProvider('gaddis.test', new GaddisTestProvider(gaddisCmd)));
+    subs.push(vscode.commands.registerCommand('gaddis.testTask', (fileUri: vscode.Uri) => {
+        if (fileUri) {
+            vscode.tasks.executeTask(makeTask(gaddisCmd, 'test', fileUri));
+            return;
+        }
+        vscode.tasks.fetchTasks({ type: 'gaddis.test' }).then((tasks) => {
             if (tasks && tasks.length > 0) {
                 vscode.tasks.executeTask(tasks[0]);
             }
         });
     }));
-
 }
 
 function formatDocument(gaddisCmd: string, document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
