@@ -664,7 +664,7 @@ var goTypes = [...]string{
 	ast.Integer:   "int64",
 	ast.Real:      "float64",
 	ast.String:    "String",
-	ast.Character: "character",
+	ast.Character: "byte",
 	ast.Boolean:   "bool",
 }
 

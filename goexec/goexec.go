@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 )
 
@@ -22,7 +23,10 @@ func Build(ctx context.Context, goSrc string, basename string) (BuildResult, err
 	}
 	ret.GoFile = goFile
 
-	var execFile = basename + ".exe"
+	execFile, err := filepath.Abs(basename + ".exe")
+	if err != nil {
+		return ret, fmt.Errorf("could not resolve path to %s: %w", basename, err)
+	}
 	compileCmd := exec.CommandContext(ctx, "go", "build", "-o", execFile, goFile)
 	if compileOut, err := compileCmd.CombinedOutput(); err != nil {
 		return ret, fmt.Errorf("compile failed: %w\n%s", err, string(compileOut))
