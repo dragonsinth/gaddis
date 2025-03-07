@@ -493,7 +493,7 @@ func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
 }
 
 func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
-	v.output("Tab")
+	v.output(`String("\t")`)
 	return false
 }
 

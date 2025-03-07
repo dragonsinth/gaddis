@@ -16,6 +16,7 @@ func Parse(input string) (*ast.Program, []ast.Comment, []ast.Error) {
 	l := lex.New(input)
 	p := New(l)
 	ret := p.parseGlobalBlock()
+	ret.Block.End = toSourceInfo(l.Lex()).End
 	errors := p.errors
 	if len(errors) > maxErrors {
 		errors = errors[:maxErrors]

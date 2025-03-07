@@ -62,7 +62,8 @@ type Program struct {
 type Frame struct {
 	Scope  *ast.Scope
 	Return int
-	Locals []any
+	Args   []any // original function args
+	Locals []any // current params+locals
 	Eval   []any
 	// try/catch stack?
 }

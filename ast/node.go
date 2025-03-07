@@ -54,7 +54,7 @@ type Error struct {
 
 func (err Error) Error() string {
 	start := err.SourceInfo.Start
-	return fmt.Sprintf("%d:%d %s", start.Line, start.Column, err.Desc)
+	return fmt.Sprintf("%d:%d %s", start.Line+1, start.Column+1, err.Desc)
 }
 
 func ErrorSort(errors []Error) []Error {

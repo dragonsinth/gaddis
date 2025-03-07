@@ -18,13 +18,13 @@ type Scope struct {
 
 func (s *Scope) String() string {
 	if s.IsExternal {
-		return "External Scope"
+		return "externa"
 	} else if s.IsGlobal {
-		return "Global Scope"
+		return "global block"
 	} else if s.ModuleStmt != nil {
-		return fmt.Sprintf("Module %s Scope", s.ModuleStmt.Name)
+		return fmt.Sprintf("Module %s", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
-		return fmt.Sprintf("Function %s %s Scope", s.FunctionStmt.Type, s.FunctionStmt.Name)
+		return fmt.Sprintf("Function %s %s", s.FunctionStmt.Type, s.FunctionStmt.Name)
 	} else {
 		panic("unset")
 	}

@@ -216,7 +216,7 @@ func run(args []string, opts runOpts) error {
 			var sb bytes.Buffer
 			for i, inst := range cp.Code {
 				si := inst.GetSourceInfo()
-				line := si.Start.Line
+				line := si.Start.Line + 1
 				text := strings.TrimSpace(src.src[si.Start.Pos:si.End.Pos])
 				lhs := fmt.Sprintf("%3d: %s", i, inst)
 				_, _ = fmt.Fprintf(&sb, "%-40s; %3d: %s\n", lhs, line, strings.SplitN(text, "\n", 2)[0])
@@ -391,8 +391,8 @@ func reportErrors(errs []ast.Error, desc string, asJson bool, dst io.Writer) {
 		for _, e := range errs {
 			ret = append(ret, Diagnostic{
 				Range: Range{
-					Start: Position{Line: e.Start.Line - 1, Character: e.Start.Column - 1},
-					End:   Position{Line: e.End.Line - 1, Character: e.End.Column - 1},
+					Start: Position{Line: e.Start.Line, Character: e.Start.Column},
+					End:   Position{Line: e.End.Line, Character: e.End.Column},
 				},
 				Message:  e.Desc,
 				Severity: 0, // TODO: severities?

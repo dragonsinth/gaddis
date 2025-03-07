@@ -15,7 +15,7 @@ func Print(prog *ast.Program, comments []ast.Comment) string {
 	v := &Visitor{
 		ind:      "",
 		out:      &sb,
-		line:     1,
+		line:     0,
 		col:      0,
 		comments: comments,
 	}

@@ -42,6 +42,8 @@ func (ctx IoContext) Display(args ...any) {
 		case String:
 			sb.Write(typedArg)
 		// TODO: special formatting for floats maybe?
+		case byte:
+			sb.WriteByte(typedArg)
 		default:
 			_, _ = fmt.Fprint(&sb, arg)
 		}
@@ -188,9 +190,6 @@ func StepReal(ref *float64, stop, step float64) bool {
 		return *ref <= stop
 	}
 }
-
-// Tab keyword.
-var Tab = String("\t")
 
 type tabDisplay struct{}
 
