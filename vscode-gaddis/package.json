@@ -20,6 +20,10 @@
       {
         "command": "gaddis.runTask",
         "title": "Gaddis Run"
+      },
+      {
+        "command": "gaddis.testTask",
+        "title": "Gaddis Test"
       }
     ],
     "menus": {
@@ -27,6 +31,11 @@
         {
           "when": "editorLangId == gaddis",
           "command": "gaddis.runTask",
+          "group": "navigation"
+        },
+        {
+          "when": "editorLangId == gaddis",
+          "command": "gaddis.testTask",
           "group": "navigation"
         }
       ]

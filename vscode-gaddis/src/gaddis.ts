@@ -1,7 +1,8 @@
 import * as child_process from 'child_process';
 import * as vscode from 'vscode';
-import {getGaddisExecutablePath} from './platform';
-import {GaddisRunProvider} from "./run_provider";
+import { getGaddisExecutablePath } from './platform';
+import { GaddisRunProvider } from "./run_provider";
+import { GaddisTestProvider } from "./test_provider";
 
 export function activate(context: vscode.ExtensionContext) {
     const window = vscode.window
@@ -81,29 +82,26 @@ export function activate(context: vscode.ExtensionContext) {
     subs.push(diagnosticCollection);
 
     const gaddisRunProvider = new GaddisRunProvider(gaddisCmd);
-    subs.push(vscode.tasks.registerTaskProvider('gaddis', gaddisRunProvider));
+    subs.push(vscode.tasks.registerTaskProvider('gaddisRun', gaddisRunProvider));
 
     subs.push(vscode.commands.registerCommand('gaddis.runTask', () => {
-      vscode.tasks.fetchTasks({ type: 'gaddis' }).then((tasks) => {
-        if (tasks && tasks.length > 0) {
-          vscode.tasks.executeTask(tasks[0]);
-        }
-      });
+        vscode.tasks.fetchTasks({ type: 'gaddisRun' }).then((tasks) => {
+            if (tasks && tasks.length > 0) {
+                vscode.tasks.executeTask(tasks[0]);
+            }
+        });
     }));
 
-    subs.push(vscode.commands.registerCommand('myExtension.runGadTask', (fileUri: vscode.Uri) => {
-      // Logic to run your task on the specified .gad file
-      // You can use fileUri.fsPath to get the file's path
-      vscode.tasks.fetchTasks({ type: 'myGadTask' }).then((tasks) => {
-        if (tasks && tasks.length > 0) {
-          //If your task requires the file path, modify the task appropriately here.
-          //For example, add a command line argument.
-          vscode.tasks.executeTask(tasks[0]);
-        } else {
-          vscode.window.showErrorMessage("Gad task not found");
-        }
-      });
+    const gaddisTestProvider = new GaddisTestProvider(gaddisCmd);
+    subs.push(vscode.tasks.registerTaskProvider('gaddisTest', gaddisTestProvider));
+    subs.push(vscode.commands.registerCommand('gaddis.testTask', () => {
+        vscode.tasks.fetchTasks({ type: 'gaddisTest' }).then((tasks) => {
+            if (tasks && tasks.length > 0) {
+                vscode.tasks.executeTask(tasks[0]);
+            }
+        });
     }));
+
 }
 
 function formatDocument(gaddisCmd: string, document: vscode.TextDocument): Promise<vscode.TextEdit[]> {

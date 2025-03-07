@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-export class GaddisRunProvider implements vscode.TaskProvider {
+export class GaddisTestProvider implements vscode.TaskProvider {
     private gaddisExecutablePath: string;
 
     constructor(gaddisExecutablePath: string) {
@@ -23,11 +23,11 @@ export class GaddisRunProvider implements vscode.TaskProvider {
         const fileName = path.basename(filePath);
 
         const task = new vscode.Task(
-            { type: 'gaddisRun' },
+            { type: 'gaddisTest' },
             vscode.TaskScope.Workspace,
-            `Run ${fileName}`,
+            `Test ${fileName}`,
             'Gaddis',
-            new vscode.ShellExecution(`${this.gaddisExecutablePath} run "${filePath}"`)
+            new vscode.ShellExecution(`${this.gaddisExecutablePath} test "${filePath}"`)
         );
 
         task.group = vscode.TaskGroup.Build;
