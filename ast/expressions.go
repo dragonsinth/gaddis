@@ -228,7 +228,18 @@ func (bo *BinaryOperation) GetType() Type {
 }
 
 func (bo *BinaryOperation) ConstEval() any {
-	panic("not implemented")
+	lhs := bo.Lhs.ConstEval()
+	rhs := bo.Rhs.ConstEval()
+	if lhs == nil || rhs == nil {
+		return nil
+	}
+	ret := AnyOp(bo.Op, bo.ArgType.AsPrimitive(), lhs, rhs)
+	if bo.ArgType == Real {
+		if _, ok := ret.(float64); !ok {
+			ret = float64(ret.(int64))
+		}
+	}
+	return ret
 }
 
 func (*BinaryOperation) isExpression() {}
@@ -256,7 +267,7 @@ func (ve *VariableExpr) ConstEval() any {
 	if ve.Ref.IsConst {
 		return ve.Ref.Expr.ConstEval()
 	}
-	panic(ve.Ref)
+	return nil
 }
 
 func (*VariableExpr) isExpression() {}
@@ -285,7 +296,7 @@ func (ce *CallExpr) GetType() Type {
 }
 
 func (ce *CallExpr) ConstEval() any {
-	panic(ce)
+	return nil
 }
 
 func (*CallExpr) isExpression() {

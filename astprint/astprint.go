@@ -221,7 +221,7 @@ func (v *Visitor) PreVisitDoStmt(ds *ast.DoStmt) bool {
 
 	ds.Block.Visit(v)
 	v.bol(ds.End)
-	if ds.Not {
+	if ds.Until {
 		v.output("Until ")
 	} else {
 		v.output("While ")

@@ -226,7 +226,7 @@ func (v *Visitor) PreVisitDoStmt(ds *ast.DoStmt) bool {
 	startLabel := &Label{Name: "do", PC: len(v.code)}
 	ds.Block.Visit(v)
 	ds.Expr.Visit(v)
-	if ds.Not {
+	if ds.Until {
 		v.code = append(v.code, JumpFalse{SourceInfo: ds.Expr.GetSourceInfo(), Label: startLabel})
 	} else {
 		v.code = append(v.code, JumpTrue{SourceInfo: ds.Expr.GetSourceInfo(), Label: startLabel})
@@ -453,9 +453,13 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 		if isRef || needRef {
 			panic("here")
 		}
+		val := decl.Expr.ConstEval()
+		if val == nil {
+			panic("here")
+		}
 		v.code = append(v.code, Literal{
 			SourceInfo: hs.GetSourceInfo(),
-			Val:        decl.Expr.ConstEval(),
+			Val:        val,
 		})
 	} else if decl.Scope.IsGlobal {
 		if isRef {

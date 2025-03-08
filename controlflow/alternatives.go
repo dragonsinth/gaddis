@@ -12,7 +12,7 @@ func (a *alternatives) Add(flow Flow) {
 	case MAYBE:
 		a.anyContinue = true
 		a.anyReturn = true
-	case RETURN:
+	case HALT:
 		a.anyReturn = true
 	default:
 		panic("here")
@@ -23,7 +23,7 @@ func (a *alternatives) Result() Flow {
 	if !a.anyReturn {
 		return CONTINUE
 	} else if !a.anyContinue {
-		return RETURN
+		return HALT
 	} else {
 		return MAYBE
 	}

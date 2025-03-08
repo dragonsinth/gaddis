@@ -285,7 +285,7 @@ func (v *Visitor) PreVisitDoStmt(ds *ast.DoStmt) bool {
 	v.indent()
 
 	v.output("\tif ")
-	if ds.Not {
+	if ds.Until {
 		ds.Expr.Visit(v)
 	} else {
 		v.output("!(")
@@ -309,7 +309,9 @@ func (v *Visitor) PostVisitDoStmt(ds *ast.DoStmt) {
 func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 	v.indent()
 	v.output("for ")
-	ws.Expr.Visit(v)
+	if val := ws.Expr.ConstEval(); val == nil || !val.(bool) {
+		ws.Expr.Visit(v)
+	}
 	v.output(" {\n")
 	ws.Block.Visit(v)
 	v.indent()
@@ -639,6 +641,10 @@ func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
 	isRef := decl.IsRef
 	if decl.IsConst {
 		if isRef || needRef {
+			panic("here")
+		}
+		val := decl.Expr.ConstEval()
+		if val == nil {
 			panic("here")
 		}
 		v.ident(decl)

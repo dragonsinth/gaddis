@@ -238,16 +238,16 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		p.parseEol()
 		block := p.parseBlock(lex.WHILE, lex.UNTIL)
 		rEnd := p.Next()
-		not := false
+		until := false
 		switch rEnd.Token {
 		case lex.WHILE:
 		case lex.UNTIL:
-			not = true
+			until = true
 		default:
 			panic(p.Errorf(r, "expected While or Until, got %s %q", r.Token, r.Text))
 		}
 		expr := p.parseExpression()
-		return &ast.DoStmt{SourceInfo: spanAst(r, expr), Block: block, Not: not, Expr: expr}
+		return &ast.DoStmt{SourceInfo: spanAst(r, expr), Block: block, Until: until, Expr: expr}
 	case lex.WHILE:
 		expr := p.parseExpression()
 		p.parseEol()

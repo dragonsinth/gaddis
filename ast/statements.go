@@ -151,7 +151,7 @@ func (cb *CaseBlock) Visit(v Visitor) {
 type DoStmt struct {
 	SourceInfo
 	Block *Block
-	Not   bool
+	Until bool // if true, UNTIL, if false WHILE
 	Expr  Expression
 }
 

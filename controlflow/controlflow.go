@@ -28,9 +28,10 @@ type Flow int
 
 const (
 	INVALID Flow = iota
-	CONTINUE
-	MAYBE
-	RETURN
+
+	CONTINUE // execution continues
+	MAYBE    // execution may or may not continue
+	HALT     // execution halts (return, error, infinite loop)
 )
 
 type stackElement struct {
@@ -50,15 +51,15 @@ func (v *Visitor) PostVisitBlock(bl *ast.Block) {
 	flow := CONTINUE
 	warned := false
 	for _, stmt := range bl.Statements {
-		if flow == RETURN && !warned {
+		if flow == HALT && !warned {
 			warned = true
 			v.Errorf(stmt, "unreachable code")
 		}
 
 		f := pl.pop(stmt)
 		switch f {
-		case RETURN:
-			flow = RETURN
+		case HALT:
+			flow = HALT
 		case CONTINUE:
 		case MAYBE:
 			if flow < MAYBE {
@@ -124,17 +125,59 @@ func (v *Visitor) PostVisitSelectStmt(ss *ast.SelectStmt) {
 
 func (v *Visitor) PostVisitDoStmt(ds *ast.DoStmt) {
 	flow := v.pop(ds.Block)
+	infinite := false
+	if eval := ds.Expr.ConstEval(); eval != nil {
+		val := eval.(bool)
+		if !ds.Until && val {
+			// While True
+			infinite = true
+		} else if ds.Until && !val {
+			// Until False
+			infinite = true
+		}
+	}
+	if infinite {
+		if flow == CONTINUE {
+			v.Errorf(ds, "infinite loop")
+		}
+		// the inner loop must return (or if it doesn't, at least suppress more errors)
+		flow = HALT
+	}
 	v.push(ds, flow)
 }
 
 func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 	flow := v.pop(ws.Block)
+	var infinite, skipped bool
+	if eval := ws.Expr.ConstEval(); eval != nil {
+		val := eval.(bool)
+		if val {
+			infinite = true
+		} else {
+			skipped = true
+		}
+	}
+
+	if skipped {
+		flow = CONTINUE
+	} else if infinite {
+		if flow == CONTINUE {
+			v.Errorf(ws, "infinite loop")
+		}
+		// the inner loop must return (or if it doesn't, at least suppress more errors)
+		flow = HALT
+	}
+
 	v.push(ws, flow)
 }
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
-	flow := v.pop(fs.Block)
-	v.push(fs, flow)
+	// assume a for loop might run 0 times
+	// TODO: const eval start/stop/step
+	alt := alternatives{}
+	alt.Add(CONTINUE)
+	alt.Add(v.pop(fs.Block))
+	v.push(fs, alt.Result())
 }
 
 func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
@@ -147,12 +190,12 @@ func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
 }
 
 func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
-	v.push(rs, RETURN)
+	v.push(rs, HALT)
 }
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
 	flow := v.pop(fs.Block)
-	if flow != RETURN {
+	if flow != HALT {
 		v.Errorf(fs, "not all control paths return a value")
 	}
 	v.push(fs, CONTINUE)

@@ -23,14 +23,22 @@ func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 		if !ast.CanCoerce(vd.Type, vd.Expr.GetType()) {
 			v.Errorf(vd.Expr, "%s not assignable to %s", vd.Expr.GetType(), vd.Type)
 		}
-		// TODO: initializer must be a constant expression?
+	}
+	if vd.IsConst {
+		val := vd.Expr.ConstEval()
+		if val == nil {
+			v.Visitor.Errorf(vd.Expr, "expression must be constant")
+		}
+		// replace with a brand new literal
+		switch vd.Expr.(type) {
+		}
 	}
 }
 
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
 	// TODO: variable is non-primitive?
 	if is.Var.Ref.IsConst {
-		v.Errorf(is, "input variable may not be a constant")
+		v.Errorf(is, "input variable must be a reference")
 	}
 }
 
@@ -41,7 +49,7 @@ func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 		v.Errorf(ss.Expr, "%s not assignable to %s", exprType, refType)
 	}
 	if ss.Var.Ref.IsConst {
-		v.Errorf(ss.Var, "loop variable may not be a constant")
+		v.Errorf(ss.Var, "set variable must be a reference")
 	}
 }
 
@@ -84,7 +92,7 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 		v.Errorf(fs.Var, "loop variable must be a number, got %s %s", refType, fs.Var.Name)
 	}
 	if fs.Var.Ref.IsConst {
-		v.Errorf(fs.Var, "loop variable may not be a constant")
+		v.Errorf(fs.Var, "loop variable must be a reference")
 	}
 	if !ast.CanCoerce(refType, fs.StartExpr.GetType()) {
 		v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StartExpr.GetType(), refType)
@@ -211,7 +219,7 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 			case *ast.VariableExpr:
 				ref := arg.Ref
 				if ref.IsConst {
-					v.Errorf(arg, "argument %d: expression may not be a constant", i+1)
+					v.Errorf(arg, "argument %d: expression must be a reference", i+1)
 				}
 			default:
 				// TODO: array references, class field references?
