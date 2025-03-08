@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"fmt"
@@ -90,7 +90,7 @@ type LibCall struct {
 	NArg  int
 }
 
-func (i LibCall) Exec(p *Program) {
+func (i LibCall) Exec(p *Execution) {
 	args := p.PopN(i.NArg)
 	fn := p.Lib[i.Index].Func
 	var ret []reflect.Value

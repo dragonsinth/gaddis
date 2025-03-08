@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ type UnaryOpInt struct {
 	Op ast.Operator
 }
 
-func (i UnaryOpInt) Exec(p *Program) {
+func (i UnaryOpInt) Exec(p *Execution) {
 	a := p.Pop().(int64)
 	switch i.Op {
 	case ast.NEG:
@@ -29,7 +29,7 @@ type UnaryOpFloat struct {
 	Op ast.Operator
 }
 
-func (i UnaryOpFloat) Exec(p *Program) {
+func (i UnaryOpFloat) Exec(p *Execution) {
 	a := toFloat64(p.Pop())
 	switch i.Op {
 	case ast.NEG:
@@ -48,7 +48,7 @@ type UnaryOpBool struct {
 	Op ast.Operator
 }
 
-func (i UnaryOpBool) Exec(p *Program) {
+func (i UnaryOpBool) Exec(p *Execution) {
 	a := p.Pop().(bool)
 	switch i.Op {
 	case ast.NOT:

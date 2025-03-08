@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/gogen/builtins"
-	"github.com/dragonsinth/gaddis/interp"
 	"math/rand"
 	"os"
 	"strings"
@@ -14,7 +14,7 @@ import (
 )
 
 func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, prog *ast.Program) error {
-	cp := interp.Compile(prog)
+	cp := asm.Assemble(prog)
 	if opts.leaveBuildOutputs {
 		asmFile := src.desc() + ".asm"
 		var sb bytes.Buffer
@@ -39,7 +39,7 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 		seed = time.Now().UnixNano()
 	}
 
-	ec := &interp.ExecutionContext{
+	ec := &asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
 		IoContext: builtins.IoContext{
 			Stdin:  bufio.NewScanner(streams.Stdin),
@@ -48,7 +48,7 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 		},
 	}
 
-	p := cp.NewProgram(ec)
+	p := cp.NewExecution(ec)
 	if err := p.Run(); err != nil {
 		if streams.Silent {
 			_, _ = os.Stdout.Write(streams.Output.Bytes())

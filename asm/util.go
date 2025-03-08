@@ -1,4 +1,4 @@
-package interp
+package asm
 
 func toFloat64(val any) float64 {
 	switch v := val.(type) {

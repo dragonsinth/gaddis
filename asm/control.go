@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ type Jump struct {
 	Label *Label
 }
 
-func (i Jump) Exec(p *Program) {
+func (i Jump) Exec(p *Execution) {
 	p.PC = i.Label.PC - 1 // will advance to next instruction
 }
 
@@ -23,7 +23,7 @@ type JumpFalse struct {
 	Label *Label
 }
 
-func (i JumpFalse) Exec(p *Program) {
+func (i JumpFalse) Exec(p *Execution) {
 	v := p.Pop().(bool)
 	if !v {
 		p.PC = i.Label.PC - 1 // will advance to next instruction
@@ -39,7 +39,7 @@ type JumpTrue struct {
 	Label *Label
 }
 
-func (i JumpTrue) Exec(p *Program) {
+func (i JumpTrue) Exec(p *Execution) {
 	v := p.Pop().(bool)
 	if v {
 		p.PC = i.Label.PC - 1 // will advance to next instruction
@@ -54,7 +54,7 @@ type ForInt struct {
 	ast.SourceInfo
 }
 
-func (i ForInt) Exec(p *Program) {
+func (i ForInt) Exec(p *Execution) {
 	step := p.Pop().(int64)
 	stop := p.Pop().(int64)
 	val := p.Pop().(int64)
@@ -75,7 +75,7 @@ type ForReal struct {
 	ast.SourceInfo
 }
 
-func (i ForReal) Exec(p *Program) {
+func (i ForReal) Exec(p *Execution) {
 	step := p.Pop().(float64)
 	stop := p.Pop().(float64)
 	val := p.Pop().(float64)
@@ -96,7 +96,7 @@ type StepInt struct {
 	ast.SourceInfo
 }
 
-func (i StepInt) Exec(p *Program) {
+func (i StepInt) Exec(p *Execution) {
 	step := p.Pop().(int64)
 	stop := p.Pop().(int64)
 	ref := p.Pop().(*any)
@@ -118,7 +118,7 @@ type StepReal struct {
 	ast.SourceInfo
 }
 
-func (i StepReal) Exec(p *Program) {
+func (i StepReal) Exec(p *Execution) {
 	step := p.Pop().(float64)
 	stop := p.Pop().(float64)
 	ref := p.Pop().(*any)

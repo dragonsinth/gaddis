@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ type Literal struct {
 	Val any
 }
 
-func (i Literal) Exec(p *Program) {
+func (i Literal) Exec(p *Execution) {
 	val := i.Val
 	if v, ok := i.Val.(string); ok {
 		val = []byte(v)
@@ -28,7 +28,7 @@ type GlobalRef struct {
 	Index int
 }
 
-func (i GlobalRef) Exec(p *Program) {
+func (i GlobalRef) Exec(p *Execution) {
 	p.Push(&p.Globals[i.Index])
 }
 
@@ -42,7 +42,7 @@ type GlobalVal struct {
 	Index int
 }
 
-func (i GlobalVal) Exec(p *Program) {
+func (i GlobalVal) Exec(p *Execution) {
 	p.Push(p.Globals[i.Index])
 }
 
@@ -56,7 +56,7 @@ type LocalRef struct {
 	Index int
 }
 
-func (i LocalRef) Exec(p *Program) {
+func (i LocalRef) Exec(p *Execution) {
 	p.Push(&p.Frame.Locals[i.Index])
 }
 
@@ -70,7 +70,7 @@ type LocalVal struct {
 	Index int
 }
 
-func (i LocalVal) Exec(p *Program) {
+func (i LocalVal) Exec(p *Execution) {
 	p.Push(p.Frame.Locals[i.Index])
 }
 
@@ -84,7 +84,7 @@ type LocalPtr struct {
 	Index int
 }
 
-func (i LocalPtr) Exec(p *Program) {
+func (i LocalPtr) Exec(p *Execution) {
 	val := p.Frame.Locals[i.Index].(*any)
 	p.Push(*val)
 }

@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ type Begin struct {
 	Label *Label
 }
 
-func (i Begin) Exec(p *Program) {
+func (i Begin) Exec(p *Execution) {
 }
 
 func (i Begin) String() string {
@@ -24,7 +24,7 @@ type Call struct {
 	Label *Label
 }
 
-func (i Call) Exec(p *Program) {
+func (i Call) Exec(p *Execution) {
 	nArg := len(i.Scope.Params)
 	args := slices.Clone(p.PopN(nArg))
 	locals := slices.Clone(args)
@@ -52,7 +52,7 @@ type Return struct {
 	NVal int
 }
 
-func (i Return) Exec(p *Program) {
+func (i Return) Exec(p *Execution) {
 	p.PC = p.Frame.Return
 	p.Stack = p.Stack[:len(p.Stack)-1]
 	if len(p.Stack) > 0 {

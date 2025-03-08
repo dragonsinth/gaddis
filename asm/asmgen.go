@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"github.com/dragonsinth/gaddis/ast"
@@ -6,7 +6,18 @@ import (
 	"github.com/dragonsinth/gaddis/gogen/builtins"
 )
 
-func Compile(prog *ast.Program) *Compilation {
+type Assembly struct {
+	GlobalScope *ast.Scope
+	Code        []Inst
+}
+
+type Inst interface {
+	ast.HasSourceInfo
+	Exec(p *Execution)
+	String() string
+}
+
+func Assemble(prog *ast.Program) *Assembly {
 	v := &Visitor{
 		globalIds: map[*ast.VarDecl]int{},
 		localIds:  map[*ast.VarDecl]int{},
@@ -78,7 +89,7 @@ func Compile(prog *ast.Program) *Compilation {
 		}
 	}
 
-	return &Compilation{
+	return &Assembly{
 		GlobalScope: prog.Scope,
 		Code:        v.code,
 	}

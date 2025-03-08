@@ -5,12 +5,12 @@ import (
 	"bytes"
 	"context"
 	"github.com/dragonsinth/gaddis"
+	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"github.com/dragonsinth/gaddis/gogen/builtins"
-	"github.com/dragonsinth/gaddis/interp"
 	"io"
 	"math/rand"
 	"os"
@@ -102,7 +102,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 		t.Fatalf("%s: failed to compile", filename)
 	}
 
-	cp := interp.Compile(prog)
+	cp := asm.Assemble(prog)
 
 	var input bytes.Buffer
 	var output bytes.Buffer
@@ -116,7 +116,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 		t.Fatalf("failed to read file %s: %v", filename+".out", err)
 	}
 
-	p := cp.NewProgram(&interp.ExecutionContext{
+	p := cp.NewExecution(&asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(0)),
 		IoContext: builtins.IoContext{
 			Stdin:  bufio.NewScanner(&input),

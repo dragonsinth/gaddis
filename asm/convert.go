@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"github.com/dragonsinth/gaddis/ast"
@@ -8,7 +8,7 @@ type IntToReal struct {
 	ast.SourceInfo
 }
 
-func (i IntToReal) Exec(p *Program) {
+func (i IntToReal) Exec(p *Execution) {
 	tip := len(p.Frame.Eval) - 1
 	p.Frame.Eval[tip] = float64(p.Frame.Eval[tip].(int64))
 }
@@ -21,7 +21,7 @@ type RealToInt struct {
 	ast.SourceInfo
 }
 
-func (i RealToInt) Exec(p *Program) {
+func (i RealToInt) Exec(p *Execution) {
 	tip := len(p.Frame.Eval) - 1
 	p.Frame.Eval[tip] = int64(p.Frame.Eval[tip].(float64))
 }

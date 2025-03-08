@@ -1,4 +1,4 @@
-package interp
+package asm
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ type Store struct {
 	ast.SourceInfo
 }
 
-func (i Store) Exec(p *Program) {
+func (i Store) Exec(p *Execution) {
 	ref := p.Pop().(*any)
 	val := p.Pop()
 	*ref = val
@@ -26,7 +26,7 @@ type BinOpInt struct {
 	Op ast.Operator
 }
 
-func (i BinOpInt) Exec(p *Program) {
+func (i BinOpInt) Exec(p *Execution) {
 	b := p.Pop().(int64)
 	a := p.Pop().(int64)
 	switch i.Op {
@@ -68,7 +68,7 @@ type BinOpReal struct {
 	Op ast.Operator
 }
 
-func (i BinOpReal) Exec(p *Program) {
+func (i BinOpReal) Exec(p *Execution) {
 	b := toFloat64(p.Pop())
 	a := toFloat64(p.Pop())
 	switch i.Op {
@@ -110,7 +110,7 @@ type BinOpStr struct {
 	Op ast.Operator
 }
 
-func (i BinOpStr) Exec(p *Program) {
+func (i BinOpStr) Exec(p *Execution) {
 	b := p.Pop().([]byte)
 	a := p.Pop().([]byte)
 	cmp := bytes.Compare(a, b)
@@ -141,7 +141,7 @@ type BinOpChar struct {
 	Op ast.Operator
 }
 
-func (i BinOpChar) Exec(p *Program) {
+func (i BinOpChar) Exec(p *Execution) {
 	b := p.Pop().(byte)
 	a := p.Pop().(byte)
 	switch i.Op {
@@ -171,7 +171,7 @@ type BinOpBool struct {
 	Op ast.Operator
 }
 
-func (i BinOpBool) Exec(p *Program) {
+func (i BinOpBool) Exec(p *Execution) {
 	b := p.Pop().(bool)
 	a := p.Pop().(bool)
 	switch i.Op {
