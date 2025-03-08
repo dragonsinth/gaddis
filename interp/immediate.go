@@ -77,3 +77,18 @@ func (i LocalVal) Exec(p *Program) {
 func (i LocalVal) String() string {
 	return fmt.Sprintf("local %s(%d)", i.Name, i.Index)
 }
+
+type LocalPtr struct {
+	ast.SourceInfo
+	Name  string
+	Index int
+}
+
+func (i LocalPtr) Exec(p *Program) {
+	val := p.Frame.Locals[i.Index].(*any)
+	p.Push(*val)
+}
+
+func (i LocalPtr) String() string {
+	return fmt.Sprintf("*local %s(%d)", i.Name, i.Index)
+}

@@ -477,12 +477,11 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 			})
 		} else {
 			// Take the value (it's a reference) then derefence it.
-			v.code = append(v.code, LocalVal{
+			v.code = append(v.code, LocalPtr{
 				SourceInfo: hs.GetSourceInfo(),
 				Name:       decl.Name,
 				Index:      v.localIds[decl],
 			})
-			v.code = append(v.code, Deref{SourceInfo: hs.GetSourceInfo()})
 		}
 	}
 }

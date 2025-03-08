@@ -27,16 +27,3 @@ func (i Pop) Exec(p *Program) {
 func (i Pop) String() string {
 	return "pop"
 }
-
-type Deref struct {
-	ast.SourceInfo
-}
-
-func (i Deref) Exec(p *Program) {
-	ref := p.Pop().(*any)
-	p.Push(*ref)
-}
-
-func (i Deref) String() string {
-	return "deref"
-}
