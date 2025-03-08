@@ -301,25 +301,6 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	return false
 }
 
-func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
-	v.outputArguments(ce.Args, ce.Ref.Params)
-	if ce.Ref.IsExternal {
-		v.code = append(v.code, LibCall{
-			SourceInfo: ce.SourceInfo,
-			Name:       ce.Name,
-			Index:      libFunc(ce.Name),
-			NArg:       len(ce.Args),
-		})
-	} else {
-		v.code = append(v.code, Call{
-			SourceInfo: ce.SourceInfo,
-			Scope:      ce.Ref.Scope,
-			Label:      v.functions[ce.Ref],
-		})
-	}
-	return false
-}
-
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.mapScope(ms.Scope)
 	lbl := v.modules[ms]
@@ -419,6 +400,25 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 	v.varRef(ve, false) // if we get here, we need a value
 }
 
+func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	v.outputArguments(ce.Args, ce.Ref.Params)
+	if ce.Ref.IsExternal {
+		v.code = append(v.code, LibCall{
+			SourceInfo: ce.SourceInfo,
+			Name:       ce.Name,
+			Index:      libFunc(ce.Name),
+			NArg:       len(ce.Args),
+		})
+	} else {
+		v.code = append(v.code, Call{
+			SourceInfo: ce.SourceInfo,
+			Scope:      ce.Ref.Scope,
+			Label:      v.functions[ce.Ref],
+		})
+	}
+	return false
+}
+
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	exp.Visit(v)
 	if dstType == ast.Real && exp.GetType() == ast.Integer {
@@ -496,8 +496,7 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 		if param.IsRef {
 			// special case
 			// TODO: other types of references
-			ve := arg.(*ast.VariableExpr)
-			v.varRef(ve, true)
+			v.varRef(arg.(*ast.VariableExpr), true)
 		} else {
 			v.maybeCast(param.Type, arg)
 		}
