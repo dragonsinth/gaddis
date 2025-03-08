@@ -302,6 +302,10 @@ func (v *Visitor) stepExpr(fs *ast.ForStmt) {
 	v.code = append(v.code, Literal{SourceInfo: fs.StopExpr.GetSourceInfo().Tail(), Val: val})
 }
 
+func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
+	v.code = append(v.code, Return{SourceInfo: rs.SourceInfo, NVal: 1})
+}
+
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	v.code = append(v.code, Call{

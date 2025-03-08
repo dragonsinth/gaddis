@@ -105,7 +105,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.gaddis",
-					"match": "\\b(If|Then|Else|End|While|Do|Until|For|Module|Function|Class|New|Declare|Constant|To|In|Each|Select|Case|Default)\\b"
+					"match": "\\b(Set|Ref|Constant|Declare|End|If|Then|Else|Select|Case|Default|Do|While|Until|For|To|Step|Module|Call|Function|Return)\\b"
 				}
 			]
 		},
@@ -125,7 +125,7 @@
 			"patterns": [
 				{
 					"name": "constant.language.gaddis",
-					"match": "\\b(True|False)\\b"
+					"match": "\\b(True|False|Tab)\\b"
 				}
 			]
 		},
@@ -149,7 +149,7 @@
 			"patterns": [
 				{
 					"name": "support.function.gaddis",
-					"match": "\\b(Set|Input|Display|Call|Open|Read|Write|Close|Rename|Delete)\\b"
+					"match": "\\b(Display|Input|Open|Read|Write|Close|Rename|Delete)\\b"
 				}
 			]
 		},

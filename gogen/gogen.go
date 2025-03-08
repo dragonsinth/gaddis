@@ -240,8 +240,14 @@ func (v *Visitor) PostVisitCondBlock(cb *ast.CondBlock) {
 func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 	v.indent()
 
+	// string equality
+	typ := ss.Type
+	if typ == ast.String {
+		typ = goStringType
+	}
+
 	v.output("switch (")
-	v.maybeCast(ss.Type, ss.Expr)
+	v.maybeCast(typ, ss.Expr)
 	v.output(") {\n")
 
 	v.ind += "\t"
@@ -249,7 +255,7 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 		v.indent()
 		if cb.Expr != nil {
 			v.output("case ")
-			v.maybeCast(ss.Type, cb.Expr)
+			v.maybeCast(typ, cb.Expr)
 			v.output(":\n")
 		} else {
 			v.output("default:\n")
@@ -534,6 +540,10 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 
 func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	argType := bo.ArgType
+	if argType == ast.String {
+		// force byte[] to string for binary operations
+		argType = goStringType
+	}
 
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
@@ -548,15 +558,6 @@ func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 		v.output(", ")
 		v.maybeCast(argType, bo.Rhs)
 		v.output(")")
-	} else if argType == ast.String {
-		// force byte[] to string for comparisons
-		v.output("(string(")
-		v.maybeCast(argType, bo.Lhs)
-		v.output(") ")
-		v.output(goBinaryOperators[bo.Op])
-		v.output(" string(")
-		v.maybeCast(argType, bo.Rhs)
-		v.output("))")
 	} else {
 		v.output("(")
 		v.maybeCast(argType, bo.Lhs)
@@ -619,6 +620,10 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 		v.output(")")
 	} else if dstType == ast.Integer && exp.GetType() == ast.Real {
 		v.output("int64(")
+		exp.Visit(v)
+		v.output(")")
+	} else if dstType == goStringType && exp.GetType() == ast.String {
+		v.output("string(")
 		exp.Visit(v)
 		v.output(")")
 	} else {
