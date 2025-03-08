@@ -15,12 +15,8 @@ func AnyOp(op Operator, argType PrimitiveType, a, b any) any {
 	case Integer:
 		return IntegerOp(op, a.(int64), b.(int64))
 	case Real:
-		if _, ok := a.(float64); !ok {
-			a = float64(a.(int64))
-		}
-		if _, ok := b.(float64); !ok {
-			b = float64(b.(int64))
-		}
+		a = EnsureReal(a)
+		b = EnsureReal(b)
 		return RealOp(op, a.(float64), b.(float64))
 	case String:
 		return StringOp(op, a.(string), b.(string))
@@ -188,4 +184,15 @@ func expInteger(base, exp int64) int64 {
 		base *= base // Square the base
 	}
 	return result
+}
+
+func EnsureReal(x any) float64 {
+	switch v := x.(type) {
+	case float64:
+		return v
+	case int64:
+		return float64(v)
+	default:
+		panic(x)
+	}
 }

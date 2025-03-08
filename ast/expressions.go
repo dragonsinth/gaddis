@@ -235,9 +235,7 @@ func (bo *BinaryOperation) ConstEval() any {
 	}
 	ret := AnyOp(bo.Op, bo.ArgType.AsPrimitive(), lhs, rhs)
 	if bo.ArgType == Real {
-		if _, ok := ret.(float64); !ok {
-			ret = float64(ret.(int64))
-		}
+		ret = EnsureReal(ret)
 	}
 	return ret
 }
@@ -265,7 +263,11 @@ func (ve *VariableExpr) GetType() Type {
 
 func (ve *VariableExpr) ConstEval() any {
 	if ve.Ref.IsConst {
-		return ve.Ref.Expr.ConstEval()
+		ret := ve.Ref.Expr.ConstEval()
+		if ve.Ref.Type == Real && ve.Ref.Expr.GetType() == Integer {
+			return float64(ret.(int64))
+		}
+		return ret
 	}
 	return nil
 }
