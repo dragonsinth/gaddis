@@ -182,7 +182,7 @@ func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
-	i.Var.Visit(v)
+	v.varRef(i.Var, false)
 	v.output(" = ")
 	v.output(" Input")
 	v.output(i.Var.Type.String())
@@ -195,7 +195,7 @@ func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 
 func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	v.indent()
-	s.Var.Visit(v)
+	v.varRef(s.Var, false)
 	v.output(" = ")
 	v.maybeCast(s.Var.Type, s.Expr)
 	v.output("\n")
@@ -330,8 +330,8 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.indent()
 	v.output("if For")
 	v.output(refType.String())
-	v.output("(&")
-	fs.Var.Visit(v)
+	v.output("(")
+	v.varRef(fs.Var, true)
 	v.output(", ")
 	fs.StartExpr.Visit(v)
 	v.output(", ")
@@ -354,8 +354,8 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.indent()
 	v.output("if !Step")
 	v.output(refType.String())
-	v.output("(&")
-	fs.Var.Visit(v)
+	v.output("(")
+	v.varRef(fs.Var, true)
 	v.output(", ")
 	v.maybeCast(refType, fs.StopExpr)
 	v.output(", ")
@@ -573,11 +573,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
-	if ve.Ref.IsRef {
-		// if we get here, we need to dereference
-		v.output("*")
-	}
-	v.ident(ve.Ref)
+	v.varRef(ve, false) // if we get here, we need a value
 	return true
 }
 
@@ -630,6 +626,44 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	}
 }
 
+func (v *Visitor) varRef(expr *ast.VariableExpr, needRef bool) {
+	v.varRefDecl(expr.Ref, needRef)
+}
+
+func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
+	isRef := decl.IsRef
+	if decl.IsConst {
+		if isRef || needRef {
+			panic("here")
+		}
+		v.ident(decl)
+	} else if decl.Scope.IsGlobal {
+		if isRef {
+			panic("here")
+		}
+		if needRef {
+			v.output("&")
+			v.ident(decl)
+		} else {
+			v.ident(decl)
+		}
+		return
+	} else {
+		// Local
+		if decl.IsRef == needRef {
+			// if we have a ref and need a ref, or we have a val and need a val, we good
+			v.ident(decl)
+		} else if needRef {
+			v.output("&")
+			v.ident(decl)
+		} else {
+			// Take the value (it's a reference) then derefence it.
+			v.output("*")
+			v.ident(decl)
+		}
+	}
+}
+
 func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) {
 	v.output("(")
 	for i, arg := range args {
@@ -640,12 +674,7 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 		if param.IsRef {
 			// special case
 			// TODO: other types of references
-			ref := arg.(*ast.VariableExpr).Ref
-			if !ref.IsRef {
-				// take the address
-				v.output("&")
-			}
-			v.ident(ref)
+			v.varRef(arg.(*ast.VariableExpr), true)
 		} else {
 			v.maybeCast(param.Type, arg)
 		}
