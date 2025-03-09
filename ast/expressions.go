@@ -4,142 +4,49 @@ type Expression interface {
 	Node
 	GetType() Type
 	ConstEval() any
+	CanReference() bool
 	isExpression()
 }
 
-type IntegerLiteral struct {
-	SourceInfo
-	Val int64
+type baseExpression struct {
 }
 
-func (il *IntegerLiteral) Visit(v Visitor) {
-	if !v.PreVisitIntegerLiteral(il) {
+func (baseExpression) ConstEval() any {
+	return nil
+}
+
+func (baseExpression) CanReference() bool {
+	return false
+}
+
+func (baseExpression) isExpression() {}
+
+type Literal struct {
+	SourceInfo
+	baseExpression
+	Type         PrimitiveType
+	Val          any
+	IsTabLiteral bool
+}
+
+func (l *Literal) Visit(v Visitor) {
+	if !v.PreVisitLiteral(l) {
 		return
 	}
-	v.PostVisitIntegerLiteral(il)
+	v.PostVisitLiteral(l)
 }
 
-func (il *IntegerLiteral) GetType() Type {
-	return Integer
+func (l *Literal) GetType() Type {
+	return l.Type
 }
 
-func (il *IntegerLiteral) ConstEval() any {
-	return il.Val
+func (l *Literal) ConstEval() any {
+	return l.Val
 }
-
-func (*IntegerLiteral) isExpression() {}
-
-type RealLiteral struct {
-	SourceInfo
-	Val float64
-}
-
-func (rl *RealLiteral) Visit(v Visitor) {
-	if !v.PreVisitRealLiteral(rl) {
-		return
-	}
-	v.PostVisitRealLiteral(rl)
-}
-
-func (rl *RealLiteral) GetType() Type {
-	return Real
-}
-
-func (rl *RealLiteral) ConstEval() any {
-	return rl.Val
-}
-
-func (*RealLiteral) isExpression() {}
-
-type StringLiteral struct {
-	SourceInfo
-	Val string
-}
-
-func (sl *StringLiteral) Visit(v Visitor) {
-	if !v.PreVisitStringLiteral(sl) {
-		return
-	}
-	v.PostVisitStringLiteral(sl)
-}
-
-func (sl *StringLiteral) GetType() Type {
-	return String
-}
-
-func (sl *StringLiteral) ConstEval() any {
-	return sl.Val
-}
-
-func (*StringLiteral) isExpression() {}
-
-type CharacterLiteral struct {
-	SourceInfo
-	Val byte
-}
-
-func (cl *CharacterLiteral) Visit(v Visitor) {
-	if !v.PreVisitCharacterLiteral(cl) {
-		return
-	}
-	v.PostVisitCharacterLiteral(cl)
-}
-
-func (cl CharacterLiteral) GetType() Type {
-	return Character
-}
-
-func (cl CharacterLiteral) ConstEval() any {
-	return cl.Val
-}
-
-func (*CharacterLiteral) isExpression() {}
-
-type TabLiteral struct {
-	SourceInfo
-}
-
-func (tl *TabLiteral) Visit(v Visitor) {
-	if !v.PreVisitTabLiteral(tl) {
-		return
-	}
-	v.PostVisitTabLiteral(tl)
-}
-
-func (tl *TabLiteral) GetType() Type {
-	return String
-}
-
-func (tl *TabLiteral) ConstEval() any {
-	return "\t"
-}
-
-func (*TabLiteral) isExpression() {}
-
-type BooleanLiteral struct {
-	SourceInfo
-	Val bool
-}
-
-func (bl *BooleanLiteral) Visit(v Visitor) {
-	if !v.PreVisitBooleanLiteral(bl) {
-		return
-	}
-	v.PostVisitBooleanLiteral(bl)
-}
-
-func (bl BooleanLiteral) GetType() Type {
-	return Boolean
-}
-
-func (bl *BooleanLiteral) ConstEval() any {
-	return bl.Val
-}
-
-func (*BooleanLiteral) isExpression() {}
 
 type ParenExpr struct {
 	SourceInfo
+	baseExpression
 	Expr Expression
 }
 
@@ -159,10 +66,9 @@ func (pe *ParenExpr) ConstEval() any {
 	return pe.Expr.ConstEval()
 }
 
-func (*ParenExpr) isExpression() {}
-
 type UnaryOperation struct {
 	SourceInfo
+	baseExpression
 	Op   Operator
 	Type Type
 	Expr Expression
@@ -203,10 +109,9 @@ func (uo *UnaryOperation) ConstEval() any {
 	}
 }
 
-func (*UnaryOperation) isExpression() {}
-
 type BinaryOperation struct {
 	SourceInfo
+	baseExpression
 	Op      Operator
 	Type    Type
 	Lhs     Expression
@@ -240,12 +145,9 @@ func (bo *BinaryOperation) ConstEval() any {
 	return ret
 }
 
-func (*BinaryOperation) isExpression() {}
-
 type VariableExpr struct {
 	SourceInfo
 	Name string
-
 	Ref  *VarDecl // resolve symbols
 	Type Type     // type checking
 }
@@ -272,10 +174,15 @@ func (ve *VariableExpr) ConstEval() any {
 	return nil
 }
 
+func (ve *VariableExpr) CanReference() bool {
+	return true
+}
+
 func (*VariableExpr) isExpression() {}
 
 type CallExpr struct {
 	SourceInfo
+	baseExpression
 	Name string
 	Args []Expression
 
@@ -295,11 +202,4 @@ func (ce *CallExpr) Visit(v Visitor) {
 
 func (ce *CallExpr) GetType() Type {
 	return ce.Type
-}
-
-func (ce *CallExpr) ConstEval() any {
-	return nil
-}
-
-func (*CallExpr) isExpression() {
 }

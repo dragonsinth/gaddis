@@ -454,30 +454,30 @@ func (p *Parser) parseTerminal() ast.Expression {
 			// should happen in lexer
 			panic(p.Errorf(r, "invalid Integer literal %s", r.Text))
 		}
-		return &ast.IntegerLiteral{SourceInfo: toSourceInfo(r), Val: v}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Integer, Val: v}
 	case lex.REAL_LIT:
 		v, err := strconv.ParseFloat(r.Text, 64)
 		if err != nil {
 			// should happen in lexer
 			panic(p.Errorf(r, "invalid Real literal %s", r.Text))
 		}
-		return &ast.RealLiteral{SourceInfo: toSourceInfo(r), Val: v}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Real, Val: v}
 	case lex.STR_LIT:
 		v, err := strconv.Unquote(r.Text)
 		if err != nil {
 			// should happen in lexer
 			panic(p.Errorf(r, "invalid String literal %s", r.Text))
 		}
-		return &ast.StringLiteral{SourceInfo: toSourceInfo(r), Val: v}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.String, Val: v}
 	case lex.CHR_LIT:
 		v, err := strconv.Unquote(r.Text)
 		if err != nil || len(v) > 1 {
 			// should happen in lexer
 			panic(p.Errorf(r, "invalid Character literal %s", r.Text))
 		}
-		return &ast.CharacterLiteral{SourceInfo: toSourceInfo(r), Val: v[0]}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Character, Val: v[0]}
 	case lex.TAB_LIT:
-		return &ast.TabLiteral{SourceInfo: toSourceInfo(r)}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.String, Val: "\t", IsTabLiteral: true}
 	case lex.NOT:
 		expr := p.parseExpression()
 		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
@@ -485,9 +485,9 @@ func (p *Parser) parseTerminal() ast.Expression {
 		expr := p.parseExpression()
 		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: expr.GetType(), Expr: expr}
 	case lex.TRUE:
-		return &ast.BooleanLiteral{SourceInfo: toSourceInfo(r), Val: true}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Boolean, Val: true}
 	case lex.FALSE:
-		return &ast.BooleanLiteral{SourceInfo: toSourceInfo(r), Val: false}
+		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Boolean, Val: false}
 	case lex.LPAREN:
 		expr := p.parseExpression()
 		rEnd := p.parseTok(lex.RPAREN)

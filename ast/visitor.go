@@ -50,23 +50,8 @@ type Visitor interface {
 	PreVisitFunctionStmt(fs *FunctionStmt) bool
 	PostVisitFunctionStmt(fs *FunctionStmt)
 
-	PreVisitIntegerLiteral(il *IntegerLiteral) bool
-	PostVisitIntegerLiteral(il *IntegerLiteral)
-
-	PreVisitRealLiteral(rl *RealLiteral) bool
-	PostVisitRealLiteral(rl *RealLiteral)
-
-	PreVisitStringLiteral(sl *StringLiteral) bool
-	PostVisitStringLiteral(sl *StringLiteral)
-
-	PreVisitCharacterLiteral(cl *CharacterLiteral) bool
-	PostVisitCharacterLiteral(cl *CharacterLiteral)
-
-	PreVisitTabLiteral(tl *TabLiteral) bool
-	PostVisitTabLiteral(tl *TabLiteral)
-
-	PreVisitBooleanLiteral(bl *BooleanLiteral) bool
-	PostVisitBooleanLiteral(bl *BooleanLiteral)
+	PreVisitLiteral(l *Literal) bool
+	PostVisitLiteral(l *Literal)
 
 	PreVisitParenExpr(pe *ParenExpr) bool
 	PostVisitParenExpr(pe *ParenExpr)

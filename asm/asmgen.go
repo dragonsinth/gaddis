@@ -121,7 +121,7 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 
 func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 	for _, arg := range d.Exprs {
-		if _, ok := arg.(*ast.TabLiteral); ok {
+		if lit, ok := arg.(*ast.Literal); ok && lit.IsTabLiteral {
 			v.code = append(v.code, Literal{
 				SourceInfo: arg.GetSourceInfo(),
 				Val:        builtins.TabDisplay,
@@ -349,42 +349,7 @@ func (v *Visitor) PostVisitFunctionStmt(ms *ast.FunctionStmt) {
 	v.code = append(v.code, Return{SourceInfo: ms.SourceInfo.Tail(), NVal: 1})
 }
 
-func (v *Visitor) PostVisitIntegerLiteral(l *ast.IntegerLiteral) {
-	v.code = append(v.code, Literal{
-		SourceInfo: l.SourceInfo,
-		Val:        l.Val,
-	})
-}
-
-func (v *Visitor) PostVisitRealLiteral(l *ast.RealLiteral) {
-	v.code = append(v.code, Literal{
-		SourceInfo: l.SourceInfo,
-		Val:        l.Val,
-	})
-}
-
-func (v *Visitor) PostVisitStringLiteral(l *ast.StringLiteral) {
-	v.code = append(v.code, Literal{
-		SourceInfo: l.SourceInfo,
-		Val:        l.Val,
-	})
-}
-
-func (v *Visitor) PostVisitCharacterLiteral(l *ast.CharacterLiteral) {
-	v.code = append(v.code, Literal{
-		SourceInfo: l.SourceInfo,
-		Val:        l.Val,
-	})
-}
-
-func (v *Visitor) PostVisitTabLiteral(l *ast.TabLiteral) {
-	v.code = append(v.code, Literal{
-		SourceInfo: l.SourceInfo,
-		Val:        "\t",
-	})
-}
-
-func (v *Visitor) PostVisitBooleanLiteral(l *ast.BooleanLiteral) {
+func (v *Visitor) PostVisitLiteral(l *ast.Literal) {
 	v.code = append(v.code, Literal{
 		SourceInfo: l.SourceInfo,
 		Val:        l.Val,

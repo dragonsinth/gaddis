@@ -116,41 +116,11 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
-func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
+func (v *Visitor) PreVisitLiteral(i *ast.Literal) bool {
 	return true
 }
 
-func (v *Visitor) PostVisitIntegerLiteral(il *ast.IntegerLiteral) {}
-
-func (v *Visitor) PreVisitRealLiteral(rl *ast.RealLiteral) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitRealLiteral(rl *ast.RealLiteral) {}
-
-func (v *Visitor) PreVisitStringLiteral(sl *ast.StringLiteral) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitStringLiteral(sl *ast.StringLiteral) {}
-
-func (v *Visitor) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {}
-
-func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitTabLiteral(tl *ast.TabLiteral) {}
-
-func (v *Visitor) PreVisitBooleanLiteral(bl *ast.BooleanLiteral) bool {
-	return true
-}
-
-func (v *Visitor) PostVisitBooleanLiteral(bl *ast.BooleanLiteral) {}
+func (v *Visitor) PostVisitLiteral(i *ast.Literal) {}
 
 func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
 	return true

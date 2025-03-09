@@ -25,26 +25,15 @@ func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 		}
 	}
 	if vd.IsConst {
+		// replace with a brand new literal!
 		val := vd.Expr.ConstEval()
 		if val == nil {
 			v.Visitor.Errorf(vd.Expr, "expression must be constant")
 		} else {
-			// replace with a brand new literal!
-			si := vd.Expr.GetSourceInfo()
-			switch vd.Type.AsPrimitive() {
-			case ast.Integer:
-				vd.Expr = &ast.IntegerLiteral{SourceInfo: si, Val: val.(int64)}
-			case ast.Real:
-				vd.Expr = &ast.RealLiteral{SourceInfo: si, Val: ast.EnsureReal(val)}
-			case ast.String:
-				vd.Expr = &ast.StringLiteral{SourceInfo: si, Val: val.(string)}
-			case ast.Character:
-				vd.Expr = &ast.CharacterLiteral{SourceInfo: si, Val: val.(byte)}
-			case ast.Boolean:
-				vd.Expr = &ast.BooleanLiteral{SourceInfo: si, Val: val.(bool)}
-			default:
-				panic(vd.Type)
+			if vd.Type == ast.Real {
+				val = ast.EnsureReal(val)
 			}
+			vd.Expr = &ast.Literal{SourceInfo: vd.Expr.GetSourceInfo(), Type: vd.Type.AsPrimitive(), Val: val}
 		}
 	}
 }

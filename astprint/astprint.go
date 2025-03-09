@@ -359,56 +359,33 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
-func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
-	v.output(strconv.FormatInt(il.Val, 10))
-	return true
-}
-
-func (v *Visitor) PostVisitIntegerLiteral(l *ast.IntegerLiteral) {
-}
-
-func (v *Visitor) PreVisitRealLiteral(rl *ast.RealLiteral) bool {
-	v.output(strconv.FormatFloat(rl.Val, 'f', -1, 64))
-	return true
-}
-
-func (v *Visitor) PostVisitRealLiteral(l *ast.RealLiteral) {
-}
-
-func (v *Visitor) PreVisitStringLiteral(sl *ast.StringLiteral) bool {
-	v.output(strconv.Quote(sl.Val))
-	return true
-}
-
-func (v *Visitor) PostVisitStringLiteral(sl *ast.StringLiteral) {
-}
-
-func (v *Visitor) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
-	v.output(strconv.QuoteRune(rune(cl.Val)))
-	return true
-}
-
-func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
-}
-
-func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
-	if cl.Val {
-		v.output("True")
-	} else {
-		v.output("False")
+func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
+	if l.IsTabLiteral {
+		v.output("Tab")
+		return false
 	}
-	return true
-}
-
-func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
-	v.output("Tab")
+	switch l.Type {
+	case ast.Integer:
+		v.output(strconv.FormatInt(l.Val.(int64), 10))
+	case ast.Real:
+		v.output(strconv.FormatFloat(l.Val.(float64), 'f', -1, 64))
+	case ast.String:
+		v.output(strconv.Quote(l.Val.(string)))
+	case ast.Character:
+		v.output(strconv.QuoteRune(rune(l.Val.(byte))))
+	case ast.Boolean:
+		if l.Val.(bool) {
+			v.output("True")
+		} else {
+			v.output("False")
+		}
+	default:
+		panic(l.Type)
+	}
 	return false
 }
 
-func (v *Visitor) PostVisitTabLiteral(tl *ast.TabLiteral) {}
-
-func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
-}
+func (v *Visitor) PostVisitLiteral(l *ast.Literal) {}
 
 func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
 	v.output("(")

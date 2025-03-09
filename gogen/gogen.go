@@ -167,7 +167,7 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 		if i > 0 {
 			v.output(", ")
 		}
-		if _, ok := arg.(*ast.TabLiteral); ok {
+		if lit, ok := arg.(*ast.Literal); ok && lit.IsTabLiteral {
 			v.output("TabDisplay")
 		} else {
 			arg.Visit(v)
@@ -466,54 +466,27 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
-func (v *Visitor) PreVisitIntegerLiteral(il *ast.IntegerLiteral) bool {
-	v.output(strconv.FormatInt(il.Val, 10))
-	return true
-}
-
-func (v *Visitor) PostVisitIntegerLiteral(l *ast.IntegerLiteral) {
-}
-
-func (v *Visitor) PreVisitRealLiteral(rl *ast.RealLiteral) bool {
-	v.output(strconv.FormatFloat(rl.Val, 'f', -1, 64))
-	return true
-}
-
-func (v *Visitor) PostVisitRealLiteral(l *ast.RealLiteral) {
-}
-
-func (v *Visitor) PreVisitStringLiteral(sl *ast.StringLiteral) bool {
-	v.output("String(")
-	v.output(strconv.Quote(sl.Val))
-	v.output(")")
-	return true
-}
-
-func (v *Visitor) PostVisitStringLiteral(sl *ast.StringLiteral) {
-}
-
-func (v *Visitor) PreVisitCharacterLiteral(cl *ast.CharacterLiteral) bool {
-	v.output(strconv.QuoteRune(rune(cl.Val)))
-	return true
-}
-
-func (v *Visitor) PostVisitCharacterLiteral(cl *ast.CharacterLiteral) {
-}
-
-func (v *Visitor) PreVisitTabLiteral(tl *ast.TabLiteral) bool {
-	v.output(`String("\t")`)
+func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
+	switch l.Type {
+	case ast.Integer:
+		v.output(strconv.FormatInt(l.Val.(int64), 10))
+	case ast.Real:
+		v.output(strconv.FormatFloat(l.Val.(float64), 'f', -1, 64))
+	case ast.String:
+		v.output("String(")
+		v.output(strconv.Quote(l.Val.(string)))
+		v.output(")")
+	case ast.Character:
+		v.output(strconv.QuoteRune(rune(l.Val.(byte))))
+	case ast.Boolean:
+		v.output(strconv.FormatBool(l.Val.(bool)))
+	default:
+		panic(l.Type)
+	}
 	return false
 }
 
-func (v *Visitor) PostVisitTabLiteral(tl *ast.TabLiteral) {}
-
-func (v *Visitor) PreVisitBooleanLiteral(cl *ast.BooleanLiteral) bool {
-	v.output(strconv.FormatBool(cl.Val))
-	return true
-}
-
-func (v *Visitor) PostVisitBooleanLiteral(cl *ast.BooleanLiteral) {
-}
+func (v *Visitor) PostVisitLiteral(l *ast.Literal) {}
 
 func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
 	// unary/binary operation emit parens to force order of operations
