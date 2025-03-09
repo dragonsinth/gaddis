@@ -60,6 +60,8 @@ func main() {
 		err = run(args[1:], opts)
 	case "test":
 		err = test(args[1:], opts)
+	case "debug":
+		err = debug(args[1:], opts)
 	case "run":
 		err = run(args[1:], opts)
 	default:
