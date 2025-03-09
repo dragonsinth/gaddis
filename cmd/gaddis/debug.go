@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/go-dap"
 	"io"
@@ -16,7 +17,7 @@ import (
 // server starts a server that listens on a specified port
 // and blocks indefinitely. This server can accept multiple
 // client connections at the same time.
-func debugServer(port int) error {
+func debugServer(port int, dbgLog *log.Logger) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return err
@@ -34,7 +35,7 @@ func debugServer(port int) error {
 		}
 		log.Println("Accepted connection from", conn.RemoteAddr())
 		// Handle multiple client connections concurrently
-		go handleConnection(conn)
+		go handleConnection(conn, dbgLog)
 	}
 }
 
@@ -43,7 +44,7 @@ func debugServer(port int) error {
 // to per-request processing goroutines. It also launches the
 // sender goroutine to send resulting messages over the connection
 // back to the client.
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, dbgLog *log.Logger) {
 	defer func() {
 		log.Println("Closing connection from", conn.RemoteAddr())
 		_ = conn.Close()
@@ -53,12 +54,15 @@ func handleConnection(conn net.Conn) {
 		rw:        bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn)),
 		sendQueue: make(chan dap.Message),
 		bps:       map[string][]int{},
+		dbgLog:    dbgLog,
 	}
 
-	debugSession.Run()
+	if err := debugSession.Run(); err != nil {
+		log.Println("Error:", err)
+	}
 }
 
-func (ds *fakeDebugSession) Run() {
+func (ds *fakeDebugSession) Run() error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 	defer close(ds.sendQueue)
@@ -70,14 +74,10 @@ func (ds *fakeDebugSession) Run() {
 	}()
 
 	for {
-		err := ds.handleRequest()
-		if err != nil {
-			if err == io.EOF {
-				log.Println("No more data to read:", err)
-			} else {
-				log.Println("Server error: ", err)
-			}
-			return
+		if err := ds.handleRequest(); errors.Is(err, io.EOF) {
+			return nil
+		} else if err != nil {
+			return err
 		}
 	}
 }
@@ -87,7 +87,7 @@ func (ds *fakeDebugSession) handleRequest() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Received request: %s", toJson(request))
+	ds.dbgLog.Printf("Received request: %s", toJson(request))
 	ds.dispatchRequest(request)
 	return nil
 }
@@ -175,7 +175,7 @@ func (ds *fakeDebugSession) dispatchRequest(request dap.Message) {
 	case *dap.BreakpointLocationsRequest:
 		ds.onBreakpointLocationsRequest(request)
 	default:
-		log.Fatalf("Unable to process %#v", request)
+		ds.send(newErrorResponse(request.GetSeq(), "unknown", "unknown command"))
 	}
 }
 
@@ -206,7 +206,7 @@ func (ds *fakeDebugSession) sendFromQueue() {
 			log.Println("Error writing message:", err)
 			return
 		}
-		log.Printf("Message sent\n%s", toJson(message))
+		ds.dbgLog.Printf("Message sent\n%s", toJson(message))
 		if err := ds.rw.Flush(); err != nil {
 			log.Println("Error writing message:", err)
 			return
@@ -224,7 +224,8 @@ func (ds *fakeDebugSession) sendFromQueue() {
 // one, and once there are no more, it will trigger a terminated event.
 type fakeDebugSession struct {
 	// rw is used to read requests and write events/responses
-	rw *bufio.ReadWriter
+	rw     *bufio.ReadWriter
+	dbgLog *log.Logger
 
 	// sendQueue is used to capture messages from multiple request
 	// processing goroutines while writing them to the client connection
@@ -653,35 +654,57 @@ func newErrorResponse(requestSeq int, command string, message string) *dap.Error
 	return er
 }
 
-func debug(port int) error {
-	if port > 0 {
-		return debugServer(port)
-	}
+func debug(port int, verbose bool) error {
+	dbgLog := log.New(io.Discard, "", log.LstdFlags)
 
-	// run direct from vscode
-	_ = os.Chdir(os.Getenv("PWD"))
-	logFile, err := os.OpenFile("gaddis-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	if err == nil {
+	if port < 0 {
+		// we have to run on stdout, so create a log file.
+		_ = os.Chdir(os.Getenv("PWD"))
+		logFile, err := os.OpenFile("gaddis-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		if err == nil {
+			log.SetOutput(logFile)
+			defer func() {
+				_ = logFile.Close()
+			}()
+		}
+		if verbose {
+			dbgLog.SetOutput(logFile)
+		}
 		log.SetOutput(logFile)
-		defer func() {
-			_ = logFile.Close()
-		}()
+	} else {
+		// setup normal stdout/stderr logging
+		if verbose {
+			dbgLog.SetOutput(os.Stdout)
+		}
+		log.SetOutput(os.Stderr)
 
-		log.Println(os.Getwd())
-		log.Println(os.Args)
-		for _, ev := range os.Environ() {
-			log.Println(ev)
+		// if running as a server within vscode, don't emit timestamps (IDE will do this).
+		if os.Getenv("VSCODE_CLI") != "" {
+			dbgLog.SetFlags(0)
+			log.SetFlags(0)
 		}
 	}
 
-	debugSession := fakeDebugSession{
-		rw:        bufio.NewReadWriter(bufio.NewReader(os.Stdin), bufio.NewWriter(os.Stdout)),
-		sendQueue: make(chan dap.Message),
-		bps:       map[string][]int{},
+	if verbose {
+		dbgLog.Println(os.Getwd())
+		dbgLog.Println(os.Args)
+		for _, ev := range os.Environ() {
+			dbgLog.Println(ev)
+		}
 	}
 
-	debugSession.Run()
-	return nil
+	if port >= 0 {
+		return debugServer(port, dbgLog)
+	} else {
+		debugSession := fakeDebugSession{
+			rw:        bufio.NewReadWriter(bufio.NewReader(os.Stdin), bufio.NewWriter(os.Stdout)),
+			sendQueue: make(chan dap.Message),
+			bps:       map[string][]int{},
+			dbgLog:    dbgLog,
+		}
+
+		return debugSession.Run()
+	}
 }
 
 func toJson(obj any) string {
