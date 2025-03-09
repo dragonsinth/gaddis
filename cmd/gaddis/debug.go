@@ -378,8 +378,11 @@ func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
 	if args.NoDebug {
 		// just run
 		go func() {
-			if err := sess.Exec.Run(); err != nil {
-				// TODO: map sess.Exec.PC -> source line
+			err := sess.Exec.Run()
+			_ = opts.Stdout.Sync()
+			_ = opts.Stderr.Sync()
+			if err != nil {
+				// TODO: call a method in sess.Exec (panic proof)
 				si := sess.Exec.Code[sess.Exec.PC].GetSourceInfo().Start
 				ds.send(&dap.OutputEvent{
 					Event: *newEvent("output"),
@@ -656,34 +659,45 @@ func (ds *fakeDebugSession) onBreakpointLocationsRequest(request *dap.Breakpoint
 	ds.send(response)
 }
 
-func (ds *fakeDebugSession) makeStream(typ string) gaddis.SyncWriter {
+func (ds *fakeDebugSession) makeStream(category string) gaddis.SyncWriter {
 	return &bufferedSyncWriter{
-		typ: typ,
-		ds:  ds,
+		ds:       ds,
+		category: category,
 	}
 }
 
 type bufferedSyncWriter struct {
-	buffer bytes.Buffer
-	typ    string
-	ds     *fakeDebugSession
+	ds       *fakeDebugSession
+	category string
+	buffer   bytes.Buffer
 }
 
 func (b *bufferedSyncWriter) Write(p []byte) (n int, err error) {
-	return b.buffer.Write(p)
+	if pos := bytes.LastIndex(p, []byte{'\n'}); pos > 0 {
+		// force a flush
+		first, rest := p[:pos+1], p[pos+1:]
+		b.buffer.Write(first)
+		_ = b.Sync()
+		b.buffer.Write(rest)
+	} else {
+		return b.buffer.Write(p)
+	}
+	return len(p), nil
 }
 
 func (b *bufferedSyncWriter) Sync() error {
-	output := b.buffer.String()
-	b.buffer.Reset()
-	b.ds.send(&dap.OutputEvent{
-		Event: *newEvent("output"),
-		Body: dap.OutputEventBody{
-			Category: "stderr",
-			Output:   output,
-			Source:   &b.ds.source,
-		},
-	})
+	if b.buffer.Len() > 0 {
+		output := b.buffer.String()
+		b.buffer.Reset()
+		b.ds.send(&dap.OutputEvent{
+			Event: *newEvent("output"),
+			Body: dap.OutputEventBody{
+				Category: b.category,
+				Output:   output,
+				Source:   &b.ds.source,
+			},
+		})
+	}
 	return nil
 }
 

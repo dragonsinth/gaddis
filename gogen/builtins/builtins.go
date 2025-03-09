@@ -50,6 +50,7 @@ func (ctx IoContext) Display(args ...any) {
 	}
 	sb.WriteByte('\n')
 	_, _ = ctx.Stdout.Write(sb.Bytes())
+	_ = ctx.Stdout.Sync()
 }
 
 func (ctx IoContext) InputInteger() int64 {
