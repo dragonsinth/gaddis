@@ -2,14 +2,19 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dragonsinth/gaddis"
+	"github.com/dragonsinth/gaddis/ast"
+	"github.com/dragonsinth/gaddis/debug"
 	"github.com/google/go-dap"
 	"io"
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -35,7 +40,17 @@ func debugServer(port int, dbgLog *log.Logger) error {
 		}
 		log.Println("Accepted connection from", conn.RemoteAddr())
 		// Handle multiple client connections concurrently
-		go handleConnection(conn, dbgLog)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Println("panic:", r)
+					buf := make([]byte, 1<<16)
+					runtime.Stack(buf, false)
+					log.Println(string(buf))
+				}
+			}()
+			handleConnection(conn, dbgLog)
+		}()
 	}
 }
 
@@ -338,33 +353,51 @@ func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
 	ds.stopOnEntry = args.StopOnEntry
 	ds.line = -1
 
-	if args.NoDebug {
-		// just run
-		ds.send(&dap.TerminatedEvent{
-			Event: *newEvent("terminated"),
+	compileErr := func(err ast.Error) {
+		ds.send(&dap.OutputEvent{
+			Event: *newEvent("output"),
+			Body: dap.OutputEventBody{
+				Category: "stderr",
+				Output:   err.Desc,
+				Source:   &ds.source,
+				Line:     err.Start.Line + ds.lineOff,
+				Column:   err.Start.Column + ds.colOff,
+			},
 		})
 	}
+	opts := debug.DebugOpts{
+		Stdout: ds.makeStream("stdout"),
+		Stderr: ds.makeStream("stderr"),
+	}
+	sess, err := debug.New(ds.source.Path, compileErr, ds, opts)
+	if err != nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, err.Error()))
+		return
+	}
 
-	//ds.send(&dap.OutputEvent{
-	//	Event: *newEvent("output"),
-	//	Body: dap.OutputEventBody{
-	//		Category: "stderr",
-	//		Output:   "Error: Syntax error in file.go:10:20\n",
-	//		Source:   &ds.source,
-	//		Line:     10,
-	//		Column:   20,
-	//	},
-	//})
-	//ds.send(&dap.OutputEvent{
-	//	Event: *newEvent("output"),
-	//	Body: dap.OutputEventBody{
-	//		Category: "stderr",
-	//		Output:   "Error: Syntax error in file.go:15:1\n",
-	//		Source:   &ds.source,
-	//		Line:     15,
-	//		Column:   1,
-	//	},
-	//})
+	if args.NoDebug {
+		// just run
+		go func() {
+			if err := sess.Exec.Run(); err != nil {
+				// TODO: map sess.Exec.PC -> source line
+				si := sess.Exec.Code[sess.Exec.PC].GetSourceInfo().Start
+				ds.send(&dap.OutputEvent{
+					Event: *newEvent("output"),
+					Body: dap.OutputEventBody{
+						Category: "stderr",
+						Output:   err.Error(),
+						Source:   &ds.source,
+						Line:     si.Line + ds.lineOff,
+						Column:   si.Column + ds.colOff,
+					},
+				})
+			}
+			ds.send(&dap.TerminatedEvent{
+				Event: *newEvent("terminated"),
+			})
+		}()
+		return
+	}
 
 	response := &dap.LaunchResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
@@ -623,6 +656,39 @@ func (ds *fakeDebugSession) onBreakpointLocationsRequest(request *dap.Breakpoint
 	ds.send(response)
 }
 
+func (ds *fakeDebugSession) makeStream(typ string) gaddis.SyncWriter {
+	return &bufferedSyncWriter{
+		typ: typ,
+		ds:  ds,
+	}
+}
+
+type bufferedSyncWriter struct {
+	buffer bytes.Buffer
+	typ    string
+	ds     *fakeDebugSession
+}
+
+func (b *bufferedSyncWriter) Write(p []byte) (n int, err error) {
+	return b.buffer.Write(p)
+}
+
+func (b *bufferedSyncWriter) Sync() error {
+	output := b.buffer.String()
+	b.buffer.Reset()
+	b.ds.send(&dap.OutputEvent{
+		Event: *newEvent("output"),
+		Body: dap.OutputEventBody{
+			Category: "stderr",
+			Output:   output,
+			Source:   &b.ds.source,
+		},
+	})
+	return nil
+}
+
+var _ gaddis.SyncWriter = &bufferedSyncWriter{}
+
 func newEvent(event string) *dap.Event {
 	return &dap.Event{
 		ProtocolMessage: dap.ProtocolMessage{
@@ -654,7 +720,7 @@ func newErrorResponse(requestSeq int, command string, message string) *dap.Error
 	return er
 }
 
-func debug(port int, verbose bool) error {
+func debugCmd(port int, verbose bool) error {
 	dbgLog := log.New(io.Discard, "", log.LstdFlags)
 
 	if port < 0 {

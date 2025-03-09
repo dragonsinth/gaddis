@@ -1,14 +1,29 @@
 package asm
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/base"
 	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"strings"
 )
 
 type Assembly struct {
 	GlobalScope *ast.Scope
 	Code        []Inst
+}
+
+func (a *Assembly) AsmDump(source string) string {
+	var sb bytes.Buffer
+	for i, inst := range a.Code {
+		si := inst.GetSourceInfo()
+		line := si.Start.Line + 1
+		text := strings.TrimSpace(source[si.Start.Pos:si.End.Pos])
+		lhs := fmt.Sprintf("%3d: %s", i, inst)
+		_, _ = fmt.Fprintf(&sb, "%-40s; %3d: %s\n", lhs, line, strings.SplitN(text, "\n", 2)[0])
+	}
+	return sb.String()
 }
 
 type Inst interface {

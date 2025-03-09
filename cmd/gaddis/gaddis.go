@@ -52,25 +52,25 @@ func main() {
 		// TODO: details subcommand help
 		os.Exit(0)
 	case "format":
-		err = format(args[1:])
+		err = formatCmd(args[1:])
 	case "check":
-		err = check(args[1:])
+		err = checkCmd(args[1:])
 	case "build":
 		// always leave build outputs on build command
 		opts.stopAfterBuild = true
 		opts.leaveBuildOutputs = true
-		err = run(args[1:], opts)
+		err = runCmd(args[1:], opts)
 	case "test":
 		err = test(args[1:], opts)
 	case "debug":
-		err = debug(*fPort, *fVerbose)
+		err = debugCmd(*fPort, *fVerbose)
 	case "run":
-		err = run(args[1:], opts)
+		err = runCmd(args[1:], opts)
 	default:
 		if *fTest {
 			err = test(args, opts)
 		} else {
-			err = run(args, opts)
+			err = runCmd(args, opts)
 		}
 	}
 

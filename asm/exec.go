@@ -9,14 +9,14 @@ import (
 	"strings"
 )
 
-func (c *Assembly) NewExecution(ec *ExecutionContext) *Execution {
+func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 	p := &Execution{
 		PC:   0,
-		Code: c.Code,
+		Code: a.Code,
 		Stack: []Frame{{
-			Scope:  c.GlobalScope,
+			Scope:  a.GlobalScope,
 			Return: 0,
-			Locals: make([]any, len(c.GlobalScope.Locals)),
+			Locals: make([]any, len(a.GlobalScope.Locals)),
 			Eval:   make([]any, 0, 16),
 		}},
 		Frame: nil,

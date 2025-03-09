@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func format(args []string) error {
+func formatCmd(args []string) error {
 	src, err := readSourceFromArgs(args)
 	if err != nil {
 		return err
