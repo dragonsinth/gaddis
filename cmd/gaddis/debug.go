@@ -4,26 +4,26 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	dap "github.com/google/go-dap"
+	"github.com/google/go-dap"
 	"io"
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 // server starts a server that listens on a specified port
 // and blocks indefinitely. This server can accept multiple
 // client connections at the same time.
-func server(port int) error {
+func debugServer(port int) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() {
+		_ = listener.Close()
+	}()
 	log.Println("Started server at", listener.Addr())
 
 	for {
@@ -46,7 +46,7 @@ func server(port int) error {
 func handleConnection(conn net.Conn) {
 	defer func() {
 		log.Println("Closing connection from", conn.RemoteAddr())
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	debugSession := fakeDebugSession{
@@ -207,7 +207,10 @@ func (ds *fakeDebugSession) sendFromQueue() {
 			return
 		}
 		log.Printf("Message sent\n%s", toJson(message))
-		ds.rw.Flush()
+		if err := ds.rw.Flush(); err != nil {
+			log.Println("Error writing message:", err)
+			return
+		}
 	}
 }
 
@@ -261,7 +264,6 @@ func (ds *fakeDebugSession) doContinue() {
 	for _, bp := range bps {
 		if ds.line < bp {
 			// stop here
-			time.Sleep(time.Duration(bp-ds.line) * 100 * time.Millisecond)
 			ds.line = bp
 			ds.send(&dap.StoppedEvent{
 				Event: *newEvent("stopped"),
@@ -314,20 +316,54 @@ func (ds *fakeDebugSession) onInitializeRequest(request *dap.InitializeRequest) 
 	ds.send(response)
 }
 
+type launchArgs struct {
+	Name        string `json:"name"`
+	Program     string `json:"program"`
+	StopOnEntry bool   `json:"stopOnEntry"`
+	NoDebug     bool   `json:"noDebug"`
+}
+
 func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
 	// This is where a real debug adaptor would check the soundness of the
 	// arguments (e.g. program from launch.json) and then use them to launch the
 	// debugger and attach to the program.
-	var args struct {
-		Name        string `json:"name"`
-		Program     string `json:"program"`
-		StopOnEntry bool   `json:"stopOnEntry"`
+	var args launchArgs
+	if err := json.Unmarshal(request.Arguments, &args); err != nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "could not parse launch request"))
+		return
 	}
-	json.Unmarshal(request.Arguments, &args)
 	ds.source.Name = args.Name
 	ds.source.Path = args.Program
 	ds.stopOnEntry = args.StopOnEntry
 	ds.line = -1
+
+	if args.NoDebug {
+		// just run
+		ds.send(&dap.TerminatedEvent{
+			Event: *newEvent("terminated"),
+		})
+	}
+
+	//ds.send(&dap.OutputEvent{
+	//	Event: *newEvent("output"),
+	//	Body: dap.OutputEventBody{
+	//		Category: "stderr",
+	//		Output:   "Error: Syntax error in file.go:10:20\n",
+	//		Source:   &ds.source,
+	//		Line:     10,
+	//		Column:   20,
+	//	},
+	//})
+	//ds.send(&dap.OutputEvent{
+	//	Event: *newEvent("output"),
+	//	Body: dap.OutputEventBody{
+	//		Category: "stderr",
+	//		Output:   "Error: Syntax error in file.go:15:1\n",
+	//		Source:   &ds.source,
+	//		Line:     15,
+	//		Column:   1,
+	//	},
+	//})
 
 	response := &dap.LaunchResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
@@ -354,22 +390,29 @@ func (ds *fakeDebugSession) onTerminateRequest(request *dap.TerminateRequest) {
 }
 
 func (ds *fakeDebugSession) onRestartRequest(request *dap.RestartRequest) {
-	var args struct {
-		Arguments struct {
-			Name        string `json:"name"`
-			Program     string `json:"program"`
-			StopOnEntry bool   `json:"stopOnEntry"`
-		} `json:"arguments"`
+	var wrap struct {
+		Arguments launchArgs `json:"arguments"`
 	}
-	json.Unmarshal(request.Arguments, &args)
-	ds.source.Name = args.Arguments.Name
-	ds.source.Path = args.Arguments.Program
-	ds.stopOnEntry = args.Arguments.StopOnEntry
+	args := &wrap.Arguments
+	if err := json.Unmarshal(request.Arguments, &args); err != nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "could not parse restart request"))
+		return
+	}
+	ds.source.Name = args.Name
+	ds.source.Path = args.Program
+	ds.stopOnEntry = args.StopOnEntry
 	ds.line = -1
 	response := &dap.RestartResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
-	ds.doContinue()
+	if args.NoDebug {
+		// just run
+		ds.send(&dap.TerminatedEvent{
+			Event: *newEvent("terminated"),
+		})
+	} else {
+		ds.doContinue()
+	}
 }
 
 func (ds *fakeDebugSession) onSetBreakpointsRequest(request *dap.SetBreakpointsRequest) {
@@ -610,30 +653,34 @@ func newErrorResponse(requestSeq int, command string, message string) *dap.Error
 	return er
 }
 
-func debug(args []string, _ runOpts) error {
-	if len(args) == 0 {
-		logFile, err := os.OpenFile("gaddis.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-		if err == nil {
-			log.SetOutput(logFile)
-			defer logFile.Close()
-		}
-
-		debugSession := fakeDebugSession{
-			rw:        bufio.NewReadWriter(bufio.NewReader(os.Stdin), bufio.NewWriter(os.Stdout)),
-			sendQueue: make(chan dap.Message),
-			bps:       map[string][]int{},
-		}
-
-		debugSession.Run()
+func debug(port int) error {
+	if port > 0 {
+		return debugServer(port)
 	}
-	port := 4711 // Example port
-	if len(args) > 1 {
-		p, err := strconv.Atoi(args[1])
-		if err == nil {
-			port = p
+
+	// run direct from vscode
+	_ = os.Chdir(os.Getenv("PWD"))
+	logFile, err := os.OpenFile("gaddis-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err == nil {
+		log.SetOutput(logFile)
+		defer func() {
+			_ = logFile.Close()
+		}()
+
+		log.Println(os.Getwd())
+		log.Println(os.Args)
+		for _, ev := range os.Environ() {
+			log.Println(ev)
 		}
 	}
-	server(port)
+
+	debugSession := fakeDebugSession{
+		rw:        bufio.NewReadWriter(bufio.NewReader(os.Stdin), bufio.NewWriter(os.Stdout)),
+		sendQueue: make(chan dap.Message),
+		bps:       map[string][]int{},
+	}
+
+	debugSession.Run()
 	return nil
 }
 

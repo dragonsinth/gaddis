@@ -5,6 +5,7 @@ import { GaddisTestProvider } from "./test_provider";
 import { makeTask } from './task';
 import { activateDiagnostics } from './diagnostics';
 import { activateFormat } from './format';
+import { activateDebug } from './debug';
 
 export function activate(context: vscode.ExtensionContext) {
     const subs = context.subscriptions;
@@ -16,57 +17,6 @@ export function activate(context: vscode.ExtensionContext) {
                 decreaseIndentPattern: /^\s*((End|Until|Else|Case)\b)/
             }
         }),
-        vscode.commands.registerCommand('extension.gaddis.runEditorContents', (resource: vscode.Uri) => {
-            let targetResource = resource;
-            if (!targetResource && vscode.window.activeTextEditor) {
-                targetResource = vscode.window.activeTextEditor.document.uri;
-            }
-            if (targetResource) {
-                vscode.debug.startDebugging(undefined, {
-                    type: 'gaddis',
-                    name: 'Run File',
-                    request: 'launch',
-                    program: targetResource.fsPath
-                },
-                    { noDebug: true }
-                ).then(v => console.log(v));
-            }
-        }),
-        vscode.commands.registerCommand('extension.gaddis.debugEditorContents', (resource: vscode.Uri) => {
-            let targetResource = resource;
-            if (!targetResource && vscode.window.activeTextEditor) {
-                targetResource = vscode.window.activeTextEditor.document.uri;
-            }
-            if (targetResource) {
-                vscode.debug.startDebugging(undefined, {
-                    type: 'gaddis',
-                    name: 'Debug File',
-                    request: 'launch',
-                    program: targetResource.fsPath,
-                    stopOnEntry: true
-                }).then(v => console.log(v));
-            }
-        }),
-        vscode.commands.registerCommand('extension.gaddis.getProgramName', config => {
-            return vscode.window.showInputBox({
-                placeHolder: "Please enter the name of a gaddis file in the workspace folder",
-                value: "program.gad"
-            });
-        }),
-
-        vscode.debug.registerDebugConfigurationProvider('gaddis', new GaddisConfigurationProvider()),
-        vscode.debug.registerDebugConfigurationProvider('gaddis', {
-            provideDebugConfigurations(folder: WorkspaceFolder | undefined): ProviderResult<DebugConfiguration[]> {
-                return [
-                    {
-                        name: "Dynamic Launch",
-                        request: "launch",
-                        type: "gaddis",
-                        program: "${file}"
-                    }
-                ];
-            }
-        }, vscode.DebugConfigurationProviderTriggerKind.Dynamic),
 
         vscode.tasks.registerTaskProvider('gaddis.run', new GaddisRunProvider()),
         vscode.tasks.registerTaskProvider('gaddis.test', new GaddisTestProvider()),
@@ -96,6 +46,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     activateDiagnostics(context);
+    activateDebug(context);
     activateFormat(context);
 }
 
