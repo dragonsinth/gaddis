@@ -10,35 +10,28 @@ import (
 )
 
 func (c *Assembly) NewExecution(ec *ExecutionContext) *Execution {
-	var globals []any
-	for _, decl := range c.GlobalScope.Locals {
-		globals = append(globals, zeroValue(decl.Type))
-	}
-
 	p := &Execution{
 		PC:   0,
 		Code: c.Code,
 		Stack: []Frame{{
 			Scope:  c.GlobalScope,
 			Return: 0,
-			Locals: nil,
+			Locals: make([]any, len(c.GlobalScope.Locals)),
 			Eval:   make([]any, 0, 16),
 		}},
-		Frame:   nil,
-		Globals: globals,
-		Lib:     ec.CreateLibrary(),
+		Frame: nil,
+		Lib:   ec.CreateLibrary(),
 	}
 	p.Frame = &p.Stack[0]
 	return p
 }
 
 type Execution struct {
-	PC      int
-	Code    []Inst
-	Stack   []Frame
-	Frame   *Frame
-	Globals []any
-	Lib     []LibFunc
+	PC    int
+	Code  []Inst
+	Stack []Frame
+	Frame *Frame
+	Lib   []LibFunc
 }
 
 type Frame struct {
@@ -65,6 +58,7 @@ func (p *Execution) Run() (err error) {
 }
 
 func (p *Execution) GetStackTrace(filename string) string {
+	// TODO: return a more structured trace for debugging.
 	var sb strings.Builder
 	pc := p.PC
 	for i := len(p.Stack) - 1; i >= 0; i-- {
@@ -155,3 +149,5 @@ func zeroValue(typ ast.Type) any {
 		panic(typ)
 	}
 }
+
+var _ = zeroValue

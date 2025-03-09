@@ -27,16 +27,13 @@ type Call struct {
 func (i Call) Exec(p *Execution) {
 	nArg := len(i.Scope.Params)
 	args := slices.Clone(p.PopN(nArg))
-	locals := slices.Clone(args)
-	for _, decl := range i.Scope.Locals {
-		locals = append(locals, zeroValue(decl.Type))
-	}
+	locals := make([]any, len(i.Scope.Locals))
 
 	p.Stack = append(p.Stack, Frame{
 		Scope:  i.Scope,
 		Return: p.PC,
 		Args:   args,
-		Locals: locals,
+		Locals: append(args, locals...),
 		Eval:   make([]any, 0, 16),
 	})
 	p.Frame = &p.Stack[len(p.Stack)-1]

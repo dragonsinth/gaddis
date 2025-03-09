@@ -29,7 +29,7 @@ type GlobalRef struct {
 }
 
 func (i GlobalRef) Exec(p *Execution) {
-	p.Push(&p.Globals[i.Index])
+	p.Push(&p.Stack[0].Locals[i.Index])
 }
 
 func (i GlobalRef) String() string {
@@ -43,7 +43,11 @@ type GlobalVal struct {
 }
 
 func (i GlobalVal) Exec(p *Execution) {
-	p.Push(p.Globals[i.Index])
+	val := p.Stack[0].Locals[i.Index]
+	if val == nil {
+		panic(fmt.Sprintf("global variable %s read before assignment", p.Stack[0].Scope.Locals[i.Index].Name))
+	}
+	p.Push(val)
 }
 
 func (i GlobalVal) String() string {
@@ -71,7 +75,18 @@ type LocalVal struct {
 }
 
 func (i LocalVal) Exec(p *Execution) {
-	p.Push(p.Frame.Locals[i.Index])
+	val := p.Frame.Locals[i.Index]
+	if val == nil {
+		decl := getDeclInScope(p.Frame, i.Index)
+		if decl.IsParam {
+			// ths shouldn't really ever happen; this instruction is only for reading ref params, which should always
+			// point to a valid memory location.
+			panic(fmt.Sprintf("compiler bug!?: param %s read before assignment", decl.Name))
+		} else {
+			panic(fmt.Sprintf("local %s read before assignment", decl.Name))
+		}
+	}
+	p.Push(val)
 }
 
 func (i LocalVal) String() string {
@@ -85,10 +100,32 @@ type LocalPtr struct {
 }
 
 func (i LocalPtr) Exec(p *Execution) {
-	val := p.Frame.Locals[i.Index].(*any)
-	p.Push(*val)
+	val := p.Frame.Locals[i.Index]
+	if val == nil {
+		// ths shouldn't really ever happen; this instruction is only for reading ref params, which should always
+		// point to a valid memory location.
+		decl := getDeclInScope(p.Frame, i.Index)
+		panic(fmt.Sprintf("compiler bug!?: local variable %s read before assignment", decl.Name))
+	}
+	val = *val.(*any)
+	if val == nil {
+		// The _value_ however could be nil.
+		decl := getDeclInScope(p.Frame, i.Index)
+		panic(fmt.Sprintf("local variable %s read before assignment", decl.Name))
+	}
+	p.Push(val)
 }
 
 func (i LocalPtr) String() string {
 	return fmt.Sprintf("*local %s(%d)", i.Name, i.Index)
+}
+
+func getDeclInScope(fr *Frame, idx int) *ast.VarDecl {
+	nParams := len(fr.Scope.Params)
+	if idx < nParams {
+		return fr.Scope.Params[idx]
+	} else {
+		idx -= nParams
+		return fr.Scope.Locals[idx]
+	}
 }

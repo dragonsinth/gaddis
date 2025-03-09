@@ -8,6 +8,10 @@ Do
 		Display "Warning, low value!"
 	End If
 	If mostRecent != -99 Then
+		If counter == 0 Then
+			Set greatest = mostRecent
+			Set least = mostRecent
+		End If
 		If mostRecent > greatest OR counter == 0 Then
 			Set greatest = mostRecent
 		End If

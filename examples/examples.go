@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
@@ -97,7 +98,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 	prog, comments, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
 		for _, err := range ast.ErrorSort(errs) {
-			t.Error(err)
+			_, _ = fmt.Fprintln(os.Stderr, err)
 		}
 		t.Fatalf("%s: failed to compile", filename)
 	}
@@ -128,7 +129,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 	err = p.Run()
 	if err != nil {
 		t.Errorf("failed to exec %s: %v", filename, err)
-		t.Log(p.GetStackTrace(filename))
+		_, _ = fmt.Fprintln(os.Stderr, p.GetStackTrace(filename))
 	}
 	if errput.Len() > 0 {
 		t.Errorf("stderr:\n%s", errput.String())

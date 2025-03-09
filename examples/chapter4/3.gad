@@ -1,4 +1,4 @@
-Declare String primColorLeft, primColorRight, finalColor
+Declare String primColorLeft = "", primColorRight = "", finalColor
 
 // This loop exits after valid primary color is entered.
 While primColorLeft != "red" AND primColorLeft != "yellow" AND primColorLeft != "blue"
