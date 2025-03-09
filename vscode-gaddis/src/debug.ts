@@ -30,13 +30,12 @@ export function activateDebug(context: vscode.ExtensionContext) {
                         return undefined;	// abort launch
                     });
                 }
-                if (serverPort == 0) {
-                    return vscode.window.showWarningMessage("Debug server not running").then(_ => {
-                        return undefined;	// abort launch
-                    });
-                }
-
                 if (!config.debugServer) {
+                    if (!serverPort) {
+                        return vscode.window.showWarningMessage("Debug server not running and no port specified").then(_ => {
+                            return undefined;	// abort launch
+                        });
+                    }
                     config.debugServer = serverPort;
                 }
                 return config;
@@ -55,7 +54,7 @@ export function activateDebug(context: vscode.ExtensionContext) {
                     program: targetResource.fsPath
                 },
                     { noDebug: true }
-                ).then(v => console.log(v));
+                );
             }
         }),
         vscode.commands.registerCommand('extension.gaddis.debugEditorContents', (resource: vscode.Uri) => {
@@ -70,7 +69,7 @@ export function activateDebug(context: vscode.ExtensionContext) {
                     request: 'launch',
                     program: targetResource.fsPath,
                     stopOnEntry: true,
-                }).then(v => console.log(v));
+                });
             }
         }),
     );

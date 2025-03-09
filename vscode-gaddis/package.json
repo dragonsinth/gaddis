@@ -41,8 +41,7 @@
   "main": "./out/gaddis.js",
   "activationEvents": [
     "onLanguage:gaddis",
-    "onDebugResolve:gaddis",
-    "onCommand:extension.gaddis.getProgramName"
+    "onDebugResolve:gaddis"
   ],
   "contributes": {
     "commands": [
@@ -61,35 +60,37 @@
         "icon": "$(play)"
       },
       {
-        "command": "gaddis.runTask",
-        "title": "Gaddis Run"
+        "command": "extension.gaddis.runTask",
+        "title": "Gaddis Run File",
+        "icon": "$(run)"
       },
       {
-        "command": "gaddis.testTask",
-        "title": "Gaddis Test"
+        "command": "extension.gaddis.testTask",
+        "title": "Gaddis Test File",
+        "icon": "$(beaker)"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "when": "editorLangId == gaddis",
-          "command": "gaddis.runTask",
-          "group": "navigation"
-        },
-        {
-          "when": "editorLangId == gaddis",
-          "command": "gaddis.testTask",
-          "group": "navigation"
-        },
-        {
           "command": "extension.gaddis.runEditorContents",
-          "when": "editorLangId == gaddis",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
-          "command": "extension.gaddis.debugEditorContents",
           "when": "editorLangId == gaddis",
-          "group": "navigation"
+          "command": "extension.gaddis.debugEditorContents",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.gaddis.runTask",
+          "when": "editorLangId == gaddis",
+          "group": "navigation@3"
+        },
+        {
+          "command": "extension.gaddis.testTask",
+          "when": "editorLangId == gaddis",
+          "group": "navigation@4"
         }
       ],
       "editor/title/run": [
@@ -153,8 +154,6 @@
           "gaddis"
         ],
         "label": "Gaddis Debug",
-        "program": "./out/debugAdapter.js",
-        "runtime": "node",
         "configurationAttributes": {
           "launch": {
             "required": [
@@ -164,7 +163,7 @@
               "program": {
                 "type": "string",
                 "description": "Absolute path to a text file.",
-                "default": "${workspaceFolder}/${command:AskForProgramName}"
+                "default": "${workspaceFolder}/main.gad"
               },
               "stopOnEntry": {
                 "type": "boolean",
@@ -181,7 +180,7 @@
               "program": {
                 "type": "string",
                 "description": "Absolute path to a text file.",
-                "default": "${workspaceFolder}/${command:AskForProgramName}"
+                "default": "${workspaceFolder}/main.gad"
               },
               "stopOnEntry": {
                 "type": "boolean",
@@ -196,7 +195,7 @@
             "type": "gaddis",
             "request": "launch",
             "name": "Ask for file name",
-            "program": "${workspaceFolder}/${command:AskForProgramName}",
+            "program": "${workspaceFolder}/main.gad",
             "stopOnEntry": true
           }
         ],
@@ -208,14 +207,11 @@
               "type": "gaddis",
               "request": "launch",
               "name": "Ask for file name",
-              "program": "^\"\\${workspaceFolder}/\\${command:AskForProgramName}\"",
+              "program": "^\"\\${workspaceFolder}/\\main.gad\"",
               "stopOnEntry": true
             }
           }
-        ],
-        "variables": {
-          "AskForProgramName": "extension.gaddis.getProgramName"
-        }
+        ]
       }
     ]
   }

@@ -19,9 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.tasks.registerTaskProvider('gaddis.run', new GaddisRunProvider()),
-        vscode.tasks.registerTaskProvider('gaddis.test', new GaddisTestProvider()),
-
-        vscode.commands.registerCommand('gaddis.runTask', (fileUri: vscode.Uri) => {
+        vscode.commands.registerCommand('extension.gaddis.runTask', (fileUri: vscode.Uri) => {
             if (fileUri) {
                 vscode.tasks.executeTask(makeTask('run', fileUri));
                 return;
@@ -32,7 +30,9 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             });
         }),
-        vscode.commands.registerCommand('gaddis.testTask', (fileUri: vscode.Uri) => {
+
+        vscode.tasks.registerTaskProvider('gaddis.test', new GaddisTestProvider()),
+        vscode.commands.registerCommand('extension.gaddis.testTask', (fileUri: vscode.Uri) => {
             if (fileUri) {
                 vscode.tasks.executeTask(makeTask('test', fileUri));
                 return;
@@ -48,35 +48,4 @@ export function activate(context: vscode.ExtensionContext) {
     activateDiagnostics(context);
     activateDebug(context);
     activateFormat(context);
-}
-
-
-class GaddisConfigurationProvider implements vscode.DebugConfigurationProvider {
-
-    /**
-     * Massage a debug configuration just before a debug session is being launched,
-     * e.g. add all missing attributes to the debug configuration.
-     */
-    resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: DebugConfiguration, token?: CancellationToken): ProviderResult<DebugConfiguration> {
-
-        // if launch.json is missing or empty
-        if (!config.type && !config.request && !config.name) {
-            const editor = vscode.window.activeTextEditor;
-            if (editor && editor.document.languageId === 'gaddis') {
-                config.type = 'gaddis';
-                config.name = 'Launch';
-                config.request = 'launch';
-                config.program = '${file}';
-                config.stopOnEntry = true;
-            }
-        }
-
-        if (!config.program) {
-            return vscode.window.showInformationMessage("Cannot find a program to debug").then(_ => {
-                return undefined;	// abort launch
-            });
-        }
-
-        return config;
-    }
 }
