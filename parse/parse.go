@@ -175,13 +175,13 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		}
 		return &ast.DisplayStmt{SourceInfo: si, Exprs: exprs}
 	case lex.INPUT:
-		varExpr := p.parseVariableExpression()
-		return &ast.InputStmt{SourceInfo: spanAst(r, varExpr), Var: varExpr}
+		refExpr := p.parseExpression()
+		return &ast.InputStmt{SourceInfo: spanAst(r, refExpr), Ref: refExpr}
 	case lex.SET:
-		varExpr := p.parseVariableExpression()
+		refExpr := p.parseExpression()
 		p.parseTok(lex.ASSIGN)
 		expr := p.parseExpression()
-		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Var: varExpr, Expr: expr}
+		return &ast.SetStmt{SourceInfo: spanAst(r, expr), Ref: refExpr, Expr: expr}
 	case lex.IF:
 		cases := []*ast.CondBlock{p.parseIfCondBlock(r.Pos)}
 
@@ -256,7 +256,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		rEnd := p.parseTok(lex.WHILE)
 		return &ast.WhileStmt{SourceInfo: spanResult(r, rEnd), Expr: expr, Block: block}
 	case lex.FOR:
-		varExpr := p.parseVariableExpression()
+		refExpr := p.parseExpression()
 		p.parseTok(lex.ASSIGN)
 		startExpr := p.parseExpression()
 		p.parseTok(lex.TO)
@@ -271,7 +271,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		block := p.parseBlock(lex.END)
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.FOR)
-		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Var: varExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
+		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Ref: refExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 	case lex.CALL:
 		rNext := p.parseTok(lex.IDENT)
 		name := rNext.Text
@@ -419,11 +419,6 @@ func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 			return ret
 		}
 	}
-}
-
-func (p *Parser) parseVariableExpression() *ast.VariableExpr {
-	r := p.parseTok(lex.IDENT)
-	return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
 }
 
 func (p *Parser) parseTerminal() ast.Expression {

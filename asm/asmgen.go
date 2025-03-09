@@ -140,21 +140,21 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 }
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
-	name := "Input" + i.Var.Type.AsPrimitive().String()
+	name := "Input" + i.Ref.GetType().AsPrimitive().String()
 	v.code = append(v.code, LibCall{
 		SourceInfo: i.SourceInfo,
 		Name:       name,
 		Index:      libFunc(name),
 		NArg:       0,
 	})
-	v.varRef(i.Var, true)
+	v.varRef(i.Ref, true)
 	v.store(i)
 	return false
 }
 
 func (v *Visitor) PreVisitSetStmt(i *ast.SetStmt) bool {
-	v.maybeCast(i.Var.Type, i.Expr)
-	v.varRef(i.Var, true)
+	v.maybeCast(i.Ref.GetType(), i.Expr)
+	v.varRef(i.Ref, true)
 	v.store(i)
 	return false
 }
@@ -248,8 +248,8 @@ func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	endLabel := &Label{Name: "fend", PC: 0}
 
-	refType := fs.Var.Type
-	v.varRef(fs.Var, true)
+	refType := fs.Ref.GetType()
+	v.varRef(fs.Ref, true)
 	v.maybeCast(refType, fs.StartExpr)
 	v.maybeCast(refType, fs.StopExpr)
 	v.stepExpr(fs)
@@ -268,7 +268,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	si := ast.SourceInfo{Start: fs.Block.End, End: fs.End}
 
 	// end of loop re-test / increment
-	v.varRef(fs.Var, true)
+	v.varRef(fs.Ref, true)
 	v.maybeCast(refType, fs.StopExpr)
 	v.stepExpr(fs)
 	switch refType {
@@ -285,7 +285,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 }
 
 func (v *Visitor) stepExpr(fs *ast.ForStmt) {
-	refType := fs.Var.Type
+	refType := fs.Ref.GetType()
 	if fs.StepExpr != nil {
 		v.maybeCast(refType, fs.StepExpr)
 		return
@@ -408,8 +408,13 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	}
 }
 
-func (v *Visitor) varRef(expr *ast.VariableExpr, needRef bool) {
-	v.varRefDecl(expr, expr.Ref, needRef)
+func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
+	switch ve := expr.(type) {
+	case *ast.VariableExpr:
+		v.varRefDecl(expr, ve.Ref, needRef)
+	default:
+		panic("implement me")
+	}
 }
 
 func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bool) {
@@ -478,9 +483,7 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 	for i, arg := range args {
 		param := params[i]
 		if param.IsRef {
-			// special case
-			// TODO: other types of references
-			v.varRef(arg.(*ast.VariableExpr), true)
+			v.varRef(arg, true)
 		} else {
 			v.maybeCast(param.Type, arg)
 		}

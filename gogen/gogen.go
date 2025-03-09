@@ -182,10 +182,10 @@ func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
-	v.varRef(i.Var, false)
+	v.varRef(i.Ref, false) // assignment auto-refs
 	v.output(" = ")
 	v.output(" Input")
-	v.output(i.Var.Type.String())
+	v.output(i.Ref.GetType().AsPrimitive().String())
 	v.output("()\n")
 	return false
 }
@@ -195,9 +195,9 @@ func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 
 func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	v.indent()
-	v.varRef(s.Var, false)
+	v.varRef(s.Ref, false) // assignment auto-refs
 	v.output(" = ")
-	v.maybeCast(s.Var.Type, s.Expr)
+	v.maybeCast(s.Ref.GetType(), s.Expr)
 	v.output("\n")
 	return false
 }
@@ -334,12 +334,12 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 		}
 	*/
 
-	refType := fs.Var.Type
+	refType := fs.Ref.GetType()
 	v.indent()
 	v.output("if For")
 	v.output(refType.String())
 	v.output("(")
-	v.varRef(fs.Var, true)
+	v.varRef(fs.Ref, true)
 	v.output(", ")
 	fs.StartExpr.Visit(v)
 	v.output(", ")
@@ -363,7 +363,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.output("if !Step")
 	v.output(refType.String())
 	v.output("(")
-	v.varRef(fs.Var, true)
+	v.varRef(fs.Ref, true)
 	v.output(", ")
 	v.maybeCast(refType, fs.StopExpr)
 	v.output(", ")
@@ -606,8 +606,13 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	}
 }
 
-func (v *Visitor) varRef(expr *ast.VariableExpr, needRef bool) {
-	v.varRefDecl(expr.Ref, needRef)
+func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
+	switch ve := expr.(type) {
+	case *ast.VariableExpr:
+		v.varRefDecl(ve.Ref, needRef)
+	default:
+		panic("implement me")
+	}
 }
 
 func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
@@ -656,9 +661,7 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 		}
 		param := params[i]
 		if param.IsRef {
-			// special case
-			// TODO: other types of references
-			v.varRef(arg.(*ast.VariableExpr), true)
+			v.varRef(arg, true)
 		} else {
 			v.maybeCast(param.Type, arg)
 		}

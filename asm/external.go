@@ -31,11 +31,12 @@ type LibFunc struct {
 
 func (ctx *ExecutionContext) CreateLibrary() []LibFunc {
 	funcMap := map[string]any{
-		"Display":      ctx.Display,
-		"InputInteger": ctx.InputInteger,
-		"InputReal":    ctx.InputReal,
-		"InputString":  ctx.InputString,
-		"InputBoolean": ctx.InputBoolean,
+		"Display":        ctx.Display,
+		"InputInteger":   ctx.InputInteger,
+		"InputReal":      ctx.InputReal,
+		"InputString":    ctx.InputString,
+		"InputCharacter": ctx.InputCharacter,
+		"InputBoolean":   ctx.InputBoolean,
 	}
 	for name, f := range lib.External {
 		if _, ok := funcMap[name]; ok {
@@ -62,6 +63,7 @@ func makeLibFuncs() ([]string, map[string]int) {
 		"InputInteger",
 		"InputReal",
 		"InputString",
+		"InputCharacter",
 		"InputBoolean",
 	}
 	index := map[string]int{}

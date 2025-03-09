@@ -40,19 +40,24 @@ func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
 	// TODO: variable is non-primitive?
-	if is.Var.Ref.IsConst {
+	if !is.Ref.CanReference() {
 		v.Errorf(is, "input variable must be a reference")
+		return
+	}
+	if !is.Ref.GetType().IsPrimitive() {
+		v.Errorf(is, "input variable must be a primitive type")
 	}
 }
 
 func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 	exprType := ss.Expr.GetType()
-	refType := ss.Var.Type
+	refType := ss.Ref.GetType()
+	if !ss.Ref.CanReference() {
+		v.Errorf(ss.Ref, "set variable must be a reference")
+		return
+	}
 	if !ast.CanCoerce(refType, exprType) {
 		v.Errorf(ss.Expr, "%s not assignable to %s", exprType, refType)
-	}
-	if ss.Var.Ref.IsConst {
-		v.Errorf(ss.Var, "set variable must be a reference")
 	}
 }
 
@@ -90,13 +95,17 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 }
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
-	refType := fs.Var.Type
+	// early out erroring if the loop var is jacked
+	refType := fs.Ref.GetType()
+	if !fs.Ref.CanReference() {
+		v.Errorf(fs.Ref, "loop variable must be a reference")
+		return
+	}
 	if !refType.IsNumeric() {
-		v.Errorf(fs.Var, "loop variable must be a number, got %s %s", refType, fs.Var.Name)
+		v.Errorf(fs.Ref, "loop variable must be a number, got %s", refType)
+		return
 	}
-	if fs.Var.Ref.IsConst {
-		v.Errorf(fs.Var, "loop variable must be a reference")
-	}
+	// check start/stop/step
 	if !ast.CanCoerce(refType, fs.StartExpr.GetType()) {
 		v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StartExpr.GetType(), refType)
 	}
@@ -214,19 +223,10 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 		}
 		if param.IsRef {
 			// must be an exact type match for reference
-			if arg.GetType() != param.Type {
-				v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
-			}
-			// the argument must be referencable thing
-			switch arg := arg.(type) {
-			case *ast.VariableExpr:
-				ref := arg.Ref
-				if ref.IsConst {
-					v.Errorf(arg, "argument %d: expression must be a reference", i+1)
-				}
-			default:
-				// TODO: array references, class field references?
+			if !arg.CanReference() {
 				v.Errorf(arg, "argument %d: expression must be a reference", i+1)
+			} else if arg.GetType() != param.Type {
+				v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)
 			}
 		} else if !ast.CanCoerce(param.Type, arg.GetType()) {
 			v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)

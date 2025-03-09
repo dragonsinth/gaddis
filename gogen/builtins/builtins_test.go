@@ -54,23 +54,6 @@ func TestInputReal(t *testing.T) {
 	assertEqual(t, "real> error, invalid real, try again\nreal> ", outbuf.String())
 }
 
-func TestInputBoolean(t *testing.T) {
-	inbuf := strings.NewReader("not a boolean\ntrue\n")
-	var outbuf, errbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
-	}
-
-	got := ctx.InputBoolean()
-	assertEqual(t, true, got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", outbuf.String())
-}
-
 func TestInputString(t *testing.T) {
 	inbuf := strings.NewReader("David\n")
 	var outbuf, errbuf bytes.Buffer
@@ -86,6 +69,40 @@ func TestInputString(t *testing.T) {
 		t.Error("extra input:", ctx.Stdin.Text())
 	}
 	assertEqual(t, "string> ", outbuf.String())
+}
+
+func TestInputCharacter(t *testing.T) {
+	inbuf := strings.NewReader("\ntrue\nc")
+	var outbuf, errbuf bytes.Buffer
+	ctx := IoContext{
+		Stdin:  bufio.NewScanner(inbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
+	}
+
+	got := ctx.InputCharacter()
+	assertEqual(t, 'c', got)
+	if ctx.Stdin.Scan() {
+		t.Error("extra input:", ctx.Stdin.Text())
+	}
+	assertEqual(t, "character> error, input exactly 1 character, try again\ncharacter> error, input exactly 1 character, try again\ncharacter> ", outbuf.String())
+}
+
+func TestInputBoolean(t *testing.T) {
+	inbuf := strings.NewReader("not a boolean\ntrue\n")
+	var outbuf, errbuf bytes.Buffer
+	ctx := IoContext{
+		Stdin:  bufio.NewScanner(inbuf),
+		Stdout: gaddis.NoopSyncWriter(&outbuf),
+		Stderr: gaddis.NoopSyncWriter(&errbuf),
+	}
+
+	got := ctx.InputBoolean()
+	assertEqual(t, true, got)
+	if ctx.Stdin.Scan() {
+		t.Error("extra input:", ctx.Stdin.Text())
+	}
+	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", outbuf.String())
 }
 
 func TestModInteger(t *testing.T) {

@@ -116,7 +116,7 @@ func (v *Visitor) PreVisitInputStmt(is *ast.InputStmt) bool {
 	defer v.eol(is.End)
 
 	v.output("Input ")
-	v.output(is.Var.Name)
+	is.Ref.Visit(v)
 	return false
 }
 
@@ -128,7 +128,7 @@ func (v *Visitor) PreVisitSetStmt(ss *ast.SetStmt) bool {
 	defer v.eol(ss.End)
 
 	v.output("Set ")
-	v.output(ss.Var.Name)
+	ss.Ref.Visit(v)
 	v.output(" = ")
 	ss.Expr.Visit(v)
 	return false
@@ -256,7 +256,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	defer v.eol(fs.End)
 
 	v.output("For ")
-	v.output(fs.Var.Name)
+	fs.Ref.Visit(v)
 	v.output(" = ")
 	fs.StartExpr.Visit(v)
 	v.output(" To ")

@@ -82,6 +82,17 @@ func (ctx IoContext) InputString() String {
 	return input
 }
 
+func (ctx IoContext) InputCharacter() byte {
+	for {
+		_, _ = fmt.Fprint(ctx.Stdout, "character> ")
+		input := ctx.readLine()
+		if len(input) == 1 {
+			return input[0]
+		}
+		_, _ = fmt.Fprintln(ctx.Stdout, "error, input exactly 1 character, try again")
+	}
+}
+
 func (ctx IoContext) InputBoolean() bool {
 	for {
 		_, _ = fmt.Fprint(ctx.Stdout, "boolean> ")
@@ -114,11 +125,12 @@ var defaultCtx = IoContext{
 }
 
 var (
-	Display      = defaultCtx.Display
-	InputInteger = defaultCtx.InputInteger
-	InputReal    = defaultCtx.InputReal
-	InputString  = defaultCtx.InputString
-	InputBoolean = defaultCtx.InputBoolean
+	Display        = defaultCtx.Display
+	InputInteger   = defaultCtx.InputInteger
+	InputReal      = defaultCtx.InputReal
+	InputString    = defaultCtx.InputString
+	InputCharacter = defaultCtx.InputCharacter
+	InputBoolean   = defaultCtx.InputBoolean
 )
 
 func ModInteger(a, b int64) int64 {

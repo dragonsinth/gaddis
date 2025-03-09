@@ -43,14 +43,14 @@ func (*DisplayStmt) isStatement() {
 
 type InputStmt struct {
 	SourceInfo
-	Var *VariableExpr
+	Ref Expression
 }
 
 func (is *InputStmt) Visit(v Visitor) {
 	if !v.PreVisitInputStmt(is) {
 		return
 	}
-	is.Var.Visit(v)
+	is.Ref.Visit(v)
 	v.PostVisitInputStmt(is)
 }
 
@@ -59,7 +59,7 @@ func (*InputStmt) isStatement() {
 
 type SetStmt struct {
 	SourceInfo
-	Var  *VariableExpr
+	Ref  Expression
 	Expr Expression
 }
 
@@ -67,7 +67,7 @@ func (ss *SetStmt) Visit(v Visitor) {
 	if !v.PreVisitSetStmt(ss) {
 		return
 	}
-	ss.Var.Visit(v)
+	ss.Ref.Visit(v)
 	ss.Expr.Visit(v)
 	v.PostVisitSetStmt(ss)
 }
@@ -187,7 +187,7 @@ func (*WhileStmt) isStatement() {
 
 type ForStmt struct {
 	SourceInfo
-	Var       *VariableExpr
+	Ref       Expression
 	StartExpr Expression
 	StopExpr  Expression
 	StepExpr  Expression
@@ -198,7 +198,7 @@ func (ws *ForStmt) Visit(v Visitor) {
 	if !v.PreVisitForStmt(ws) {
 		return
 	}
-	ws.Var.Visit(v)
+	ws.Ref.Visit(v)
 	ws.StartExpr.Visit(v)
 	ws.StopExpr.Visit(v)
 	if ws.StepExpr != nil {

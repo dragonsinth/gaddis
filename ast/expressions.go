@@ -11,13 +11,9 @@ type Expression interface {
 type baseExpression struct {
 }
 
-func (baseExpression) ConstEval() any {
-	return nil
-}
+func (baseExpression) ConstEval() any { return nil }
 
-func (baseExpression) CanReference() bool {
-	return false
-}
+func (baseExpression) CanReference() bool { return false }
 
 func (baseExpression) isExpression() {}
 
@@ -175,7 +171,7 @@ func (ve *VariableExpr) ConstEval() any {
 }
 
 func (ve *VariableExpr) CanReference() bool {
-	return true
+	return !ve.Ref.IsConst
 }
 
 func (*VariableExpr) isExpression() {}
