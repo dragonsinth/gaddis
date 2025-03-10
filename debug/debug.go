@@ -21,8 +21,8 @@ import (
 type EventHost interface {
 	Paused()
 	Breakpoint()
-	NormalExit()
-	ExceptionExit(error, ast.Position, string)
+	Panicked(error, ast.Position, string)
+	Exited(code int)
 	Terminated()
 }
 
@@ -150,8 +150,10 @@ func (ds *Session) Reset(opts Opts) {
 	ds.yield.Store(false)
 	ds.isDone = false
 	ds.runState = PAUSE
-	ds.lineBreaks = make([]byte, ds.NLines)
-	ds.instBreaks = make([]byte, ds.NInst)
+	if ds.lineBreaks == nil {
+		ds.lineBreaks = make([]byte, ds.NLines)
+		ds.instBreaks = make([]byte, ds.NInst)
+	}
 }
 
 func (ds *Session) Play() {
@@ -180,9 +182,11 @@ func (ds *Session) Play() {
 				err := errors.New(fmt.Sprint(r))
 				si := p.Code[p.PC].GetSourceInfo()
 				trace := p.GetStackTrace(ds.File)
-				ds.Host.ExceptionExit(err, si.Start, trace)
+				ds.Host.Panicked(err, si.Start, trace)
 			}
 		}()
+
+		instructionCount := 0
 		for p.Frame != nil {
 			// someone is asking for the lock; eventually we'll yield it
 			if ds.yield.Load() {
@@ -215,9 +219,14 @@ func (ds *Session) Play() {
 				ds.runState = PAUSE
 				return
 			}
+
+			instructionCount++
+			if instructionCount > asm.MAX_INSTRUCTIONS {
+				panic("infinite loop detected")
+			}
 		}
 		ds.isDone = true
-		ds.Host.NormalExit()
+		ds.Host.Exited(0)
 	}()
 }
 
@@ -270,7 +279,7 @@ func (ds *Session) StopOnEntry() {
 	})
 }
 
-func (ds *Session) GetStackFrames(f func(fr *asm.Frame, inst asm.Inst)) {
+func (ds *Session) GetStackFrames(f func(fr *asm.Frame, id int, inst asm.Inst)) {
 	ds.withOuterLock(func() {
 		ds.Exec.GetStackFrames(f)
 	})

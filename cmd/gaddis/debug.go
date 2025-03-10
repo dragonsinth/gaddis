@@ -65,37 +65,37 @@ func handleConnection(conn net.Conn, dbgLog *log.Logger) {
 		_ = conn.Close()
 	}()
 
-	debugSession := fakeDebugSession{
+	ch := connHandler{
 		rw:        bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn)),
 		sendQueue: make(chan dap.Message, 1024),
 		bps:       map[string][]int{},
 		dbgLog:    dbgLog,
 	}
 
-	if err := debugSession.Run(); err != nil {
+	if err := ch.Run(); err != nil {
 		log.Println("Error:", err)
 	}
 }
 
-func (ds *fakeDebugSession) Run() error {
+func (h *connHandler) Run() error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
-	defer close(ds.sendQueue)
+	defer close(h.sendQueue)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ds.sendFromQueue()
+		h.sendFromQueue()
 	}()
 
 	defer func() {
-		if ds.sess != nil {
-			ds.sess.Halt()
+		if h.sess != nil {
+			h.sess.Halt()
 		}
 	}()
 
 	for {
-		if err := ds.handleRequest(); errors.Is(err, io.EOF) {
+		if err := h.handleRequest(); errors.Is(err, io.EOF) {
 			return nil
 		} else if err != nil {
 			return err
@@ -103,158 +103,153 @@ func (ds *fakeDebugSession) Run() error {
 	}
 }
 
-func (ds *fakeDebugSession) handleRequest() error {
-	request, err := dap.ReadProtocolMessage(ds.rw.Reader)
+func (h *connHandler) handleRequest() error {
+	request, err := dap.ReadProtocolMessage(h.rw.Reader)
 	if err != nil {
 		return err
 	}
-	ds.dbgLog.Printf("Received request: %s", toJson(request))
-	ds.dispatchRequest(request)
+	h.dbgLog.Printf("Received request: %s", toJson(request))
+	h.dispatchRequest(request)
 	return nil
 }
 
 // dispatchRequest launches a new goroutine to process each request
 // and send back events and responses.
-func (ds *fakeDebugSession) dispatchRequest(request dap.Message) {
+func (h *connHandler) dispatchRequest(request dap.Message) {
 	switch request := request.(type) {
 	case *dap.InitializeRequest:
-		ds.onInitializeRequest(request)
+		h.onInitializeRequest(request)
 	case *dap.LaunchRequest:
-		ds.onLaunchRequest(request)
+		h.onLaunchRequest(request)
 	case *dap.AttachRequest:
-		ds.onAttachRequest(request)
+		h.onAttachRequest(request)
 	case *dap.DisconnectRequest:
-		ds.onDisconnectRequest(request)
+		h.onDisconnectRequest(request)
 	case *dap.TerminateRequest:
-		ds.onTerminateRequest(request)
+		h.onTerminateRequest(request)
 	case *dap.RestartRequest:
-		ds.onRestartRequest(request)
+		h.onRestartRequest(request)
 	case *dap.SetBreakpointsRequest:
-		ds.onSetBreakpointsRequest(request)
+		h.onSetBreakpointsRequest(request)
 	case *dap.SetFunctionBreakpointsRequest:
-		ds.onSetFunctionBreakpointsRequest(request)
+		h.onSetFunctionBreakpointsRequest(request)
 	case *dap.SetExceptionBreakpointsRequest:
-		ds.onSetExceptionBreakpointsRequest(request)
+		h.onSetExceptionBreakpointsRequest(request)
 	case *dap.ConfigurationDoneRequest:
-		ds.onConfigurationDoneRequest(request)
+		h.onConfigurationDoneRequest(request)
 	case *dap.ContinueRequest:
-		ds.onContinueRequest(request)
+		h.onContinueRequest(request)
 	case *dap.NextRequest:
-		ds.onNextRequest(request)
+		h.onNextRequest(request)
 	case *dap.StepInRequest:
-		ds.onStepInRequest(request)
+		h.onStepInRequest(request)
 	case *dap.StepOutRequest:
-		ds.onStepOutRequest(request)
+		h.onStepOutRequest(request)
 	case *dap.StepBackRequest:
-		ds.onStepBackRequest(request)
+		h.onStepBackRequest(request)
 	case *dap.ReverseContinueRequest:
-		ds.onReverseContinueRequest(request)
+		h.onReverseContinueRequest(request)
 	case *dap.RestartFrameRequest:
-		ds.onRestartFrameRequest(request)
+		h.onRestartFrameRequest(request)
 	case *dap.GotoRequest:
-		ds.onGotoRequest(request)
+		h.onGotoRequest(request)
 	case *dap.PauseRequest:
-		ds.onPauseRequest(request)
+		h.onPauseRequest(request)
 	case *dap.StackTraceRequest:
-		ds.onStackTraceRequest(request)
+		h.onStackTraceRequest(request)
 	case *dap.ScopesRequest:
-		ds.onScopesRequest(request)
+		h.onScopesRequest(request)
 	case *dap.VariablesRequest:
-		ds.onVariablesRequest(request)
+		h.onVariablesRequest(request)
 	case *dap.SetVariableRequest:
-		ds.onSetVariableRequest(request)
+		h.onSetVariableRequest(request)
 	case *dap.SetExpressionRequest:
-		ds.onSetExpressionRequest(request)
+		h.onSetExpressionRequest(request)
 	case *dap.SourceRequest:
-		ds.onSourceRequest(request)
+		h.onSourceRequest(request)
 	case *dap.ThreadsRequest:
-		ds.onThreadsRequest(request)
+		h.onThreadsRequest(request)
 	case *dap.TerminateThreadsRequest:
-		ds.onTerminateThreadsRequest(request)
+		h.onTerminateThreadsRequest(request)
 	case *dap.EvaluateRequest:
-		ds.onEvaluateRequest(request)
+		h.onEvaluateRequest(request)
 	case *dap.StepInTargetsRequest:
-		ds.onStepInTargetsRequest(request)
+		h.onStepInTargetsRequest(request)
 	case *dap.GotoTargetsRequest:
-		ds.onGotoTargetsRequest(request)
+		h.onGotoTargetsRequest(request)
 	case *dap.CompletionsRequest:
-		ds.onCompletionsRequest(request)
+		h.onCompletionsRequest(request)
 	case *dap.ExceptionInfoRequest:
-		ds.onExceptionInfoRequest(request)
+		h.onExceptionInfoRequest(request)
 	case *dap.LoadedSourcesRequest:
-		ds.onLoadedSourcesRequest(request)
+		h.onLoadedSourcesRequest(request)
 	case *dap.DataBreakpointInfoRequest:
-		ds.onDataBreakpointInfoRequest(request)
+		h.onDataBreakpointInfoRequest(request)
 	case *dap.SetDataBreakpointsRequest:
-		ds.onSetDataBreakpointsRequest(request)
+		h.onSetDataBreakpointsRequest(request)
 	case *dap.ReadMemoryRequest:
-		ds.onReadMemoryRequest(request)
+		h.onReadMemoryRequest(request)
 	case *dap.DisassembleRequest:
-		ds.onDisassembleRequest(request)
+		h.onDisassembleRequest(request)
 	case *dap.CancelRequest:
-		ds.onCancelRequest(request)
+		h.onCancelRequest(request)
 	case *dap.BreakpointLocationsRequest:
-		ds.onBreakpointLocationsRequest(request)
+		h.onBreakpointLocationsRequest(request)
 	default:
-		ds.send(newErrorResponse(request.GetSeq(), "unknown", "unknown command"))
+		h.send(newErrorResponse(request.GetSeq(), "unknown", "unknown command"))
 	}
 }
 
 type eventHost struct {
-	ds *fakeDebugSession
+	handler *connHandler
 }
 
-func (e eventHost) NormalExit() {
-	e.ds.send(&dap.ExitedEvent{
-		Event: *newEvent("exited"),
-		Body:  dap.ExitedEventBody{ExitCode: 0},
-	})
-	e.ds.send(&dap.TerminatedEvent{
-		Event: *newEvent("terminated"),
-	})
-}
-
-func (e eventHost) ExceptionExit(err error, si ast.Position, trace string) {
-	e.ds.send(&dap.OutputEvent{
+func (eh eventHost) Panicked(err error, si ast.Position, trace string) {
+	eh.handler.send(&dap.OutputEvent{
 		Event: *newEvent("output"),
 		Body: dap.OutputEventBody{
 			Category: "stderr",
-			Output:   err.Error(),
-			Source:   &e.ds.source,
-			Line:     si.Line + e.ds.lineOff,
-			Column:   si.Column + e.ds.colOff,
+			Output:   err.Error() + "\n",
+			Source:   &eh.handler.source,
+			Line:     si.Line + eh.handler.lineOff,
+			Column:   si.Column + eh.handler.colOff,
 		},
 	})
-	e.ds.send(&dap.OutputEvent{
+	eh.handler.send(&dap.OutputEvent{
 		Event: *newEvent("output"),
 		Body: dap.OutputEventBody{
 			Category: "stderr",
 			Output:   trace,
-			Source:   &e.ds.source,
+			Source:   &eh.handler.source,
 		},
 	})
-	e.ds.send(&dap.ExitedEvent{
-		Event: *newEvent("exited"),
-		Body:  dap.ExitedEventBody{ExitCode: 1},
-	})
+	eh.Exited(1)
 }
 
-func (e eventHost) Breakpoint() {
-	e.ds.send(&dap.StoppedEvent{
+func (eh eventHost) Breakpoint() {
+	eh.handler.send(&dap.StoppedEvent{
 		Event: *newEvent("stopped"),
 		Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
 	})
 }
 
-func (e eventHost) Paused() {
-	e.ds.send(&dap.StoppedEvent{
+func (eh eventHost) Paused() {
+	eh.handler.send(&dap.StoppedEvent{
 		Event: *newEvent("stopped"),
 		Body:  dap.StoppedEventBody{Reason: "pause", ThreadId: 1, AllThreadsStopped: true},
 	})
 }
 
-func (e eventHost) Terminated() {
-	e.ds.send(&dap.TerminatedEvent{
+func (eh eventHost) Exited(code int) {
+	eh.handler.send(&dap.ExitedEvent{
+		Event: *newEvent("exited"),
+		Body:  dap.ExitedEventBody{ExitCode: 0},
+	})
+	eh.Terminated()
+}
+
+func (eh eventHost) Terminated() {
+	eh.handler.send(&dap.TerminatedEvent{
 		Event: *newEvent("terminated"),
 	})
 }
@@ -265,9 +260,9 @@ var _ debug.EventHost = eventHost{}
 // a message to be sent to client. This is called by per-request
 // goroutines to send events and responses for each request and
 // to notify of events triggered by the fake debugger.
-func (ds *fakeDebugSession) send(message dap.Message) {
+func (h *connHandler) send(message dap.Message) {
 	select {
-	case ds.sendQueue <- message:
+	case h.sendQueue <- message:
 	default:
 		// just drop messages if the queue is that backed up
 	}
@@ -276,9 +271,9 @@ func (ds *fakeDebugSession) send(message dap.Message) {
 // sendFromQueue is to be run in a separate goroutine to listen on a
 // channel for messages to send back to the client. It will
 // return once the channel is closed.
-func (ds *fakeDebugSession) sendFromQueue() {
+func (h *connHandler) sendFromQueue() {
 	seq := 1
-	for message := range ds.sendQueue {
+	for message := range h.sendQueue {
 		switch m := message.(type) {
 		case dap.ResponseMessage:
 			m.GetResponse().Seq = seq
@@ -288,12 +283,12 @@ func (ds *fakeDebugSession) sendFromQueue() {
 			panic(m)
 		}
 		seq++
-		if err := dap.WriteProtocolMessage(ds.rw.Writer, message); err != nil {
+		if err := dap.WriteProtocolMessage(h.rw.Writer, message); err != nil {
 			log.Println("Error writing message:", err)
 			return
 		}
-		ds.dbgLog.Printf("Message sent\n%s", toJson(message))
-		if err := ds.rw.Flush(); err != nil {
+		h.dbgLog.Printf("Message sent\n%s", toJson(message))
+		if err := h.rw.Flush(); err != nil {
 			log.Println("Error writing message:", err)
 			return
 		}
@@ -308,7 +303,7 @@ func (ds *fakeDebugSession) sendFromQueue() {
 // have been set. Once start-up is done (i.e. configurationDone
 // request is processed), it will "stop" at each breakpoint one by
 // one, and once there are no more, it will trigger a terminated event.
-type fakeDebugSession struct {
+type connHandler struct {
 	// rw is used to read requests and write events/responses
 	rw     *bufio.ReadWriter
 	dbgLog *log.Logger
@@ -339,17 +334,17 @@ type fakeDebugSession struct {
 // A real debug adaptor would call the debugger methods here
 // and use their results to populate each response.
 
-func (ds *fakeDebugSession) onInitializeRequest(request *dap.InitializeRequest) {
-	if ds.sess != nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "already launched"))
+func (h *connHandler) onInitializeRequest(request *dap.InitializeRequest) {
+	if h.sess != nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "already launched"))
 		return
 	}
 
 	if request.Arguments.LinesStartAt1 {
-		ds.lineOff = 1
+		h.lineOff = 1
 	}
 	if request.Arguments.ColumnsStartAt1 {
-		ds.colOff = 1
+		h.colOff = 1
 	}
 	response := &dap.InitializeResponse{
 		Response: *newResponse(request.Seq, request.Command),
@@ -369,8 +364,8 @@ func (ds *fakeDebugSession) onInitializeRequest(request *dap.InitializeRequest) 
 		},
 	}
 	e := &dap.InitializedEvent{Event: *newEvent("initialized")}
-	ds.send(e)
-	ds.send(response)
+	h.send(e)
+	h.send(response)
 }
 
 type launchArgs struct {
@@ -381,9 +376,9 @@ type launchArgs struct {
 	NoDebug     bool   `json:"noDebug"`
 }
 
-func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
-	if ds.sess != nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "already launched"))
+func (h *connHandler) onLaunchRequest(request *dap.LaunchRequest) {
+	if h.sess != nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "already launched"))
 		return
 	}
 
@@ -392,146 +387,137 @@ func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
 	// debugger and attach to the program.
 	var args launchArgs
 	if err := fromJson(request.Arguments, &args); err != nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "could not parse launch request"))
+		h.send(newErrorResponse(request.Seq, request.Command, "could not parse launch request"))
 		return
 	}
-	ds.source.Name = args.Name
-	ds.source.Path = args.Program
-	ds.stopOnEntry = args.StopOnEntry
-	ds.noDebug = args.NoDebug
-	ds.line = -1
+	h.source.Name = args.Name
+	h.source.Path = args.Program
+	h.stopOnEntry = args.StopOnEntry
+	h.noDebug = args.NoDebug
+	h.line = -1
 
 	compileErr := func(err ast.Error) {
-		ds.send(&dap.OutputEvent{
+		h.send(&dap.OutputEvent{
 			Event: *newEvent("output"),
 			Body: dap.OutputEventBody{
 				Category: "stderr",
-				Output:   err.Desc,
-				Source:   &ds.source,
-				Line:     err.Start.Line + ds.lineOff,
-				Column:   err.Start.Column + ds.colOff,
+				Output:   err.Desc + "\n",
+				Source:   &h.source,
+				Line:     err.Start.Line + h.lineOff,
+				Column:   err.Start.Column + h.colOff,
 			},
 		})
 	}
 
 	opts := debug.Opts{
-		Stdin: tryReadInput(args.Program),
-		Stdout: func(line string) {
-			ds.send(&dap.OutputEvent{
-				Event: *newEvent("output"),
-				Body: dap.OutputEventBody{
-					Category: "stdout",
-					Output:   line,
-					Source:   &ds.source,
-				},
-			})
-		},
+		Stdin:      tryReadInput(args.Program),
+		Stdout:     h.stdout,
 		WorkingDir: args.WorkingDir,
 	}
-	sess, err := debug.New(ds.source.Path, compileErr, eventHost{ds: ds}, opts)
+	sess, err := debug.New(h.source.Path, compileErr, eventHost{handler: h}, opts)
 	if err != nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, err.Error()))
+		h.send(newErrorResponse(request.Seq, request.Command, err.Error()))
 		return
 	}
-	ds.sess = sess
+	h.sess = sess
 
 	response := &dap.LaunchResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	h.send(response)
 
-	if ds.noDebug {
+	if h.noDebug {
 		// launch immediately, otherwise wait for configuration done.
-		ds.sess.SetBreakpoints(nil)
-		ds.sess.Play()
+		h.sess.SetBreakpoints(nil)
+		h.sess.Play()
 	}
 }
 
-func (ds *fakeDebugSession) onAttachRequest(request *dap.AttachRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "AttachRequest is not yet supported"))
+func (h *connHandler) onAttachRequest(request *dap.AttachRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "AttachRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onDisconnectRequest(request *dap.DisconnectRequest) {
-	if ds.sess != nil {
-		ds.sess.Terminate()
+func (h *connHandler) onDisconnectRequest(request *dap.DisconnectRequest) {
+	if h.sess != nil {
+		h.sess.Terminate()
 	}
 	response := &dap.DisconnectResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onTerminateRequest(request *dap.TerminateRequest) {
-	if ds.sess != nil {
-		ds.sess.Terminate()
+func (h *connHandler) onTerminateRequest(request *dap.TerminateRequest) {
+	if h.sess != nil {
+		h.sess.Terminate()
 	}
 	response := &dap.TerminateResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(&dap.TerminatedEvent{
+	h.send(&dap.TerminatedEvent{
 		Event: *newEvent("terminated"),
 	})
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onRestartRequest(request *dap.RestartRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onRestartRequest(request *dap.RestartRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
 
 	var wrap struct {
 		Arguments launchArgs `json:"arguments"`
 	}
-	args := &wrap.Arguments
-	if err := fromJson(request.Arguments, &args); err != nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "could not parse restart request"))
+	if err := fromJson(request.Arguments, &wrap); err != nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "could not parse restart request"))
 		return
 	}
 
 	// surely these don't change right?
-	ds.source.Name = args.Name
-	ds.source.Path = args.Program
-	ds.stopOnEntry = args.StopOnEntry
-	ds.noDebug = args.NoDebug
-	ds.line = -1
+	args := &wrap.Arguments
+	h.source.Name = args.Name
+	h.source.Path = args.Program
+	h.stopOnEntry = args.StopOnEntry
+	h.noDebug = args.NoDebug
+	h.line = -1
 	response := &dap.RestartResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	h.send(response)
 
-	ds.sess.Halt()
-	ds.sess.Reset(debug.Opts{
+	h.sess.Halt()
+	h.sess.Reset(debug.Opts{
 		IsTest:     false,
 		Stdin:      tryReadInput(args.Program),
-		Stdout:     ds.stdout,
+		Stdout:     h.stdout,
 		WorkingDir: args.WorkingDir,
 	})
 
-	if ds.noDebug {
-		ds.sess.SetBreakpoints(nil)
-	} else if ds.stopOnEntry {
-		ds.sess.StopOnEntry()
+	if h.noDebug {
+		h.sess.SetBreakpoints(nil)
+	} else if h.stopOnEntry {
+		h.sess.StopOnEntry()
 	}
-	ds.sess.Play()
+	h.sess.Play()
 }
 
-func (ds *fakeDebugSession) onSetBreakpointsRequest(request *dap.SetBreakpointsRequest) {
+func (h *connHandler) onSetBreakpointsRequest(request *dap.SetBreakpointsRequest) {
 	response := &dap.SetBreakpointsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	if ds.noDebug {
-		ds.send(response)
+	if h.noDebug {
+		h.send(response)
 		return
 	}
 
 	newBps := make([]int, len(request.Arguments.Breakpoints))
 	for i, b := range request.Arguments.Breakpoints {
-		newBps[i] = b.Line - ds.lineOff
+		newBps[i] = b.Line - h.lineOff
 	}
 
 	path := request.Arguments.Source.Path
 	var verified bool
-	if ds.sess == nil {
+	if h.sess == nil {
 		newBps, verified = debug.ValidateBreakpoints(path, newBps)
-		ds.bps[path] = newBps
-	} else if ds.sess.File == path {
-		newBps = ds.sess.SetBreakpoints(newBps)
+		h.bps[path] = newBps
+	} else if h.sess.File == path {
+		newBps = h.sess.SetBreakpoints(newBps)
 		verified = true
 	} else {
 		// cannot accept the breakpoints
@@ -541,24 +527,24 @@ func (ds *fakeDebugSession) onSetBreakpointsRequest(request *dap.SetBreakpointsR
 
 	for _, bp := range newBps {
 		response.Body.Breakpoints = append(response.Body.Breakpoints, dap.Breakpoint{
-			Line:     bp + ds.lineOff,
+			Line:     bp + h.lineOff,
 			Verified: verified,
 		})
 	}
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onSetFunctionBreakpointsRequest(request *dap.SetFunctionBreakpointsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "SetFunctionBreakpointsRequest is not yet supported"))
+func (h *connHandler) onSetFunctionBreakpointsRequest(request *dap.SetFunctionBreakpointsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "SetFunctionBreakpointsRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onSetExceptionBreakpointsRequest(request *dap.SetExceptionBreakpointsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "SetExceptionBreakpointsRequest is not yet supported"))
+func (h *connHandler) onSetExceptionBreakpointsRequest(request *dap.SetExceptionBreakpointsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "SetExceptionBreakpointsRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onConfigurationDoneRequest(request *dap.ConfigurationDoneRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onConfigurationDoneRequest(request *dap.ConfigurationDoneRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
 
@@ -568,237 +554,312 @@ func (ds *fakeDebugSession) onConfigurationDoneRequest(request *dap.Configuratio
 	// we "let" the program continue after sending a successful response.
 	response := &dap.ConfigurationDoneResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	h.send(response)
 
-	if ds.noDebug {
+	if h.noDebug {
 		return // we should already be running
 	}
-	ds.sess.SetBreakpoints(ds.bps[ds.sess.File])
-	if ds.stopOnEntry {
-		ds.sess.StopOnEntry()
+	h.sess.SetBreakpoints(h.bps[h.sess.File])
+	if h.stopOnEntry {
+		h.sess.StopOnEntry()
 	}
-	ds.sess.Play()
+	h.sess.Play()
 }
 
-func (ds *fakeDebugSession) onContinueRequest(request *dap.ContinueRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onContinueRequest(request *dap.ContinueRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
-	ds.sess.Play()
+	h.sess.Play()
 	response := &dap.ContinueResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onNextRequest(request *dap.NextRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onNextRequest(request *dap.NextRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
 	response := &dap.NextResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
-	ds.line++
-	ds.send(&dap.StoppedEvent{
+	h.send(response)
+	h.line++
+	h.send(&dap.StoppedEvent{
 		Event: *newEvent("stopped"),
 		Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
 	})
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onStepInRequest(request *dap.StepInRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "StepInRequest is not yet supported"))
+func (h *connHandler) onStepInRequest(request *dap.StepInRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "StepInRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onStepOutRequest(request *dap.StepOutRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "StepOutRequest is not yet supported"))
+func (h *connHandler) onStepOutRequest(request *dap.StepOutRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "StepOutRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onStepBackRequest(request *dap.StepBackRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "StepBackRequest is not yet supported"))
+func (h *connHandler) onStepBackRequest(request *dap.StepBackRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "StepBackRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onReverseContinueRequest(request *dap.ReverseContinueRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "ReverseContinueRequest is not yet supported"))
+func (h *connHandler) onReverseContinueRequest(request *dap.ReverseContinueRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "ReverseContinueRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onRestartFrameRequest(request *dap.RestartFrameRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "RestartFrameRequest is not yet supported"))
+func (h *connHandler) onRestartFrameRequest(request *dap.RestartFrameRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "RestartFrameRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onGotoRequest(request *dap.GotoRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "GotoRequest is not yet supported"))
+func (h *connHandler) onGotoRequest(request *dap.GotoRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "GotoRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onPauseRequest(request *dap.PauseRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onPauseRequest(request *dap.PauseRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
-	ds.sess.Pause()
+	h.sess.Pause()
 	response := &dap.PauseResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onStackTraceRequest(request *dap.StackTraceRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onStackTraceRequest(request *dap.StackTraceRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
 	response := &dap.StackTraceResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	ds.sess.GetStackFrames(func(fr *asm.Frame, inst asm.Inst) {
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
 		pos := inst.GetSourceInfo().Start
 		response.Body.StackFrames = append(response.Body.StackFrames, dap.StackFrame{
-			Id:     fr.Id,
-			Source: &ds.source,
-			Line:   pos.Line + ds.lineOff,
-			Column: pos.Column + ds.colOff,
+			Id:     id,
+			Source: &h.source,
+			Line:   pos.Line + h.lineOff,
+			Column: pos.Column + h.colOff,
 			Name:   fr.Scope.Desc(),
 		})
 	})
 	response.Body.TotalFrames = len(response.Body.StackFrames)
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onScopesRequest(request *dap.ScopesRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onScopesRequest(request *dap.ScopesRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
 	response := &dap.ScopesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body = dap.ScopesResponseBody{
-		Scopes: []dap.Scope{
-			{Name: "Local", VariablesReference: 1000, Expensive: false},
-			{Name: "Global", VariablesReference: 1001, Expensive: false},
-		},
-	}
-	ds.send(response)
+	frameId := request.Arguments.FrameId
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+		si := fr.Scope.SourceInfo
+		varId := id * 1024
+		if fr.Scope.IsGlobal {
+			response.Body.Scopes = append(response.Body.Scopes, dap.Scope{
+				Name:               "Globals",
+				PresentationHint:   "globals",
+				VariablesReference: varId,
+				NamedVariables:     len(fr.Locals),
+				IndexedVariables:   0, // should also be len?
+				Expensive:          false,
+				Source:             &h.source,
+				Line:               si.Start.Line + h.lineOff,
+				Column:             si.Start.Column + h.colOff,
+				EndLine:            si.End.Line + h.lineOff,
+				EndColumn:          si.End.Column + h.colOff,
+			})
+		} else if id == frameId {
+			response.Body.Scopes = append(response.Body.Scopes, dap.Scope{
+				Name:               "Locals",
+				PresentationHint:   "locals",
+				VariablesReference: varId,
+				NamedVariables:     len(fr.Locals),
+				IndexedVariables:   0, // should also be len?
+				Expensive:          false,
+				Source:             &h.source,
+				Line:               si.Start.Line + h.lineOff,
+				Column:             si.Start.Column + h.colOff,
+				EndLine:            si.End.Line + h.lineOff,
+				EndColumn:          si.End.Column + h.colOff,
+			})
+			response.Body.Scopes = append(response.Body.Scopes, dap.Scope{
+				Name:               "Arguments",
+				PresentationHint:   "arguments",
+				VariablesReference: varId + 1,
+				NamedVariables:     len(fr.Args),
+				IndexedVariables:   0, // should also be len?
+				Expensive:          false,
+				Source:             &h.source,
+				Line:               si.Start.Line + h.lineOff,
+				Column:             si.Start.Column + h.colOff,
+				EndLine:            si.End.Line + h.lineOff,
+				EndColumn:          si.End.Column + h.colOff,
+			})
+		}
+	})
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onVariablesRequest(request *dap.VariablesRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onVariablesRequest(request *dap.VariablesRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
+	varId := request.Arguments.VariablesReference
+	frameId := varId / 1024
+	varType := varId % 1024
 	response := &dap.VariablesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body = dap.VariablesResponseBody{
-		Variables: []dap.Variable{{Name: "i", Value: "18434528", EvaluateName: "i", VariablesReference: 0}},
+
+	addVar := func(val any, vd *ast.VarDecl) {
+		response.Body.Variables = append(response.Body.Variables, dap.Variable{
+			Name:               vd.Name,
+			Value:              asm.DebugStringVal(val),
+			Type:               vd.Type.String(),
+			PresentationHint:   nil,
+			EvaluateName:       vd.Name,
+			VariablesReference: 0, // list/map
+			NamedVariables:     0, // map
+			IndexedVariables:   0, // list
+			MemoryReference:    "",
+		})
 	}
-	ds.send(response)
+
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+		if id != frameId {
+			return
+		}
+		switch varType {
+		case 0: // locals
+			nArgs := len(fr.Args)
+			for i, vd := range fr.Scope.Params {
+				addVar(fr.Locals[i], vd)
+			}
+			for i, vd := range fr.Scope.Locals {
+				addVar(fr.Locals[i+nArgs], vd)
+			}
+		case 1: // args
+			for i, vd := range fr.Scope.Params {
+				addVar(fr.Args[i], vd)
+			}
+		}
+	})
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) onSetVariableRequest(request *dap.SetVariableRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "setVariableRequest is not yet supported"))
+func (h *connHandler) onSetVariableRequest(request *dap.SetVariableRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "setVariableRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onSetExpressionRequest(request *dap.SetExpressionRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "SetExpressionRequest is not yet supported"))
+func (h *connHandler) onSetExpressionRequest(request *dap.SetExpressionRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "SetExpressionRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onSourceRequest(request *dap.SourceRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "SourceRequest is not yet supported"))
+func (h *connHandler) onSourceRequest(request *dap.SourceRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "SourceRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onThreadsRequest(request *dap.ThreadsRequest) {
-	if ds.sess == nil {
-		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+func (h *connHandler) onThreadsRequest(request *dap.ThreadsRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
 	response := &dap.ThreadsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	response.Body = dap.ThreadsResponseBody{Threads: []dap.Thread{{Id: 1, Name: "main"}}}
-	ds.send(response)
+	h.send(response)
 
 }
 
-func (ds *fakeDebugSession) onTerminateThreadsRequest(request *dap.TerminateThreadsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "TerminateRequest is not yet supported"))
+func (h *connHandler) onTerminateThreadsRequest(request *dap.TerminateThreadsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "TerminateRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onEvaluateRequest(request *dap.EvaluateRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "EvaluateRequest is not yet supported"))
+func (h *connHandler) onEvaluateRequest(request *dap.EvaluateRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "EvaluateRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onStepInTargetsRequest(request *dap.StepInTargetsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "StepInTargetRequest is not yet supported"))
+func (h *connHandler) onStepInTargetsRequest(request *dap.StepInTargetsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "StepInTargetRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onGotoTargetsRequest(request *dap.GotoTargetsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "GotoTargetRequest is not yet supported"))
+func (h *connHandler) onGotoTargetsRequest(request *dap.GotoTargetsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "GotoTargetRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onCompletionsRequest(request *dap.CompletionsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "CompletionRequest is not yet supported"))
+func (h *connHandler) onCompletionsRequest(request *dap.CompletionsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "CompletionRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onExceptionInfoRequest(request *dap.ExceptionInfoRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "ExceptionRequest is not yet supported"))
+func (h *connHandler) onExceptionInfoRequest(request *dap.ExceptionInfoRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "ExceptionRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onLoadedSourcesRequest(request *dap.LoadedSourcesRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "LoadedRequest is not yet supported"))
+func (h *connHandler) onLoadedSourcesRequest(request *dap.LoadedSourcesRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "LoadedRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onDataBreakpointInfoRequest(request *dap.DataBreakpointInfoRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "DataBreakpointInfoRequest is not yet supported"))
+func (h *connHandler) onDataBreakpointInfoRequest(request *dap.DataBreakpointInfoRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "DataBreakpointInfoRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onSetDataBreakpointsRequest(request *dap.SetDataBreakpointsRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "SetDataBreakpointsRequest is not yet supported"))
+func (h *connHandler) onSetDataBreakpointsRequest(request *dap.SetDataBreakpointsRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "SetDataBreakpointsRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onReadMemoryRequest(request *dap.ReadMemoryRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "ReadMemoryRequest is not yet supported"))
+func (h *connHandler) onReadMemoryRequest(request *dap.ReadMemoryRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "ReadMemoryRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onDisassembleRequest(request *dap.DisassembleRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "DisassembleRequest is not yet supported"))
+func (h *connHandler) onDisassembleRequest(request *dap.DisassembleRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "DisassembleRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onCancelRequest(request *dap.CancelRequest) {
-	ds.send(newErrorResponse(request.Seq, request.Command, "CancelRequest is not yet supported"))
+func (h *connHandler) onCancelRequest(request *dap.CancelRequest) {
+	h.send(newErrorResponse(request.Seq, request.Command, "CancelRequest is not yet supported"))
 }
 
-func (ds *fakeDebugSession) onBreakpointLocationsRequest(request *dap.BreakpointLocationsRequest) {
+func (h *connHandler) onBreakpointLocationsRequest(request *dap.BreakpointLocationsRequest) {
 	response := &dap.BreakpointLocationsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	if ds.sess == nil {
+	if h.sess == nil {
 		// anything goes I guess
 		for line := request.Arguments.Line; line < request.Arguments.Line; line++ {
 			response.Body.Breakpoints = append(response.Body.Breakpoints, dap.BreakpointLocation{
 				Line:      line,
-				Column:    ds.colOff,
+				Column:    h.colOff,
 				EndLine:   line,
-				EndColumn: ds.colOff,
+				EndColumn: h.colOff,
 			})
 		}
 	} else {
 		// filter down only to lines that are actually executable
 		line := request.Arguments.Line
-		if ds.sess.MapSourceLine(line-1) >= 0 {
+		if h.sess.MapSourceLine(line-1) >= 0 {
 			response.Body.Breakpoints = append(response.Body.Breakpoints, dap.BreakpointLocation{
 				Line:      line,
-				Column:    ds.colOff,
+				Column:    h.colOff,
 				EndLine:   line,
-				EndColumn: ds.colOff,
+				EndColumn: h.colOff,
 			})
 		}
 	}
-	ds.send(response)
+	h.send(response)
 }
 
-func (ds *fakeDebugSession) stdout(line string) {
-	ds.send(&dap.OutputEvent{
+func (h *connHandler) stdout(line string) {
+	h.send(&dap.OutputEvent{
 		Event: *newEvent("output"),
 		Body: dap.OutputEventBody{
 			Category: "stdout",
 			Output:   line,
-			Source:   &ds.source,
+			Source:   &h.source,
 		},
 	})
 }
@@ -876,7 +937,7 @@ func debugCmd(port int, verbose bool) error {
 	if port >= 0 {
 		return debugServer(port, dbgLog)
 	} else {
-		debugSession := fakeDebugSession{
+		debugSession := connHandler{
 			rw:        bufio.NewReadWriter(bufio.NewReader(os.Stdin), bufio.NewWriter(os.Stdout)),
 			sendQueue: make(chan dap.Message),
 			bps:       map[string][]int{},

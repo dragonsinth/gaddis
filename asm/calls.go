@@ -25,12 +25,15 @@ type Call struct {
 }
 
 func (i Call) Exec(p *Execution) {
+	if len(p.Stack) >= 1024 {
+		panic("stack overflow")
+	}
+
 	nArg := len(i.Scope.Params)
 	args := slices.Clone(p.PopN(nArg))
 	locals := make([]any, len(i.Scope.Locals))
 
 	p.Stack = append(p.Stack, Frame{
-		Id:     p.NextFrameId,
 		Scope:  i.Scope,
 		Return: p.PC,
 		Args:   args,
@@ -38,7 +41,6 @@ func (i Call) Exec(p *Execution) {
 		Eval:   make([]any, 0, 16),
 	})
 	p.Frame = &p.Stack[len(p.Stack)-1]
-	p.NextFrameId++
 	p.PC = i.Label.PC - 1 // will advance to next instruction
 }
 
