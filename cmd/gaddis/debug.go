@@ -243,7 +243,7 @@ func (eh eventHost) Paused() {
 func (eh eventHost) Exited(code int) {
 	eh.handler.send(&dap.ExitedEvent{
 		Event: *newEvent("exited"),
-		Body:  dap.ExitedEventBody{ExitCode: 0},
+		Body:  dap.ExitedEventBody{ExitCode: code},
 	})
 	eh.Terminated()
 }
@@ -317,7 +317,6 @@ type connHandler struct {
 	sendQueue chan dap.Message
 
 	source          dap.Source
-	line            int
 	bps             map[string][]int
 	lineOff, colOff int
 	stopOnEntry     bool
@@ -394,7 +393,6 @@ func (h *connHandler) onLaunchRequest(request *dap.LaunchRequest) {
 	h.source.Path = args.Program
 	h.stopOnEntry = args.StopOnEntry
 	h.noDebug = args.NoDebug
-	h.line = -1
 
 	compileErr := func(err ast.Error) {
 		h.send(&dap.OutputEvent{
@@ -477,7 +475,7 @@ func (h *connHandler) onRestartRequest(request *dap.RestartRequest) {
 	h.source.Path = args.Program
 	h.stopOnEntry = args.StopOnEntry
 	h.noDebug = args.NoDebug
-	h.line = -1
+
 	response := &dap.RestartResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
@@ -585,20 +583,35 @@ func (h *connHandler) onNextRequest(request *dap.NextRequest) {
 	response := &dap.NextResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
-	h.line++
-	h.send(&dap.StoppedEvent{
-		Event: *newEvent("stopped"),
-		Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
-	})
-	h.send(response)
+
+	h.sess.Step(debug.STEP_NEXT)
+	h.sess.Play()
 }
 
 func (h *connHandler) onStepInRequest(request *dap.StepInRequest) {
-	h.send(newErrorResponse(request.Seq, request.Command, "StepInRequest is not yet supported"))
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	response := &dap.StepBackResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	h.send(response)
+
+	h.sess.Step(debug.STEP_IN)
+	h.sess.Play()
 }
 
 func (h *connHandler) onStepOutRequest(request *dap.StepOutRequest) {
-	h.send(newErrorResponse(request.Seq, request.Command, "StepOutRequest is not yet supported"))
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	response := &dap.StepOutResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	h.send(response)
+
+	h.sess.Step(debug.STEP_OUT)
+	h.sess.Play()
 }
 
 func (h *connHandler) onStepBackRequest(request *dap.StepBackRequest) {
@@ -641,7 +654,7 @@ func (h *connHandler) onStackTraceRequest(request *dap.StackTraceRequest) {
 			Id:     id,
 			Source: &h.source,
 			Line:   pos.Line + h.lineOff,
-			Column: pos.Column + h.colOff,
+			Column: h.colOff, // don't do columns yet... it's too weird
 			Name:   fr.Scope.Desc(),
 		})
 	})

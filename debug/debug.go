@@ -58,6 +58,10 @@ type Session struct {
 
 	lineBreaks []byte // what source lines to break on
 	instBreaks []byte // what instruction lines to break on
+
+	stepType  StepType
+	stepLine  int
+	stepFrame int
 }
 
 type RunState int
@@ -71,6 +75,15 @@ const (
 	HALT
 	// halt with a terminate event
 	TERMINATE
+)
+
+type StepType int
+
+const (
+	STEP_NONE StepType = iota
+	STEP_NEXT
+	STEP_IN
+	STEP_OUT
 )
 
 func New(
@@ -128,6 +141,13 @@ func New(
 	return ds, nil
 }
 
+func (ds *Session) MapSourceLine(i int) int {
+	if i < 0 || i >= ds.NLines {
+		return -1
+	}
+	return ds.SourceToInst[i]
+}
+
 func (ds *Session) Reset(opts Opts) {
 	var seed int64
 	if !opts.IsTest {
@@ -154,6 +174,7 @@ func (ds *Session) Reset(opts Opts) {
 		ds.lineBreaks = make([]byte, ds.NLines)
 		ds.instBreaks = make([]byte, ds.NInst)
 	}
+	ds.stepType = STEP_NONE
 }
 
 func (ds *Session) Play() {
@@ -168,6 +189,7 @@ func (ds *Session) Play() {
 		return
 	}
 	ds.runState = RUN
+	log.Println("running")
 
 	go func() {
 		defer ds.running.Store(false)
@@ -176,6 +198,9 @@ func (ds *Session) Play() {
 		defer ds.runMu.Unlock()
 
 		defer func() {
+			// if we exit for any reason, reset all step state
+			ds.stepType = STEP_NONE
+
 			if r := recover(); r != nil {
 				// TODO: allow an exception breakpoint halt here
 				ds.isDone = true
@@ -183,8 +208,29 @@ func (ds *Session) Play() {
 				si := p.Code[p.PC].GetSourceInfo()
 				trace := p.GetStackTrace(ds.File)
 				ds.Host.Panicked(err, si.Start, trace)
+				log.Println("panicking")
 			}
 		}()
+
+		runStateEvent := func() {
+			switch ds.runState {
+			case HALT:
+				log.Println("halting")
+			case PAUSE:
+				ds.Host.Paused()
+				log.Println("pausing")
+			case TERMINATE:
+				ds.Host.Terminated()
+				log.Println("terminating")
+			default:
+				panic(ds.runState)
+			}
+		}
+
+		if ds.runState != RUN {
+			runStateEvent()
+			return
+		}
 
 		instructionCount := 0
 		for p.Frame != nil {
@@ -194,29 +240,53 @@ func (ds *Session) Play() {
 					ds.runMu.Unlock()
 					defer ds.runMu.Lock()
 				}()
+
+				if ds.runState != RUN {
+					runStateEvent()
+					return
+				}
 			}
 
-			switch ds.runState {
-			case RUN:
-				inst := p.Code[p.PC]
-				inst.Exec(p)
-				p.PC++
-			case HALT:
-				return
-			case PAUSE:
-				ds.Host.Paused()
-				return
-			case TERMINATE:
-				ds.Host.Terminated()
-				return
-			default:
-				panic(ds.runState)
+			inst := p.Code[p.PC]
+			if ds.stepType != STEP_NONE {
+				stackDiff := len(p.Stack) - ds.stepFrame
+				line := inst.GetSourceInfo().Start.Line
+				switch ds.stepType {
+				case STEP_NEXT:
+					if stackDiff < 0 || (stackDiff == 0 && ds.stepLine != line) {
+						ds.Host.Breakpoint()
+						ds.runState = PAUSE
+						log.Println("step next")
+						return
+					}
+				case STEP_IN:
+					// break on any change
+					if stackDiff != 0 || ds.stepLine != line {
+						ds.Host.Breakpoint()
+						ds.runState = PAUSE
+						log.Println("step in")
+						return
+					}
+				case STEP_OUT:
+					if stackDiff < 0 {
+						ds.Host.Breakpoint()
+						ds.runState = PAUSE
+						log.Println("step out")
+						return
+					}
+				default:
+					panic(ds.stepType)
+				}
 			}
 
-			// check breaks before looping
+			inst.Exec(p)
+			p.PC++
+
+			// must be after exec to avoid reentry
 			if ds.instBreaks[p.PC] != 0 {
 				ds.Host.Breakpoint()
 				ds.runState = PAUSE
+				log.Println("breakpoint")
 				return
 			}
 
@@ -285,6 +355,16 @@ func (ds *Session) GetStackFrames(f func(fr *asm.Frame, id int, inst asm.Inst)) 
 	})
 }
 
+func (ds *Session) Step(stepType StepType) {
+	ds.withOuterLock(func() {
+		p := ds.Exec
+		si := p.Code[p.PC].GetSourceInfo()
+		ds.stepType = stepType
+		ds.stepLine = si.Start.Line
+		ds.stepFrame = len(p.Stack)
+	})
+}
+
 func (ds *Session) withOuterLock(f func()) {
 	// force a yield, acquire the lock
 	ds.yield.Store(true)
@@ -292,11 +372,4 @@ func (ds *Session) withOuterLock(f func()) {
 	defer ds.runMu.Unlock()
 	ds.yield.Store(false)
 	f()
-}
-
-func (ds *Session) MapSourceLine(i int) int {
-	if i < 0 || i >= ds.NLines {
-		return -1
-	}
-	return ds.SourceToInst[i]
 }
