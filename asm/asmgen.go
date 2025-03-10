@@ -30,6 +30,15 @@ type Inst interface {
 	ast.HasSourceInfo
 	Exec(p *Execution)
 	String() string
+	Sym() string
+}
+
+type baseInst struct {
+	ast.SourceInfo
+}
+
+func (baseInst) Sym() string {
+	return ""
 }
 
 func Assemble(prog *ast.Program) *Assembly {
@@ -63,8 +72,8 @@ func Assemble(prog *ast.Program) *Assembly {
 
 	// Emit the global block's begin statement.
 	v.code = append(v.code, Begin{
-		SourceInfo: prog.Block.SourceInfo,
-		Label:      &Label{Name: ":start", PC: 0},
+		baseInst: baseInst{prog.Block.SourceInfo},
+		Label:    &Label{Name: "__start", PC: 0},
 	})
 
 	// Emit all global block non-decls.
@@ -83,17 +92,17 @@ func Assemble(prog *ast.Program) *Assembly {
 	if ref != nil && ref.ModuleStmt != nil && len(ref.ModuleStmt.Params) == 0 {
 		scope := ref.ModuleStmt.Scope
 		v.code = append(v.code, Call{
-			SourceInfo: ref.ModuleStmt.SourceInfo.Head(),
-			Scope:      scope,
-			Label:      v.modules[ref.ModuleStmt],
+			baseInst: baseInst{ref.ModuleStmt.SourceInfo.Head()},
+			Scope:    scope,
+			Label:    v.modules[ref.ModuleStmt],
 		})
 		finalReturnSi = ref.ModuleStmt.SourceInfo.Tail()
 	}
 
 	// terminate the program cleanly
 	v.code = append(v.code, Return{
-		SourceInfo: finalReturnSi,
-		NVal:       0,
+		baseInst: baseInst{finalReturnSi},
+		NVal:     0,
 	})
 
 	// Now emit all modules and functions.
@@ -140,29 +149,33 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 	for _, arg := range d.Exprs {
 		if lit, ok := arg.(*ast.Literal); ok && lit.IsTabLiteral {
 			v.code = append(v.code, Literal{
-				SourceInfo: arg.GetSourceInfo(),
-				Val:        builtins.TabDisplay,
+				baseInst: baseInst{arg.GetSourceInfo()},
+				Typ:      lit.Type,
+				Val:      builtins.TabDisplay,
 			})
 		} else {
 			arg.Visit(v)
 		}
 	}
 	v.code = append(v.code, LibCall{
-		SourceInfo: d.GetSourceInfo(),
-		Name:       "Display",
-		Index:      libFunc("Display"),
-		NArg:       len(d.Exprs),
+		baseInst: baseInst{d.GetSourceInfo()},
+		Name:     "Display",
+		Type:     ast.UnresolvedType,
+		Index:    libFunc("Display"),
+		NArg:     len(d.Exprs),
 	})
 	return false
 }
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
-	name := "Input" + i.Ref.GetType().AsPrimitive().String()
+	typ := i.Ref.GetType().AsPrimitive()
+	name := "Input" + typ.String()
 	v.code = append(v.code, LibCall{
-		SourceInfo: i.SourceInfo,
-		Name:       name,
-		Index:      libFunc(name),
-		NArg:       0,
+		baseInst: baseInst{i.SourceInfo},
+		Name:     name,
+		Type:     typ,
+		Index:    libFunc(name),
+		NArg:     0,
 	})
 	v.varRef(i.Ref, true)
 	v.store(i)
@@ -183,13 +196,13 @@ func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 		if cb.Expr != nil {
 			cb.Expr.Visit(v)
 			lbl = &Label{Name: "else"}
-			v.code = append(v.code, JumpFalse{SourceInfo: cb.SourceInfo, Label: lbl})
+			v.code = append(v.code, JumpFalse{baseInst: baseInst{cb.SourceInfo}, Label: lbl})
 		}
 		cb.Block.Visit(v)
 
 		// setup a jump to the end of this block
 		si := ast.SourceInfo{Start: cb.Block.End, End: cb.End}
-		v.code = append(v.code, Jump{si, endLabel})
+		v.code = append(v.code, Jump{baseInst{si}, endLabel})
 
 		if lbl != nil {
 			lbl.PC = len(v.code)
@@ -209,21 +222,21 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 		var lbl *Label
 		if cb.Expr != nil {
 			// Duplicate the switch expression in case we fail.
-			v.code = append(v.code, Dup{SourceInfo: cb.SourceInfo})
+			v.code = append(v.code, Dup{baseInst: baseInst{cb.SourceInfo}})
 			v.maybeCast(ss.Type, cb.Expr)
 			v.code = append(v.code, makeBinaryOp(ss.Type.AsPrimitive(), cb.Expr, ast.EQ))
 			lbl = &Label{Name: "case"}
-			v.code = append(v.code, JumpFalse{SourceInfo: cb.SourceInfo, Label: lbl})
+			v.code = append(v.code, JumpFalse{baseInst: baseInst{cb.SourceInfo}, Label: lbl})
 		} else {
 			hasDefault = true
 		}
 		// we selected this block; remove the original switch expr
-		v.code = append(v.code, Pop{SourceInfo: cb.SourceInfo})
+		v.code = append(v.code, Pop{baseInst: baseInst{cb.SourceInfo}})
 		cb.Block.Visit(v)
 
 		// setup a jump to the end of this block
 		si := ast.SourceInfo{Start: cb.Block.End, End: cb.End}
-		v.code = append(v.code, Jump{si, endLabel})
+		v.code = append(v.code, Jump{baseInst{si}, endLabel})
 
 		if lbl != nil {
 			lbl.PC = len(v.code)
@@ -232,7 +245,7 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 
 	if !hasDefault {
 		// remove the original switch expr
-		v.code = append(v.code, Pop{SourceInfo: ss.SourceInfo.Tail()})
+		v.code = append(v.code, Pop{baseInst: baseInst{ss.SourceInfo.Tail()}})
 	}
 
 	endLabel.PC = len(v.code)
@@ -244,9 +257,9 @@ func (v *Visitor) PreVisitDoStmt(ds *ast.DoStmt) bool {
 	ds.Block.Visit(v)
 	ds.Expr.Visit(v)
 	if ds.Until {
-		v.code = append(v.code, JumpFalse{SourceInfo: ds.Expr.GetSourceInfo(), Label: startLabel})
+		v.code = append(v.code, JumpFalse{baseInst: baseInst{ds.Expr.GetSourceInfo()}, Label: startLabel})
 	} else {
-		v.code = append(v.code, JumpTrue{SourceInfo: ds.Expr.GetSourceInfo(), Label: startLabel})
+		v.code = append(v.code, JumpTrue{baseInst: baseInst{ds.Expr.GetSourceInfo()}, Label: startLabel})
 	}
 	return false
 }
@@ -255,9 +268,9 @@ func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 	startLabel := &Label{Name: "while", PC: len(v.code)}
 	endLabel := &Label{Name: "wend", PC: 0}
 	ws.Expr.Visit(v)
-	v.code = append(v.code, JumpFalse{SourceInfo: ws.Expr.GetSourceInfo(), Label: endLabel})
+	v.code = append(v.code, JumpFalse{baseInst: baseInst{ws.Expr.GetSourceInfo()}, Label: endLabel})
 	ws.Block.Visit(v)
-	v.code = append(v.code, Jump{SourceInfo: ws.Tail(), Label: startLabel})
+	v.code = append(v.code, Jump{baseInst: baseInst{ws.Tail()}, Label: startLabel})
 	endLabel.PC = len(v.code)
 	return false
 }
@@ -272,13 +285,13 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.stepExpr(fs)
 	switch refType {
 	case ast.Integer:
-		v.code = append(v.code, ForInt{SourceInfo: fs.SourceInfo})
+		v.code = append(v.code, ForInt{baseInst: baseInst{fs.SourceInfo}})
 	case ast.Real:
-		v.code = append(v.code, ForReal{SourceInfo: fs.SourceInfo})
+		v.code = append(v.code, ForReal{baseInst: baseInst{fs.SourceInfo}})
 	default:
 		panic(refType)
 	}
-	v.code = append(v.code, JumpFalse{SourceInfo: fs.SourceInfo, Label: endLabel})
+	v.code = append(v.code, JumpFalse{baseInst: baseInst{fs.SourceInfo}, Label: endLabel})
 
 	startLabel := &Label{Name: "for", PC: len(v.code)}
 	fs.Block.Visit(v)
@@ -290,19 +303,19 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.stepExpr(fs)
 	switch refType {
 	case ast.Integer:
-		v.code = append(v.code, StepInt{SourceInfo: fs.SourceInfo})
+		v.code = append(v.code, StepInt{baseInst: baseInst{fs.SourceInfo}})
 	case ast.Real:
-		v.code = append(v.code, StepReal{SourceInfo: fs.SourceInfo})
+		v.code = append(v.code, StepReal{baseInst: baseInst{fs.SourceInfo}})
 	default:
 		panic(refType)
 	}
-	v.code = append(v.code, JumpTrue{SourceInfo: si, Label: startLabel})
+	v.code = append(v.code, JumpTrue{baseInst: baseInst{si}, Label: startLabel})
 	endLabel.PC = len(v.code)
 	return false
 }
 
 func (v *Visitor) stepExpr(fs *ast.ForStmt) {
-	refType := fs.Ref.GetType()
+	refType := fs.Ref.GetType().AsPrimitive()
 	if fs.StepExpr != nil {
 		v.maybeCast(refType, fs.StepExpr)
 		return
@@ -316,19 +329,19 @@ func (v *Visitor) stepExpr(fs *ast.ForStmt) {
 	default:
 		panic(refType)
 	}
-	v.code = append(v.code, Literal{SourceInfo: fs.StopExpr.GetSourceInfo().Tail(), Val: val})
+	v.code = append(v.code, Literal{baseInst: baseInst{fs.StopExpr.GetSourceInfo().Tail()}, Typ: refType, Val: val})
 }
 
 func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
-	v.code = append(v.code, Return{SourceInfo: rs.SourceInfo, NVal: 1})
+	v.code = append(v.code, Return{baseInst: baseInst{rs.SourceInfo}, NVal: 1})
 }
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	v.code = append(v.code, Call{
-		SourceInfo: cs.SourceInfo,
-		Scope:      cs.Ref.Scope,
-		Label:      v.modules[cs.Ref],
+		baseInst: baseInst{cs.SourceInfo},
+		Scope:    cs.Ref.Scope,
+		Label:    v.modules[cs.Ref],
 	})
 	return false
 }
@@ -337,19 +350,19 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.mapScope(ms.Scope)
 	lbl := v.modules[ms]
 	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{SourceInfo: ms.SourceInfo, Label: lbl})
+	v.code = append(v.code, Begin{baseInst: baseInst{ms.SourceInfo}, Label: lbl})
 	return true
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
-	v.code = append(v.code, Return{SourceInfo: ms.SourceInfo.Tail(), NVal: 0})
+	v.code = append(v.code, Return{baseInst: baseInst{ms.SourceInfo.Tail()}, NVal: 0})
 }
 
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.mapScope(fs.Scope)
 	lbl := v.functions[fs]
 	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{SourceInfo: fs.SourceInfo, Label: lbl})
+	v.code = append(v.code, Begin{baseInst: baseInst{fs.SourceInfo}, Label: lbl})
 	return true
 }
 
@@ -367,8 +380,9 @@ func (v *Visitor) PostVisitFunctionStmt(ms *ast.FunctionStmt) {
 
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {
 	v.code = append(v.code, Literal{
-		SourceInfo: l.SourceInfo,
-		Val:        l.Val,
+		baseInst: baseInst{l.SourceInfo},
+		Typ:      l.Type,
+		Val:      l.Val,
 	})
 }
 
@@ -382,11 +396,11 @@ func (v *Visitor) PreVisitBinaryOperation(l *ast.BinaryOperation) bool {
 func (v *Visitor) PostVisitUnaryOperation(l *ast.UnaryOperation) {
 	switch l.Type {
 	case ast.Integer:
-		v.code = append(v.code, UnaryOpInt{SourceInfo: l.SourceInfo, Op: l.Op})
+		v.code = append(v.code, UnaryOpInt{baseInst: baseInst{l.SourceInfo}, Op: l.Op})
 	case ast.Real:
-		v.code = append(v.code, UnaryOpFloat{SourceInfo: l.SourceInfo, Op: l.Op})
+		v.code = append(v.code, UnaryOpFloat{baseInst: baseInst{l.SourceInfo}, Op: l.Op})
 	case ast.Boolean:
-		v.code = append(v.code, UnaryOpBool{SourceInfo: l.SourceInfo, Op: l.Op})
+		v.code = append(v.code, UnaryOpBool{baseInst: baseInst{l.SourceInfo}, Op: l.Op})
 	default:
 		panic(l.Type)
 	}
@@ -400,16 +414,17 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	v.outputArguments(ce.Args, ce.Ref.Params)
 	if ce.Ref.IsExternal {
 		v.code = append(v.code, LibCall{
-			SourceInfo: ce.SourceInfo,
-			Name:       ce.Name,
-			Index:      libFunc(ce.Name),
-			NArg:       len(ce.Args),
+			baseInst: baseInst{ce.SourceInfo},
+			Name:     ce.Name,
+			Type:     ce.Type.AsPrimitive(),
+			Index:    libFunc(ce.Name),
+			NArg:     len(ce.Args),
 		})
 	} else {
 		v.code = append(v.code, Call{
-			SourceInfo: ce.SourceInfo,
-			Scope:      ce.Ref.Scope,
-			Label:      v.functions[ce.Ref],
+			baseInst: baseInst{ce.SourceInfo},
+			Scope:    ce.Ref.Scope,
+			Label:    v.functions[ce.Ref],
 		})
 	}
 	return false
@@ -418,9 +433,9 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	exp.Visit(v)
 	if dstType == ast.Real && exp.GetType() == ast.Integer {
-		v.code = append(v.code, IntToReal{exp.GetSourceInfo()})
+		v.code = append(v.code, IntToReal{baseInst{exp.GetSourceInfo()}})
 	} else if dstType == ast.Integer && exp.GetType() == ast.Real {
-		v.code = append(v.code, RealToInt{exp.GetSourceInfo()})
+		v.code = append(v.code, RealToInt{baseInst{exp.GetSourceInfo()}})
 	}
 }
 
@@ -444,8 +459,9 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 			panic("here")
 		}
 		v.code = append(v.code, Literal{
-			SourceInfo: hs.GetSourceInfo(),
-			Val:        val,
+			baseInst: baseInst{hs.GetSourceInfo()},
+			Typ:      decl.Type.AsPrimitive(),
+			Val:      val,
 		})
 	} else if decl.Scope.IsGlobal {
 		if isRef {
@@ -453,15 +469,15 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 		}
 		if needRef {
 			v.code = append(v.code, GlobalRef{
-				SourceInfo: hs.GetSourceInfo(),
-				Name:       decl.Name,
-				Index:      v.globalIds[decl],
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.globalIds[decl],
 			})
 		} else {
 			v.code = append(v.code, GlobalVal{
-				SourceInfo: hs.GetSourceInfo(),
-				Name:       decl.Name,
-				Index:      v.globalIds[decl],
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.globalIds[decl],
 			})
 		}
 		return
@@ -470,29 +486,29 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 		if decl.IsRef == needRef {
 			// if we have a ref and need a ref, or we have a val and need a val, we good
 			v.code = append(v.code, LocalVal{
-				SourceInfo: hs.GetSourceInfo(),
-				Name:       decl.Name,
-				Index:      v.localIds[decl],
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.localIds[decl],
 			})
 		} else if needRef {
 			v.code = append(v.code, LocalRef{
-				SourceInfo: hs.GetSourceInfo(),
-				Name:       decl.Name,
-				Index:      v.localIds[decl],
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.localIds[decl],
 			})
 		} else {
 			// Take the value (it's a reference) then derefence it.
 			v.code = append(v.code, LocalPtr{
-				SourceInfo: hs.GetSourceInfo(),
-				Name:       decl.Name,
-				Index:      v.localIds[decl],
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.localIds[decl],
 			})
 		}
 	}
 }
 
 func (v *Visitor) store(hs ast.HasSourceInfo) {
-	v.code = append(v.code, Store{hs.GetSourceInfo()})
+	v.code = append(v.code, Store{baseInst{hs.GetSourceInfo()}})
 }
 
 func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) {
@@ -510,15 +526,15 @@ func makeBinaryOp(t ast.PrimitiveType, hs ast.HasSourceInfo, op ast.Operator) In
 	si := hs.GetSourceInfo()
 	switch t {
 	case ast.Integer:
-		return BinOpInt{SourceInfo: si, Op: op}
+		return BinOpInt{baseInst: baseInst{si}, Op: op}
 	case ast.Real:
-		return BinOpReal{SourceInfo: si, Op: op}
+		return BinOpReal{baseInst: baseInst{si}, Op: op}
 	case ast.String:
-		return BinOpStr{SourceInfo: si, Op: op}
+		return BinOpStr{baseInst: baseInst{si}, Op: op}
 	case ast.Character:
-		return BinOpChar{SourceInfo: si, Op: op}
+		return BinOpChar{baseInst: baseInst{si}, Op: op}
 	case ast.Boolean:
-		return BinOpBool{SourceInfo: si, Op: op}
+		return BinOpBool{baseInst: baseInst{si}, Op: op}
 	default:
 		panic(t)
 	}

@@ -103,10 +103,23 @@ func (ds *Session) RestartFrame(id int) {
 	})
 }
 
-func (ds *Session) GetStackFrames(f func(*asm.Frame, int, asm.Inst)) {
+// StackFrameFunc receives successive stack frames, from newest to oldest.
+type StackFrameFunc func(frame *asm.Frame, frameId int, inst asm.Inst, pc int)
+
+func (ds *Session) GetStackFrames(f func(*asm.Frame, int, asm.Inst, int)) {
 	ds.withOuterLock(func() {
 		ds.Exec.GetStackFrames(f)
 	})
+}
+
+func (ds *Session) GetCurrentException() (string, error) {
+	var trace string
+	var exception error
+	ds.withOuterLock(func() {
+		trace = ds.exceptionTrace
+		exception = ds.exception
+	})
+	return trace, exception
 }
 
 func (ds *Session) SetNoDebug() {
@@ -115,19 +128,29 @@ func (ds *Session) SetNoDebug() {
 	})
 }
 
-func (ds *Session) SetBreakpoints(bps []int) {
+func (ds *Session) SetLineBreakpoints(bps []int) {
 	ds.withOuterLock(func() {
-		clear(ds.instBreaks)
 		clear(ds.lineBreaks)
 		for _, bp := range bps {
-			if bp < 0 || bp >= len(ds.lineBreaks) {
+			if bp < 0 || bp >= ds.NLines {
 				continue
 			}
 			pc := ds.SourceToInst[bp]
 			if pc < 0 {
 				continue
 			}
-			ds.lineBreaks[bp] = 1
+			ds.lineBreaks[pc] = 1
+		}
+	})
+}
+
+func (ds *Session) SetInstBreakpoints(pcs []int) {
+	ds.withOuterLock(func() {
+		clear(ds.instBreaks)
+		for _, pc := range pcs {
+			if pc < 0 || pc >= ds.NInst {
+				continue
+			}
 			ds.instBreaks[pc] = 1
 		}
 	})

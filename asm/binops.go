@@ -6,7 +6,7 @@ import (
 )
 
 type Store struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i Store) Exec(p *Execution) {
@@ -20,7 +20,7 @@ func (i Store) String() string {
 }
 
 type BinOpInt struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
@@ -35,7 +35,7 @@ func (i BinOpInt) String() string {
 }
 
 type BinOpReal struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
@@ -50,7 +50,7 @@ func (i BinOpReal) String() string {
 }
 
 type BinOpStr struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
@@ -65,7 +65,7 @@ func (i BinOpStr) String() string {
 }
 
 type BinOpChar struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
@@ -80,7 +80,7 @@ func (i BinOpChar) String() string {
 }
 
 type BinOpBool struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 

@@ -26,6 +26,7 @@ func (h *Session) onInitializeRequest(request *api.InitializeRequest) {
 			SupportsRestartFrame:               true,
 			SupportsStepInTargetsRequest:       false, // what is this
 			SupportsRestartRequest:             true,
+			SupportsExceptionInfoRequest:       true,
 			SupportTerminateDebuggee:           true,
 			SupportSuspendDebuggee:             true,
 			SupportsLoadedSourcesRequest:       true,
@@ -33,6 +34,7 @@ func (h *Session) onInitializeRequest(request *api.InitializeRequest) {
 			SupportsDisassembleRequest:         true,
 			SupportsBreakpointLocationsRequest: true,
 			SupportsSteppingGranularity:        false, // support later
+			SupportsInstructionBreakpoints:     true,
 		},
 	}
 	e := &api.InitializedEvent{Event: *newEvent("initialized")}
@@ -98,7 +100,7 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 	if h.noDebug {
 		// launch immediately, otherwise wait for configuration done.
 		h.sess.SetNoDebug()
-		h.sess.SetBreakpoints(nil)
+		h.sess.SetLineBreakpoints(nil)
 		h.sess.Play()
 	}
 }
@@ -120,7 +122,7 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 	if h.noDebug {
 		return // we should already be running
 	}
-	h.sess.SetBreakpoints(h.bps[h.sess.File])
+	h.sess.SetLineBreakpoints(h.bps[h.sess.File])
 	if h.stopOnEntry {
 		h.sess.StopOnEntry()
 	}
@@ -183,7 +185,7 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 
 	if h.noDebug {
 		h.sess.SetNoDebug()
-		h.sess.SetBreakpoints(nil)
+		h.sess.SetLineBreakpoints(nil)
 	} else if h.stopOnEntry {
 		h.sess.StopOnEntry()
 	}

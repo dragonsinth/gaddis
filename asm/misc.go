@@ -2,7 +2,6 @@ package asm
 
 import (
 	"fmt"
-	"github.com/dragonsinth/gaddis/ast"
 )
 
 type Label struct {
@@ -11,11 +10,11 @@ type Label struct {
 }
 
 func (l *Label) String() string {
-	return fmt.Sprintf("%s(%d)", l.Name, l.PC)
+	return fmt.Sprintf("%d:%s", l.PC, l.Name)
 }
 
 type Dup struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i Dup) Exec(p *Execution) {
@@ -29,7 +28,7 @@ func (i Dup) String() string {
 }
 
 type Pop struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i Pop) Exec(p *Execution) {

@@ -12,14 +12,17 @@ func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
 	}
 	response := &api.StackTraceResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, pc int) {
 		pos := inst.GetSourceInfo().Start
 		response.Body.StackFrames = append(response.Body.StackFrames, api.StackFrame{
-			Id:     id,
-			Source: &h.source,
-			Line:   pos.Line + h.lineOff,
-			Column: h.colOff, // don't do columns yet... it's too weird
-			Name:   fr.Scope.Desc(),
+			Id:         id,
+			Name:       fr.Scope.Desc(),
+			Source:     &h.source,
+			Line:       pos.Line + h.lineOff,
+			Column:     h.colOff, // don't do columns yet... it's too weird
+			CanRestart: true,
+
+			InstructionPointerReference: pcRef(pc),
 		})
 	})
 	response.Body.TotalFrames = len(response.Body.StackFrames)
@@ -34,7 +37,7 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 	response := &api.ScopesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	frameId := request.Arguments.FrameId
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, _ int) {
 		si := fr.Scope.SourceInfo
 		scopeId := id * 1024
 		if fr.Scope.IsGlobal {

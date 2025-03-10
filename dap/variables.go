@@ -34,7 +34,7 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 		})
 	}
 
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, _ int) {
 		if id != scopeId {
 			return
 		}
@@ -66,7 +66,7 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 	var err error
 	var typStr string
 	var valStr string
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, _ int) {
 		if id != scopeId {
 			return
 		}

@@ -7,7 +7,7 @@ import (
 )
 
 type Begin struct {
-	ast.SourceInfo
+	baseInst
 	Label *Label
 }
 
@@ -15,11 +15,15 @@ func (i Begin) Exec(p *Execution) {
 }
 
 func (i Begin) String() string {
-	return fmt.Sprintf("begin %s", i.Label)
+	return fmt.Sprintf("begin :%s", i.Label.Name)
+}
+
+func (i Begin) Sym() string {
+	return i.Label.Name
 }
 
 type Call struct {
-	ast.SourceInfo
+	baseInst
 	Scope *ast.Scope
 	Label *Label
 }
@@ -46,11 +50,15 @@ func (i Call) Exec(p *Execution) {
 }
 
 func (i Call) String() string {
-	return fmt.Sprintf("call %s", i.Label)
+	return fmt.Sprintf("call %s(%d)", i.Label.Name, len(i.Scope.Params))
+}
+
+func (i Call) Sym() string {
+	return i.Label.Name
 }
 
 type Return struct {
-	ast.SourceInfo
+	baseInst
 	NVal int
 }
 
@@ -74,5 +82,8 @@ func (i Return) Exec(p *Execution) {
 }
 
 func (i Return) String() string {
-	return fmt.Sprintf("return %d", i.NVal)
+	if i.NVal == 0 {
+		return "return"
+	}
+	return fmt.Sprintf("return(%d)", i.NVal)
 }

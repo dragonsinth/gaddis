@@ -86,8 +86,9 @@ func libFunc(name string) int {
 }
 
 type LibCall struct {
-	ast.SourceInfo
+	baseInst
 	Name  string
+	Type  ast.PrimitiveType
 	Index int
 	NArg  int
 }
@@ -117,4 +118,8 @@ func (i LibCall) Exec(p *Execution) {
 
 func (i LibCall) String() string {
 	return fmt.Sprintf("libcall %s(%d)", i.Name, i.NArg)
+}
+
+func (i LibCall) Sym() string {
+	return i.Name
 }

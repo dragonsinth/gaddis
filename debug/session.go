@@ -16,6 +16,7 @@ import (
 )
 
 type Session struct {
+	Opts      Opts
 	Host      EventHost
 	Prog      *ast.Program
 	Assembled *asm.Assembly
@@ -33,16 +34,18 @@ type Session struct {
 
 	// Private running state
 
-	yield     atomic.Bool // ask the vm to yield so we can grab the mutex
-	running   atomic.Bool
-	runMu     sync.Mutex
-	runState  RunState
-	isDone    bool // terminated/exit/exception
-	noDebug   bool
-	exception error
+	yield    atomic.Bool // ask the vm to yield so we can grab the mutex
+	running  atomic.Bool
+	runMu    sync.Mutex
+	runState RunState
+	isDone   bool // terminated/exit/exception
+	noDebug  bool
 
-	lineBreaks []byte // what source lines to break on
-	instBreaks []byte // what instruction lines to break on
+	exception      error
+	exceptionTrace string
+
+	lineBreaks []byte // pcs to break for lines
+	instBreaks []byte // pcs to break for inst
 
 	stopOnEntry bool
 	stepType    StepType
@@ -74,6 +77,7 @@ func New(
 	asmSrc := assembled.AsmDump(src)
 
 	ds := &Session{
+		Opts:      opts,
 		Host:      host,
 		Prog:      prog,
 		Assembled: assembled,
@@ -125,7 +129,7 @@ func (ds *Session) Reset(opts Opts) {
 	}
 
 	exec := ds.Assembled.NewExecution(ec)
-
+	ds.Opts = opts
 	ds.Context = ec
 	ds.Exec = exec
 
@@ -134,8 +138,8 @@ func (ds *Session) Reset(opts Opts) {
 	ds.noDebug = false
 	ds.runState = PAUSE
 	ds.exception = nil
-	if ds.lineBreaks == nil {
-		ds.lineBreaks = make([]byte, ds.NLines)
+	if ds.instBreaks == nil {
+		ds.lineBreaks = make([]byte, ds.NInst)
 		ds.instBreaks = make([]byte, ds.NInst)
 	}
 	ds.stepType = STEP_NONE

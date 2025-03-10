@@ -6,6 +6,7 @@ import (
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"log"
+	"strings"
 )
 
 func (ds *Session) play() {
@@ -24,7 +25,10 @@ func (ds *Session) play() {
 		return
 	}
 
+	// clear state on a fresh run
 	ds.runState = RUN
+	ds.exception = nil
+	ds.exceptionTrace = ""
 	log.Println("running")
 
 	go func() {
@@ -44,7 +48,12 @@ func (ds *Session) play() {
 					// execute the panic; send trace to stderr
 					var lines []ast.Position
 					var trace []string
-					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst) {
+					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst, _ int) {
+						if lc, ok := inst.(asm.LibCall); ok {
+							// if the top of stack is a libcall with a native exception, generate a synthetic frame
+							lines = append(lines, inst.GetSourceInfo().Start)
+							trace = append(trace, asm.FormatLibCall(lc))
+						}
 						lines = append(lines, inst.GetSourceInfo().Start)
 						trace = append(trace, asm.FormatFrameScope(fr))
 					})
@@ -54,6 +63,8 @@ func (ds *Session) play() {
 					// stop on exception
 					ds.runState = PAUSE
 					ds.exception = err
+					file := strings.TrimPrefix(ds.File, ds.Opts.WorkDir)
+					ds.exceptionTrace = ds.Exec.GetStackTrace(file)
 					ds.Host.Exception(err)
 				}
 			}
@@ -133,7 +144,7 @@ func (ds *Session) play() {
 			p.PC++
 
 			// must be after exec to avoid reentry
-			if ds.instBreaks[p.PC] != 0 {
+			if ds.lineBreaks[p.PC]+ds.instBreaks[p.PC] != 0 {
 				ds.Host.Paused("breakpoint")
 				ds.runState = PAUSE
 				return

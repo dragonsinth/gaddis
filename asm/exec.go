@@ -70,23 +70,44 @@ func (p *Execution) Run() (err error) {
 	return nil
 }
 
-func (p *Execution) GetStackFrames(f func(fr *Frame, id int, inst Inst)) {
+func (p *Execution) GetStackFrames(f func(fr *Frame, id int, inst Inst, pc int)) {
 	pc := p.PC
 	for i := len(p.Stack) - 1; i >= 0; i-- {
 		fr := p.Stack[i]
 		inst := p.Code[pc]
-		f(&fr, i+1, inst)
+		f(&fr, i+1, inst, pc)
 		pc = fr.Return
 	}
 }
 
 func (p *Execution) GetStackTrace(filename string) string {
 	var sb strings.Builder
-	p.GetStackFrames(func(fr *Frame, _ int, inst Inst) {
+	p.GetStackFrames(func(fr *Frame, _ int, inst Inst, _ int) {
 		line := inst.GetSourceInfo().Start.Line + 1
+		if lc, ok := inst.(LibCall); ok {
+			// if the top of stack is a libcall with a native exception, generate a synthetic frame
+			libScope := FormatLibCall(lc)
+			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, libScope)
+		}
 		scope := FormatFrameScope(fr)
 		_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scope)
 	})
+	return sb.String()
+}
+
+func FormatLibCall(lc LibCall) string {
+	var sb strings.Builder
+	// if the top of stack is a libcall with a native exception, generate a synthetic frame
+	if lc.Type == ast.UnresolvedType {
+		_, _ = fmt.Fprintf(&sb, "External %s", lc.Name)
+	} else {
+		_, _ = fmt.Fprintf(&sb, "External %s %s", lc.Type, lc.Name)
+	}
+	sb.WriteRune('(')
+	if lc.NArg > 0 {
+		_, _ = fmt.Fprintf(&sb, "[%d]", lc.NArg)
+	}
+	sb.WriteRune(')')
 	return sb.String()
 }
 

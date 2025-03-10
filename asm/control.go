@@ -2,11 +2,10 @@ package asm
 
 import (
 	"fmt"
-	"github.com/dragonsinth/gaddis/ast"
 )
 
 type Jump struct {
-	ast.SourceInfo
+	baseInst
 	Label *Label
 }
 
@@ -19,7 +18,7 @@ func (i Jump) String() string {
 }
 
 type JumpFalse struct {
-	ast.SourceInfo
+	baseInst
 	Label *Label
 }
 
@@ -35,7 +34,7 @@ func (i JumpFalse) String() string {
 }
 
 type JumpTrue struct {
-	ast.SourceInfo
+	baseInst
 	Label *Label
 }
 
@@ -51,7 +50,7 @@ func (i JumpTrue) String() string {
 }
 
 type ForInt struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i ForInt) Exec(p *Execution) {
@@ -72,7 +71,7 @@ func (i ForInt) String() string {
 }
 
 type ForReal struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i ForReal) Exec(p *Execution) {
@@ -93,7 +92,7 @@ func (i ForReal) String() string {
 }
 
 type StepInt struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i StepInt) Exec(p *Execution) {
@@ -115,7 +114,7 @@ func (i StepInt) String() string {
 }
 
 type StepReal struct {
-	ast.SourceInfo
+	baseInst
 }
 
 func (i StepReal) Exec(p *Execution) {

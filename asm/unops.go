@@ -6,7 +6,7 @@ import (
 )
 
 type UnaryOpInt struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
@@ -25,7 +25,7 @@ func (i UnaryOpInt) String() string {
 }
 
 type UnaryOpFloat struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
@@ -44,7 +44,7 @@ func (i UnaryOpFloat) String() string {
 }
 
 type UnaryOpBool struct {
-	ast.SourceInfo
+	baseInst
 	Op ast.Operator
 }
 
