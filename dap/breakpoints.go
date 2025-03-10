@@ -59,32 +59,29 @@ func (h *Session) onSetExceptionBreakpointsRequest(request *api.SetExceptionBrea
 }
 
 func (h *Session) onBreakpointLocationsRequest(request *api.BreakpointLocationsRequest) {
-	// TODO(scottb: debug this more
 	path := request.Arguments.Source.Path
 	response := &api.BreakpointLocationsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	startLine := request.Arguments.Line
 	endLine := max(startLine, request.Arguments.EndLine)
+
+	var found map[int]bool
 	if h.sess != nil && h.sess.File == path {
-		// filter down only to lines that are actually executable
-		for line := startLine; line <= endLine; line++ {
-			if h.sess.MapSourceLine(line-h.lineOff) >= 0 {
-				response.Body.Breakpoints = append(response.Body.Breakpoints, api.BreakpointLocation{
-					Line:   line,
-					Column: h.colOff,
-				})
-			}
-		}
+		found = h.sess.ValidLineBreaks
+	} else if h.sess == nil {
+		found = debug.FindBreakpoints(path)
 	} else {
-		found := debug.FindBreakpoints(request.Arguments.Source.Path)
-		for line := startLine; line <= endLine; line++ {
-			if found[line-h.lineOff] {
-				response.Body.Breakpoints = append(response.Body.Breakpoints, api.BreakpointLocation{
-					Line:   line,
-					Column: h.colOff,
-				})
-			}
+		found = nil
+	}
+
+	for line := startLine; line <= endLine; line++ {
+		if found[line-h.lineOff] {
+			response.Body.Breakpoints = append(response.Body.Breakpoints, api.BreakpointLocation{
+				Line:   line,
+				Column: h.colOff,
+			})
 		}
 	}
+
 	h.send(response)
 }

@@ -73,9 +73,9 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 	}
 
 	opts := debug.Opts{
-		Stdin:      tryReadInput(args.Program),
-		Stdout:     h.stdout,
-		WorkingDir: args.WorkingDir,
+		Stdin:   tryReadInput(args.Program),
+		Stdout:  h.stdout,
+		WorkDir: args.WorkDir,
 	}
 	host := eventHost{
 		send:    h.send,
@@ -175,10 +175,10 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 
 	h.sess.Halt()
 	h.sess.Reset(debug.Opts{
-		IsTest:     false,
-		Stdin:      tryReadInput(args.Program),
-		Stdout:     h.stdout,
-		WorkingDir: args.WorkingDir,
+		IsTest:  false,
+		Stdin:   tryReadInput(args.Program),
+		Stdout:  h.stdout,
+		WorkDir: args.WorkDir,
 	})
 
 	if h.noDebug {

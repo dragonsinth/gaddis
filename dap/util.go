@@ -11,7 +11,7 @@ import (
 type launchArgs struct {
 	Name        string `json:"name"`
 	Program     string `json:"program"`
-	WorkingDir  string `json:"workingDir"`
+	WorkDir     string `json:"workDir"`
 	StopOnEntry bool   `json:"stopOnEntry"`
 	NoDebug     bool   `json:"noDebug"`
 }

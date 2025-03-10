@@ -33,8 +33,9 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 	ec := &asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
 		IoContext: builtins.IoContext{
-			Stdin:  bufio.NewScanner(streams.Stdin),
-			Stdout: streams.Stdout,
+			Stdin:   bufio.NewScanner(streams.Stdin),
+			Stdout:  streams.Stdout,
+			WorkDir: ".",
 		},
 	}
 

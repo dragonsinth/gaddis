@@ -54,3 +54,12 @@ func (b *bufferedSyncWriter) Sync() error {
 	}
 	return nil
 }
+
+func (ds *Session) withOuterLock(f func()) {
+	// force a yield, acquire the lock
+	ds.yield.Store(true)
+	ds.runMu.Lock()
+	defer ds.runMu.Unlock()
+	ds.yield.Store(false)
+	f()
+}

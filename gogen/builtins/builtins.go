@@ -16,8 +16,9 @@ type SyncWriter interface {
 }
 
 type IoContext struct {
-	Stdin  *bufio.Scanner
-	Stdout SyncWriter
+	Stdin   *bufio.Scanner
+	Stdout  SyncWriter
+	WorkDir string
 }
 
 func (ctx IoContext) Display(args ...any) {
@@ -119,8 +120,9 @@ func (ctx IoContext) readLine() String {
 }
 
 var defaultCtx = IoContext{
-	Stdin:  bufio.NewScanner(os.Stdin),
-	Stdout: os.Stdout,
+	Stdin:   bufio.NewScanner(os.Stdin),
+	Stdout:  os.Stdout,
+	WorkDir: ".",
 }
 
 var (
