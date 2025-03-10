@@ -19,7 +19,6 @@ import (
 
 type EventHost interface {
 	Paused(reason string)
-	BreakOnException() bool
 	Exception(err error)
 	Panicked(error, []ast.Position, []string)
 	Exited(code int)
@@ -56,6 +55,7 @@ type Session struct {
 	runMu     sync.Mutex
 	runState  RunState
 	isDone    bool // terminated/exit/exception
+	noDebug   bool
 	exception error
 
 	lineBreaks []byte // what source lines to break on
@@ -176,6 +176,7 @@ func (ds *Session) Reset(opts Opts) {
 
 	ds.yield.Store(false)
 	ds.isDone = false
+	ds.noDebug = false
 	ds.runState = PAUSE
 	ds.exception = nil
 	if ds.lineBreaks == nil {
@@ -217,13 +218,8 @@ func (ds *Session) Play() {
 			if r := recover(); r != nil {
 				err := errors.New(fmt.Sprint(r))
 				log.Println("panicking:", err)
-				if ds.Host.BreakOnException() {
-					// pause the debugger
-					ds.runState = PAUSE
-					ds.exception = err
-					ds.Host.Exception(err)
-				} else {
-					// send trace to stderr
+				if ds.noDebug {
+					// execute the panic; send trace to stderr
 					var lines []ast.Position
 					var trace []string
 					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst) {
@@ -232,6 +228,11 @@ func (ds *Session) Play() {
 					})
 					ds.Host.Panicked(err, lines, trace)
 					ds.isDone = true
+				} else {
+					// stop on exception
+					ds.runState = PAUSE
+					ds.exception = err
+					ds.Host.Exception(err)
 				}
 			}
 		}()
@@ -350,6 +351,12 @@ func (ds *Session) Halt() {
 	for ds.running.Load() {
 		ds.withOuterLock(func() {})
 	}
+}
+
+func (ds *Session) SetNoDebug() {
+	ds.withOuterLock(func() {
+		ds.noDebug = true
+	})
 }
 
 func (ds *Session) SetBreakpoints(bps []int) {
