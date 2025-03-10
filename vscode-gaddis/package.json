@@ -1,42 +1,108 @@
 {
   "name": "gaddis-vscode",
   "displayName": "gaddis-vscode",
-  "description": "Provides language definitions for Gaddis Pseudocode.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "dragonsinth",
-  "repository": "https://github.com/dragonsinth/gaddis/vscode-gaddis",
+  "description": "Provides language definitions for Gaddis Pseudocode.",
+  "author": {
+    "name": "Scott Blum"
+  },
+  "license": "MIT",
+  "keywords": [
+    "gaddis"
+  ],
   "engines": {
     "vscode": "^1.97.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Debuggers"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dragonsinth/gaddis/vscode-gaddis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dragonsinth/gaddis/issues"
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run compile",
+    "test": "npm run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.8",
+    "@types/vscode": "^1.97.0",
+    "typescript": "^5.8.2",
+    "vsce": "^2.15.0"
+  },
   "main": "./out/gaddis.js",
   "activationEvents": [
-    "onLanguage:gaddis"
+    "onLanguage:gaddis",
+    "onDebugResolve:gaddis"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "gaddis.runTask",
-        "title": "Gaddis Run"
+        "command": "extension.gaddis.debugEditorContents",
+        "title": "Debug File",
+        "category": "Debug",
+        "enablement": "!inDebugMode",
+        "icon": "$(debug-alt)"
       },
       {
-        "command": "gaddis.testTask",
-        "title": "Gaddis Test"
+        "command": "extension.gaddis.runEditorContents",
+        "title": "Run File",
+        "category": "Debug",
+        "enablement": "!inDebugMode",
+        "icon": "$(play)"
+      },
+      {
+        "command": "extension.gaddis.runTask",
+        "title": "Gaddis Run File",
+        "icon": "$(run)"
+      },
+      {
+        "command": "extension.gaddis.testTask",
+        "title": "Gaddis Test File",
+        "icon": "$(beaker)"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "when": "editorLangId == gaddis",
-          "command": "gaddis.runTask",
-          "group": "navigation"
+          "command": "extension.gaddis.runEditorContents",
+          "group": "navigation@1"
         },
         {
           "when": "editorLangId == gaddis",
-          "command": "gaddis.testTask",
-          "group": "navigation"
+          "command": "extension.gaddis.debugEditorContents",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.gaddis.runTask",
+          "when": "editorLangId == gaddis",
+          "group": "navigation@3"
+        },
+        {
+          "command": "extension.gaddis.testTask",
+          "when": "editorLangId == gaddis",
+          "group": "navigation@4"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "extension.gaddis.runEditorContents",
+          "when": "resourceLangId == gaddis",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.gaddis.debugEditorContents",
+          "when": "resourceLangId == gaddis",
+          "group": "navigation@2"
         }
       ]
     },
@@ -75,17 +141,71 @@
         "uiTheme": "vs",
         "path": "./themes/theme.json"
       }
+    ],
+    "breakpoints": [
+      {
+        "language": "gaddis"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "gaddis",
+        "languages": [
+          "gaddis"
+        ],
+        "label": "Gaddis Debug",
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to a text file.",
+                "default": "${workspaceFolder}/main.gad"
+              },
+              "workDir": {
+                "type": "string",
+                "description": "Program working directory.",
+                "default": "${workspaceFolder}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch.",
+                "default": false
+              },
+              "noDebug": {
+                "type": "boolean",
+                "description": "Run without debugging.",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "gaddis",
+            "request": "launch",
+            "name": "main.gad",
+            "program": "${workspaceFolder}/main.gad",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Gaddis Debug: Launch",
+            "description": "A new configuration for debugging a Gaddis file.",
+            "body": {
+              "type": "gaddis",
+              "request": "launch",
+              "name": "main.gad",
+              "program": "^\"\\${workspaceFolder}/\\main.gad\"",
+              "stopOnEntry": false
+            }
+          }
+        ]
+      }
     ]
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
-  },
-  "devDependencies": {
-    "@types/node": "^22.13.8",
-    "@types/vscode": "^1.97.0",
-    "typescript": "^5.8.2",
-    "vsce": "^2.15.0"
   }
 }

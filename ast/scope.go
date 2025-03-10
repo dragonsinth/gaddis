@@ -6,6 +6,7 @@ import "fmt"
 // TODO: construct scopes during Parse? Automatically manage scope in base visitor?
 
 type Scope struct {
+	SourceInfo   SourceInfo
 	Parent       *Scope
 	IsExternal   bool          // if true, external scope
 	IsGlobal     bool          // if true, global scope
@@ -16,11 +17,25 @@ type Scope struct {
 	Locals       []*VarDecl
 }
 
+func (s *Scope) Desc() string {
+	if s.IsExternal {
+		return "external"
+	} else if s.IsGlobal {
+		return "global"
+	} else if s.ModuleStmt != nil {
+		return fmt.Sprintf("%s()", s.ModuleStmt.Name)
+	} else if s.FunctionStmt != nil {
+		return fmt.Sprintf("%s()", s.FunctionStmt.Name)
+	} else {
+		panic("unset")
+	}
+}
+
 func (s *Scope) String() string {
 	if s.IsExternal {
-		return "externa"
+		return "external"
 	} else if s.IsGlobal {
-		return "global block"
+		return "global"
 	} else if s.ModuleStmt != nil {
 		return fmt.Sprintf("Module %s", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
@@ -104,16 +119,18 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	vd.Scope = s
 }
 
-func NewGlobalScope() *Scope {
+func NewGlobalScope(bl *Block) *Scope {
 	return &Scope{
-		Parent:   ExternalScope,
-		IsGlobal: true,
-		Decls:    map[string]*Decl{},
+		SourceInfo: bl.SourceInfo,
+		Parent:     ExternalScope,
+		IsGlobal:   true,
+		Decls:      map[string]*Decl{},
 	}
 }
 
 func NewModuleScope(ms *ModuleStmt, parent *Scope) *Scope {
 	return &Scope{
+		SourceInfo: ms.Block.SourceInfo,
 		Parent:     parent,
 		ModuleStmt: ms,
 		Decls:      map[string]*Decl{},
@@ -122,6 +139,7 @@ func NewModuleScope(ms *ModuleStmt, parent *Scope) *Scope {
 
 func NewFunctionScope(fs *FunctionStmt, parent *Scope) *Scope {
 	return &Scope{
+		SourceInfo:   fs.Block.SourceInfo,
 		Parent:       parent,
 		FunctionStmt: fs,
 		Decls:        map[string]*Decl{},

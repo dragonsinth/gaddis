@@ -1,14 +1,29 @@
 package asm
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/base"
 	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"strings"
 )
 
 type Assembly struct {
 	GlobalScope *ast.Scope
 	Code        []Inst
+}
+
+func (a *Assembly) AsmDump(source string) string {
+	var sb bytes.Buffer
+	for i, inst := range a.Code {
+		si := inst.GetSourceInfo()
+		line := si.Start.Line + 1
+		text := strings.TrimSpace(source[si.Start.Pos:si.End.Pos])
+		lhs := fmt.Sprintf("%3d: %s", i, inst)
+		_, _ = fmt.Fprintf(&sb, "%-40s; %3d: %s\n", lhs, line, strings.SplitN(text, "\n", 2)[0])
+	}
+	return sb.String()
 }
 
 type Inst interface {
@@ -63,19 +78,21 @@ func Assemble(prog *ast.Program) *Assembly {
 	}
 
 	// If there is a module named main with no arguments, call it at the very end.
+	finalReturnSi := prog.Block.SourceInfo.Tail()
 	ref := prog.Scope.Lookup("main")
 	if ref != nil && ref.ModuleStmt != nil && len(ref.ModuleStmt.Params) == 0 {
 		scope := ref.ModuleStmt.Scope
 		v.code = append(v.code, Call{
-			SourceInfo: prog.Block.SourceInfo.Tail(),
+			SourceInfo: ref.ModuleStmt.SourceInfo.Head(),
 			Scope:      scope,
 			Label:      v.modules[ref.ModuleStmt],
 		})
+		finalReturnSi = ref.ModuleStmt.SourceInfo.Tail()
 	}
 
 	// terminate the program cleanly
 	v.code = append(v.code, Return{
-		SourceInfo: prog.Block.SourceInfo.Tail(), // should be end
+		SourceInfo: finalReturnSi,
 		NVal:       0,
 	})
 
@@ -346,7 +363,6 @@ func (v *Visitor) mapScope(scope *ast.Scope) {
 }
 
 func (v *Visitor) PostVisitFunctionStmt(ms *ast.FunctionStmt) {
-	v.code = append(v.code, Return{SourceInfo: ms.SourceInfo.Tail(), NVal: 1})
 }
 
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {

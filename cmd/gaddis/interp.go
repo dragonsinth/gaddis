@@ -2,30 +2,21 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/gogen/builtins"
 	"math/rand"
 	"os"
-	"strings"
 	"time"
 )
 
 func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, prog *ast.Program) error {
-	cp := asm.Assemble(prog)
+	assembled := asm.Assemble(prog)
 	if opts.leaveBuildOutputs {
 		asmFile := src.desc() + ".asm"
-		var sb bytes.Buffer
-		for i, inst := range cp.Code {
-			si := inst.GetSourceInfo()
-			line := si.Start.Line + 1
-			text := strings.TrimSpace(src.src[si.Start.Pos:si.End.Pos])
-			lhs := fmt.Sprintf("%3d: %s", i, inst)
-			_, _ = fmt.Fprintf(&sb, "%-40s; %3d: %s\n", lhs, line, strings.SplitN(text, "\n", 2)[0])
-		}
-		if err := os.WriteFile(asmFile, sb.Bytes(), 0644); err != nil {
+		asmDump := assembled.AsmDump(src.src)
+		if err := os.WriteFile(asmFile, []byte(asmDump), 0644); err != nil {
 			return fmt.Errorf("writing to %s: %w", asmFile, err)
 		}
 	}
@@ -42,13 +33,13 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 	ec := &asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
 		IoContext: builtins.IoContext{
-			Stdin:  bufio.NewScanner(streams.Stdin),
-			Stdout: streams.Stdout,
-			Stderr: os.Stderr,
+			Stdin:   bufio.NewScanner(streams.Stdin),
+			Stdout:  streams.Stdout,
+			WorkDir: ".",
 		},
 	}
 
-	p := cp.NewExecution(ec)
+	p := assembled.NewExecution(ec)
 	if err := p.Run(); err != nil {
 		if streams.Silent {
 			_, _ = os.Stdout.Write(streams.Output.Bytes())

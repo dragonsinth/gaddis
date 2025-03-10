@@ -2,10 +2,8 @@ import * as vscode from 'vscode';
 import { makeTask } from "./task";
 
 export class GaddisRunProvider implements vscode.TaskProvider {
-    private gaddisExecutablePath: string;
 
-    constructor(gaddisExecutablePath: string) {
-        this.gaddisExecutablePath = gaddisExecutablePath;
+    constructor() {
     }
 
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Task> {
@@ -18,7 +16,7 @@ export class GaddisRunProvider implements vscode.TaskProvider {
         if (!editor || editor.document.languageId !== 'gaddis') {
             return [];
         }
-        return [makeTask(this.gaddisExecutablePath, 'run', editor.document.uri)]
+        return [makeTask('run', editor.document.uri)]
 
     }
 }

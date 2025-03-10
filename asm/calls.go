@@ -25,12 +25,17 @@ type Call struct {
 }
 
 func (i Call) Exec(p *Execution) {
+	if len(p.Stack) >= MAX_STACK {
+		panic("stack overflow")
+	}
+
 	nArg := len(i.Scope.Params)
 	args := slices.Clone(p.PopN(nArg))
 	locals := make([]any, len(i.Scope.Locals))
 
 	p.Stack = append(p.Stack, Frame{
 		Scope:  i.Scope,
+		Start:  i.Label.PC,
 		Return: p.PC,
 		Args:   args,
 		Locals: append(args, locals...),

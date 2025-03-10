@@ -6,6 +6,7 @@ import (
 	"github.com/dragonsinth/gaddis/lex"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 // TODO: only allow modules and functions in the global block?
@@ -444,45 +445,21 @@ func (p *Parser) parseTerminal() ast.Expression {
 			return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
 		}
 	case lex.INT_LIT:
-		v, err := strconv.ParseInt(r.Text, 0, 64)
-		if err != nil {
-			// should happen in lexer
-			panic(p.Errorf(r, "invalid Integer literal %s", r.Text))
-		}
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Integer, Val: v}
+		return p.parseLiteral(r, ast.Integer)
 	case lex.REAL_LIT:
-		v, err := strconv.ParseFloat(r.Text, 64)
-		if err != nil {
-			// should happen in lexer
-			panic(p.Errorf(r, "invalid Real literal %s", r.Text))
-		}
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Real, Val: v}
-	case lex.STR_LIT:
-		v, err := strconv.Unquote(r.Text)
-		if err != nil {
-			// should happen in lexer
-			panic(p.Errorf(r, "invalid String literal %s", r.Text))
-		}
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.String, Val: v}
+		return p.parseLiteral(r, ast.Real)
+	case lex.STR_LIT, lex.TAB_LIT:
+		return p.parseLiteral(r, ast.String)
 	case lex.CHR_LIT:
-		v, err := strconv.Unquote(r.Text)
-		if err != nil || len(v) > 1 {
-			// should happen in lexer
-			panic(p.Errorf(r, "invalid Character literal %s", r.Text))
-		}
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Character, Val: v[0]}
-	case lex.TAB_LIT:
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.String, Val: "\t", IsTabLiteral: true}
+		return p.parseLiteral(r, ast.Character)
 	case lex.NOT:
 		expr := p.parseExpression()
 		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
 	case lex.SUB:
 		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: expr.GetType(), Expr: expr}
-	case lex.TRUE:
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Boolean, Val: true}
-	case lex.FALSE:
-		return &ast.Literal{SourceInfo: toSourceInfo(r), Type: ast.Boolean, Val: false}
+		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: ast.UnresolvedType, Expr: expr}
+	case lex.TRUE, lex.FALSE:
+		return p.parseLiteral(r, ast.Boolean)
 	case lex.LPAREN:
 		expr := p.parseExpression()
 		rEnd := p.parseTok(lex.RPAREN)
@@ -490,6 +467,15 @@ func (p *Parser) parseTerminal() ast.Expression {
 	default:
 		panic(p.Errorf(r, "expected expression, got %s %q", r.Token, r.Text))
 	}
+}
+
+func (p *Parser) parseLiteral(r lex.Result, typ ast.PrimitiveType) *ast.Literal {
+	lit := ParseLiteral(r.Text, toSourceInfo(r), typ)
+	if lit == nil {
+		// should not happen; lexer should catch such things
+		panic(p.Errorf(r, "invalid %s literal %s", typ.String(), r.Text))
+	}
+	return lit
 }
 
 func (p *Parser) parseEol() {
@@ -522,5 +508,49 @@ func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) ast.Error {
 	return ast.Error{
 		SourceInfo: toSourceInfo(r),
 		Desc:       fmt.Sprintf("syntax error: "+fmtStr, args...),
+	}
+}
+
+func ParseLiteral(input string, si ast.SourceInfo, typ ast.PrimitiveType) *ast.Literal {
+	switch typ {
+	case ast.Integer:
+		v, err := strconv.ParseInt(input, 0, 64)
+		if err != nil {
+			return nil
+		}
+		return &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: v}
+	case ast.Real:
+		v, err := strconv.ParseFloat(input, 64)
+		if err != nil {
+			return nil
+		}
+		return &ast.Literal{SourceInfo: si, Type: ast.Real, Val: v}
+	case ast.String:
+		if input == "Tab" {
+			return &ast.Literal{SourceInfo: si, Type: ast.String, Val: "\t", IsTabLiteral: true}
+		}
+		v, err := strconv.Unquote(input)
+		if err != nil {
+			return nil
+		}
+		return &ast.Literal{SourceInfo: si, Type: ast.String, Val: v}
+	case ast.Character:
+		v, err := strconv.Unquote(input)
+		if err != nil || len(v) > 1 {
+			return nil
+		}
+		return &ast.Literal{SourceInfo: si, Type: ast.Character, Val: v[0]}
+	case ast.Boolean:
+		// ToLower only to support dynamic eval; lexer would not suppport.
+		switch strings.ToLower(input) {
+		case "true":
+			return &ast.Literal{SourceInfo: si, Type: ast.Boolean, Val: true}
+		case "false":
+			return &ast.Literal{SourceInfo: si, Type: ast.Boolean, Val: false}
+		default:
+			return nil
+		}
+	default:
+		panic(typ)
 	}
 }

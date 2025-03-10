@@ -13,7 +13,7 @@ type runOpts struct {
 	goGen             bool
 }
 
-func run(args []string, opts runOpts) error {
+func runCmd(args []string, opts runOpts) error {
 	src, err := readSourceFromArgs(args)
 	if err != nil {
 		return err

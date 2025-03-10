@@ -120,9 +120,9 @@ func RunTestInterp(t *testing.T, filename string) error {
 	p := cp.NewExecution(&asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(0)),
 		IoContext: builtins.IoContext{
-			Stdin:  bufio.NewScanner(&input),
-			Stdout: gaddis.NoopSyncWriter(&output),
-			Stderr: gaddis.NoopSyncWriter(&errput),
+			Stdin:   bufio.NewScanner(&input),
+			Stdout:  gaddis.NoopSyncWriter(&output),
+			WorkDir: ".",
 		},
 	})
 

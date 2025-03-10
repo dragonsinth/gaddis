@@ -9,7 +9,7 @@ import (
 
 // Collect constructs scopes, collects global symbols.
 func Collect(prog *ast.Program) []ast.Error {
-	prog.Scope = ast.NewGlobalScope()
+	prog.Scope = ast.NewGlobalScope(prog.Block)
 	v := &Visitor{currScope: prog.Scope}
 	prog.Block.Visit(v)
 	return v.Errors

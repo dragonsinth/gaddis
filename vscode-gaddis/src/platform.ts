@@ -13,7 +13,7 @@ const ARCH_MAP: { [key: string]: string } = {
     x64: 'amd64',
 };
 
-export function getGaddisExecutablePath(context: vscode.ExtensionContext): string {
+function getGaddisExecutablePath(): string {
     const platform = os.platform();
     const arch = os.arch();
 
@@ -26,5 +26,7 @@ export function getGaddisExecutablePath(context: vscode.ExtensionContext): strin
         throw new Error(`Unsupported architecture: ${arch}`);
     }
     const ext = (goOS == 'windows') ? '.exe' : ''
-    return path.join(context.extensionPath, 'bin', `gaddis-${goOS}-${goArch}${ext}`);
+    return path.join(__dirname, '..', 'bin', `gaddis-${goOS}-${goArch}${ext}`);
 }
+
+export const gaddisCmd = getGaddisExecutablePath();

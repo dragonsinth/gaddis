@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { gaddisCmd } from "./platform";
 
 type cmdType = 'run' | 'test'
 
-export function makeTask(gaddisCmd: string, cmd: cmdType, fileUri: vscode.Uri): vscode.Task {
+export function makeTask(cmd: cmdType, fileUri: vscode.Uri): vscode.Task {
     const filePath = fileUri.fsPath;
     const fileName = path.basename(filePath);
 

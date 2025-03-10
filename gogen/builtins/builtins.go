@@ -16,9 +16,9 @@ type SyncWriter interface {
 }
 
 type IoContext struct {
-	Stdin  *bufio.Scanner
-	Stdout SyncWriter
-	Stderr SyncWriter
+	Stdin   *bufio.Scanner
+	Stdout  SyncWriter
+	WorkDir string
 }
 
 func (ctx IoContext) Display(args ...any) {
@@ -50,6 +50,7 @@ func (ctx IoContext) Display(args ...any) {
 	}
 	sb.WriteByte('\n')
 	_, _ = ctx.Stdout.Write(sb.Bytes())
+	_ = ctx.Stdout.Sync()
 }
 
 func (ctx IoContext) InputInteger() int64 {
@@ -119,9 +120,9 @@ func (ctx IoContext) readLine() String {
 }
 
 var defaultCtx = IoContext{
-	Stdin:  bufio.NewScanner(os.Stdin),
-	Stdout: os.Stdout,
-	Stderr: os.Stderr,
+	Stdin:   bufio.NewScanner(os.Stdin),
+	Stdout:  os.Stdout,
+	WorkDir: ".",
 }
 
 var (

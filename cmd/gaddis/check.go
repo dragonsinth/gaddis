@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func check(args []string) error {
+func checkCmd(args []string) error {
 	src, err := readSourceFromArgs(args)
 	if err != nil {
 		return err

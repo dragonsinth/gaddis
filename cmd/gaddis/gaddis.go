@@ -9,11 +9,13 @@ import (
 )
 
 var (
-	fDebug = flag.Bool("d", false, "don't delete any generated files, leave for inspection")
-	fTest  = flag.Bool("t", false, "legacy: run in test mode; capture")
-	fNoRun = flag.Bool("no-run", false, "compile only, do not run")
-	fJson  = flag.Bool("json", false, "emit errors as json")
-	fGogen = flag.Bool("gogen", false, "run using go compile")
+	fVerbose = flag.Bool("v", false, "verbose logging")
+	fDebug   = flag.Bool("d", false, "don't delete any generated files, leave for inspection")
+	fTest    = flag.Bool("t", false, "legacy: run in test mode; capture")
+	fNoRun   = flag.Bool("no-run", false, "compile only, do not run")
+	fJson    = flag.Bool("json", false, "emit errors as json")
+	fGogen   = flag.Bool("gogen", false, "run using go compile")
+	fPort    = flag.Int("port", -1, "port to listen on; only valid with debug")
 )
 
 const help = `Usage: gaddis <command> [options] [arguments]
@@ -50,23 +52,25 @@ func main() {
 		// TODO: details subcommand help
 		os.Exit(0)
 	case "format":
-		err = format(args[1:])
+		err = formatCmd(args[1:])
 	case "check":
-		err = check(args[1:])
+		err = checkCmd(args[1:])
 	case "build":
 		// always leave build outputs on build command
 		opts.stopAfterBuild = true
 		opts.leaveBuildOutputs = true
-		err = run(args[1:], opts)
+		err = runCmd(args[1:], opts)
 	case "test":
 		err = test(args[1:], opts)
+	case "debug":
+		err = debugCmd(*fPort, *fVerbose)
 	case "run":
-		err = run(args[1:], opts)
+		err = runCmd(args[1:], opts)
 	default:
 		if *fTest {
 			err = test(args, opts)
 		} else {
-			err = run(args, opts)
+			err = runCmd(args, opts)
 		}
 	}
 
