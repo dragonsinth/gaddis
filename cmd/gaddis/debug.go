@@ -533,7 +533,9 @@ func (h *connHandler) onSetFunctionBreakpointsRequest(request *dap.SetFunctionBr
 }
 
 func (h *connHandler) onSetExceptionBreakpointsRequest(request *dap.SetExceptionBreakpointsRequest) {
-	h.send(newErrorResponse(request.Seq, request.Command, "SetExceptionBreakpointsRequest is not yet supported"))
+	response := &dap.SetExceptionBreakpointsResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	h.send(response)
 }
 
 func (h *connHandler) onConfigurationDoneRequest(request *dap.ConfigurationDoneRequest) {
@@ -565,10 +567,11 @@ func (h *connHandler) onContinueRequest(request *dap.ContinueRequest) {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
-	h.sess.Play()
 	response := &dap.ContinueResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
+
+	h.sess.Play()
 }
 
 func (h *connHandler) onNextRequest(request *dap.NextRequest) {
@@ -619,8 +622,21 @@ func (h *connHandler) onReverseContinueRequest(request *dap.ReverseContinueReque
 }
 
 func (h *connHandler) onRestartFrameRequest(request *dap.RestartFrameRequest) {
-	// TODO: support
-	h.send(newErrorResponse(request.Seq, request.Command, "RestartFrameRequest is not yet supported"))
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+
+	response := &dap.RestartFrameResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	h.send(response)
+
+	h.sess.RestartFrame(request.Arguments.FrameId)
+
+	h.send(&dap.StoppedEvent{
+		Event: *newEvent("stopped"),
+		Body:  dap.StoppedEventBody{Reason: "restart", ThreadId: 1, AllThreadsStopped: true},
+	})
 }
 
 func (h *connHandler) onGotoRequest(request *dap.GotoRequest) {

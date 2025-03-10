@@ -18,6 +18,7 @@ func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 		Code: a.Code,
 		Stack: []Frame{{
 			Scope:  a.GlobalScope,
+			Start:  0,
 			Return: 0,
 			Locals: make([]any, len(a.GlobalScope.Locals)),
 			Eval:   make([]any, 0, 16),
@@ -39,7 +40,8 @@ type Execution struct {
 
 type Frame struct {
 	Scope  *ast.Scope
-	Return int
+	Start  int   // starting pc for this function
+	Return int   // return address
 	Args   []any // original function args
 	Locals []any // current params+locals
 	Eval   []any
@@ -80,7 +82,7 @@ func (p *Execution) GetStackFrames(f func(fr *Frame, id int, inst Inst)) {
 
 func (p *Execution) GetStackTrace(filename string) string {
 	var sb strings.Builder
-	p.GetStackFrames(func(fr *Frame, id int, inst Inst) {
+	p.GetStackFrames(func(fr *Frame, _ int, inst Inst) {
 		line := inst.GetSourceInfo().Start.Line + 1
 		scope := FormatFrameScope(fr)
 		_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scope)

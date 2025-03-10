@@ -222,7 +222,7 @@ func (ds *Session) Play() {
 					// send trace to stderr
 					var lines []ast.Position
 					var trace []string
-					ds.Exec.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst) {
 						lines = append(lines, inst.GetSourceInfo().Start)
 						trace = append(trace, asm.FormatFrameScope(fr))
 					})
@@ -370,7 +370,7 @@ func (ds *Session) StopOnEntry() {
 	})
 }
 
-func (ds *Session) GetStackFrames(f func(fr *asm.Frame, id int, inst asm.Inst)) {
+func (ds *Session) GetStackFrames(f func(*asm.Frame, int, asm.Inst)) {
 	ds.withOuterLock(func() {
 		ds.Exec.GetStackFrames(f)
 	})
@@ -383,6 +383,21 @@ func (ds *Session) Step(stepType StepType) {
 		ds.stepType = stepType
 		ds.stepLine = si.Start.Line
 		ds.stepFrame = len(p.Stack)
+	})
+}
+
+func (ds *Session) RestartFrame(id int) {
+	ds.withOuterLock(func() {
+		p := ds.Exec
+		if id < 1 || id > len(p.Stack) {
+			return // client error
+		}
+		p.Stack = p.Stack[:id]
+		p.Frame = &p.Stack[id-1]
+		p.PC = p.Frame.Start
+		clear(p.Frame.Locals)
+		copy(p.Frame.Locals, p.Frame.Args)
+		p.Frame.Eval = p.Frame.Eval[:0]
 	})
 }
 

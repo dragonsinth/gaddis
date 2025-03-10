@@ -35,6 +35,7 @@ func (i Call) Exec(p *Execution) {
 
 	p.Stack = append(p.Stack, Frame{
 		Scope:  i.Scope,
+		Start:  i.Label.PC,
 		Return: p.PC,
 		Args:   args,
 		Locals: append(args, locals...),
