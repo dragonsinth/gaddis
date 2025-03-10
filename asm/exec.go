@@ -10,6 +10,7 @@ import (
 )
 
 const MAX_INSTRUCTIONS = 1 << 30
+const MAX_STACK = 1024
 
 func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 	p := &Execution{
@@ -81,21 +82,25 @@ func (p *Execution) GetStackTrace(filename string) string {
 	var sb strings.Builder
 	p.GetStackFrames(func(fr *Frame, id int, inst Inst) {
 		line := inst.GetSourceInfo().Start.Line + 1
-		scopeName := fr.Scope.String()
-		if !fr.Scope.IsGlobal {
-			var sb strings.Builder
-			sb.WriteRune('(')
-			for i, arg := range fr.Args {
-				if i > 0 {
-					sb.WriteRune(',')
-				}
-				sb.WriteString(DebugStringVal(arg))
-			}
-			sb.WriteRune(')')
-			scopeName += sb.String()
-		}
-		_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scopeName)
+		scope := FormatFrameScope(fr)
+		_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scope)
 	})
+	return sb.String()
+}
+
+func FormatFrameScope(fr *Frame) string {
+	var sb strings.Builder
+	sb.WriteString(fr.Scope.String())
+	if !fr.Scope.IsGlobal {
+		sb.WriteRune('(')
+		for i, arg := range fr.Args {
+			if i > 0 {
+				sb.WriteRune(',')
+			}
+			sb.WriteString(DebugStringVal(arg))
+		}
+		sb.WriteRune(')')
+	}
 	return sb.String()
 }
 

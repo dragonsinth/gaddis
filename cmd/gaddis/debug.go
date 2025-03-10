@@ -113,8 +113,7 @@ func (h *connHandler) handleRequest() error {
 	return nil
 }
 
-// dispatchRequest launches a new goroutine to process each request
-// and send back events and responses.
+// dispatchRequest processes each request and sends back events and responses.
 func (h *connHandler) dispatchRequest(request dap.Message) {
 	switch request := request.(type) {
 	case *dap.InitializeRequest:
@@ -200,44 +199,53 @@ func (h *connHandler) dispatchRequest(request dap.Message) {
 	}
 }
 
+// Used by the debug session to send back events.
 type eventHost struct {
 	handler *connHandler
+	noDebug bool
 }
 
-func (eh eventHost) Panicked(err error, si ast.Position, trace string) {
+func (eh eventHost) Paused(reason string) {
+	eh.handler.send(&dap.StoppedEvent{
+		Event: *newEvent("stopped"),
+		Body:  dap.StoppedEventBody{Reason: reason, ThreadId: 1, AllThreadsStopped: true},
+	})
+}
+
+func (eh eventHost) BreakOnException() bool {
+	return !eh.noDebug
+}
+
+func (eh eventHost) Exception(err error) {
+	eh.handler.send(&dap.StoppedEvent{
+		Event: *newEvent("stopped"),
+		Body:  dap.StoppedEventBody{Reason: "exception", Description: "exception", Text: err.Error(), ThreadId: 1, AllThreadsStopped: true},
+	})
+}
+
+func (eh eventHost) Panicked(err error, pos []ast.Position, trace []string) {
+	// just send stack traces over stderr and exit
 	eh.handler.send(&dap.OutputEvent{
 		Event: *newEvent("output"),
 		Body: dap.OutputEventBody{
 			Category: "stderr",
-			Output:   err.Error() + "\n",
-			Source:   &eh.handler.source,
-			Line:     si.Line + eh.handler.lineOff,
-			Column:   si.Column + eh.handler.colOff,
-		},
-	})
-	eh.handler.send(&dap.OutputEvent{
-		Event: *newEvent("output"),
-		Body: dap.OutputEventBody{
-			Category: "stderr",
-			Output:   trace,
+			Output:   "error: " + err.Error() + "\n",
 			Source:   &eh.handler.source,
 		},
 	})
+	for i := range pos {
+		eh.handler.send(&dap.OutputEvent{
+			Event: *newEvent("output"),
+			Body: dap.OutputEventBody{
+				Category: "stderr",
+				Output:   "\tin " + trace[i] + "\n",
+				Source:   &eh.handler.source,
+				Line:     pos[i].Line + eh.handler.lineOff,
+				Column:   pos[i].Column + eh.handler.colOff,
+			},
+		})
+	}
 	eh.Exited(1)
-}
-
-func (eh eventHost) Breakpoint() {
-	eh.handler.send(&dap.StoppedEvent{
-		Event: *newEvent("stopped"),
-		Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
-	})
-}
-
-func (eh eventHost) Paused() {
-	eh.handler.send(&dap.StoppedEvent{
-		Event: *newEvent("stopped"),
-		Body:  dap.StoppedEventBody{Reason: "pause", ThreadId: 1, AllThreadsStopped: true},
-	})
 }
 
 func (eh eventHost) Exited(code int) {
@@ -256,10 +264,31 @@ func (eh eventHost) Terminated() {
 
 var _ debug.EventHost = eventHost{}
 
+// connHandler manages the debug session and implements DAP.
+type connHandler struct {
+	// rw is used to read requests and write events/responses
+	rw     *bufio.ReadWriter
+	dbgLog *log.Logger
+
+	// sendQueue is used to capture messages from multiple request
+	// processing goroutines while writing them to the client connection
+	// from a single goroutine via sendFromQueue. We must keep track of
+	// the multiple channel senders with a wait group to make sure we do
+	// not close this channel prematurely. Closing this channel will signal
+	// the sendFromQueue goroutine that it can exit.
+	sendQueue chan dap.Message
+
+	source          dap.Source
+	bps             map[string][]int
+	lineOff, colOff int
+	stopOnEntry     bool
+	noDebug         bool
+
+	sess *debug.Session
+}
+
 // send lets the sender goroutine know via a channel that there is
-// a message to be sent to client. This is called by per-request
-// goroutines to send events and responses for each request and
-// to notify of events triggered by the fake debugger.
+// a message to be sent to client.
 func (h *connHandler) send(message dap.Message) {
 	select {
 	case h.sendQueue <- message:
@@ -268,9 +297,10 @@ func (h *connHandler) send(message dap.Message) {
 	}
 }
 
-// sendFromQueue is to be run in a separate goroutine to listen on a
+// sendFromQueue run in a separate goroutine to listen on a
 // channel for messages to send back to the client. It will
-// return once the channel is closed.
+// return once the channel is closed or the outbound conn
+// becomes unwritable.
 func (h *connHandler) sendFromQueue() {
 	seq := 1
 	for message := range h.sendQueue {
@@ -296,42 +326,8 @@ func (h *connHandler) sendFromQueue() {
 }
 
 // -----------------------------------------------------------------------
-// Very Fake Debugger
-//
-
-// The debugging session will keep track of how many breakpoints
-// have been set. Once start-up is done (i.e. configurationDone
-// request is processed), it will "stop" at each breakpoint one by
-// one, and once there are no more, it will trigger a terminated event.
-type connHandler struct {
-	// rw is used to read requests and write events/responses
-	rw     *bufio.ReadWriter
-	dbgLog *log.Logger
-
-	// sendQueue is used to capture messages from multiple request
-	// processing goroutines while writing them to the client connection
-	// from a single goroutine via sendFromQueue. We must keep track of
-	// the multiple channel senders with a wait group to make sure we do
-	// not close this channel prematurely. Closing this channel will signal
-	// the sendFromQueue goroutine that it can exit.
-	sendQueue chan dap.Message
-
-	source          dap.Source
-	bps             map[string][]int
-	lineOff, colOff int
-	stopOnEntry     bool
-	noDebug         bool
-
-	sess *debug.Session
-}
-
-// -----------------------------------------------------------------------
 // Request Handlers
-//
-// Below is a dummy implementation of the request handlers.
-// They take no action, but just return dummy responses.
-// A real debug adaptor would call the debugger methods here
-// and use their results to populate each response.
+// -----------------------------------------------------------------------
 
 func (h *connHandler) onInitializeRequest(request *dap.InitializeRequest) {
 	if h.sess != nil {
@@ -412,7 +408,7 @@ func (h *connHandler) onLaunchRequest(request *dap.LaunchRequest) {
 		Stdout:     h.stdout,
 		WorkingDir: args.WorkingDir,
 	}
-	sess, err := debug.New(h.source.Path, compileErr, eventHost{handler: h}, opts)
+	sess, err := debug.New(h.source.Path, compileErr, eventHost{handler: h, noDebug: h.noDebug}, opts)
 	if err != nil {
 		h.send(newErrorResponse(request.Seq, request.Command, err.Error()))
 		return
@@ -623,6 +619,7 @@ func (h *connHandler) onReverseContinueRequest(request *dap.ReverseContinueReque
 }
 
 func (h *connHandler) onRestartFrameRequest(request *dap.RestartFrameRequest) {
+	// TODO: support
 	h.send(newErrorResponse(request.Seq, request.Command, "RestartFrameRequest is not yet supported"))
 }
 
@@ -767,10 +764,12 @@ func (h *connHandler) onVariablesRequest(request *dap.VariablesRequest) {
 }
 
 func (h *connHandler) onSetVariableRequest(request *dap.SetVariableRequest) {
+	// TODO: support
 	h.send(newErrorResponse(request.Seq, request.Command, "setVariableRequest is not yet supported"))
 }
 
 func (h *connHandler) onSetExpressionRequest(request *dap.SetExpressionRequest) {
+	// TODO: support
 	h.send(newErrorResponse(request.Seq, request.Command, "SetExpressionRequest is not yet supported"))
 }
 
@@ -795,6 +794,7 @@ func (h *connHandler) onTerminateThreadsRequest(request *dap.TerminateThreadsReq
 }
 
 func (h *connHandler) onEvaluateRequest(request *dap.EvaluateRequest) {
+	// TODO: support
 	h.send(newErrorResponse(request.Seq, request.Command, "EvaluateRequest is not yet supported"))
 }
 
@@ -811,6 +811,7 @@ func (h *connHandler) onCompletionsRequest(request *dap.CompletionsRequest) {
 }
 
 func (h *connHandler) onExceptionInfoRequest(request *dap.ExceptionInfoRequest) {
+	// TODO: support
 	h.send(newErrorResponse(request.Seq, request.Command, "ExceptionRequest is not yet supported"))
 }
 
@@ -831,6 +832,7 @@ func (h *connHandler) onReadMemoryRequest(request *dap.ReadMemoryRequest) {
 }
 
 func (h *connHandler) onDisassembleRequest(request *dap.DisassembleRequest) {
+	// TODO: support
 	h.send(newErrorResponse(request.Seq, request.Command, "DisassembleRequest is not yet supported"))
 }
 

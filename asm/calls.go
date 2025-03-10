@@ -25,7 +25,7 @@ type Call struct {
 }
 
 func (i Call) Exec(p *Execution) {
-	if len(p.Stack) >= 1024 {
+	if len(p.Stack) >= MAX_STACK {
 		panic("stack overflow")
 	}
 

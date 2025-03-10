@@ -19,9 +19,10 @@ import (
 )
 
 type EventHost interface {
-	Paused()
-	Breakpoint()
-	Panicked(error, ast.Position, string)
+	Paused(reason string)
+	BreakOnException() bool
+	Exception(err error)
+	Panicked(error, []ast.Position, []string)
 	Exited(code int)
 	Terminated()
 }
@@ -50,18 +51,20 @@ type Session struct {
 
 	// Private running state
 
-	yield    atomic.Bool // ask the vm to yield so we can grab the mutex
-	running  atomic.Bool
-	runMu    sync.Mutex
-	runState RunState
-	isDone   bool // terminated/exit/exception
+	yield     atomic.Bool // ask the vm to yield so we can grab the mutex
+	running   atomic.Bool
+	runMu     sync.Mutex
+	runState  RunState
+	isDone    bool // terminated/exit/exception
+	exception error
 
 	lineBreaks []byte // what source lines to break on
 	instBreaks []byte // what instruction lines to break on
 
-	stepType  StepType
-	stepLine  int
-	stepFrame int
+	stopOnEntry bool
+	stepType    StepType
+	stepLine    int
+	stepFrame   int
 }
 
 type RunState int
@@ -103,7 +106,7 @@ func New(
 		for _, err := range errs {
 			compileErr(err)
 		}
-		return nil, fmt.Errorf("compile errors in %s: %w", filename, err)
+		return nil, fmt.Errorf("compile errors in %s", filename)
 	}
 
 	assembled := asm.Assemble(prog)
@@ -170,6 +173,7 @@ func (ds *Session) Reset(opts Opts) {
 	ds.yield.Store(false)
 	ds.isDone = false
 	ds.runState = PAUSE
+	ds.exception = nil
 	if ds.lineBreaks == nil {
 		ds.lineBreaks = make([]byte, ds.NLines)
 		ds.instBreaks = make([]byte, ds.NInst)
@@ -185,9 +189,14 @@ func (ds *Session) Play() {
 	ds.runMu.Lock()
 	defer ds.runMu.Unlock()
 	if ds.runState > PAUSE {
-		log.Println("invalid runstate:", ds.runState)
+		log.Println("ERROR: invalid runstate:", ds.runState)
 		return
 	}
+	if ds.isDone {
+		log.Println("ERROR: already done")
+		return
+	}
+
 	ds.runState = RUN
 	log.Println("running")
 
@@ -202,13 +211,24 @@ func (ds *Session) Play() {
 			ds.stepType = STEP_NONE
 
 			if r := recover(); r != nil {
-				// TODO: allow an exception breakpoint halt here
-				ds.isDone = true
 				err := errors.New(fmt.Sprint(r))
-				si := p.Code[p.PC].GetSourceInfo()
-				trace := p.GetStackTrace(ds.File)
-				ds.Host.Panicked(err, si.Start, trace)
-				log.Println("panicking")
+				log.Println("panicking:", err)
+				if ds.Host.BreakOnException() {
+					// pause the debugger
+					ds.runState = PAUSE
+					ds.exception = err
+					ds.Host.Exception(err)
+				} else {
+					// send trace to stderr
+					var lines []ast.Position
+					var trace []string
+					ds.Exec.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst) {
+						lines = append(lines, inst.GetSourceInfo().Start)
+						trace = append(trace, asm.FormatFrameScope(fr))
+					})
+					ds.Host.Panicked(err, lines, trace)
+					ds.isDone = true
+				}
 			}
 		}()
 
@@ -217,7 +237,7 @@ func (ds *Session) Play() {
 			case HALT:
 				log.Println("halting")
 			case PAUSE:
-				ds.Host.Paused()
+				ds.Host.Paused("pause")
 				log.Println("pausing")
 			case TERMINATE:
 				ds.Host.Terminated()
@@ -229,6 +249,12 @@ func (ds *Session) Play() {
 
 		if ds.runState != RUN {
 			runStateEvent()
+			return
+		}
+
+		if ds.stopOnEntry {
+			ds.stopOnEntry = false // just once
+			ds.Host.Paused("entry")
 			return
 		}
 
@@ -254,24 +280,21 @@ func (ds *Session) Play() {
 				switch ds.stepType {
 				case STEP_NEXT:
 					if stackDiff < 0 || (stackDiff == 0 && ds.stepLine != line) {
-						ds.Host.Breakpoint()
+						ds.Host.Paused("step")
 						ds.runState = PAUSE
-						log.Println("step next")
 						return
 					}
 				case STEP_IN:
 					// break on any change
 					if stackDiff != 0 || ds.stepLine != line {
-						ds.Host.Breakpoint()
+						ds.Host.Paused("step")
 						ds.runState = PAUSE
-						log.Println("step in")
 						return
 					}
 				case STEP_OUT:
 					if stackDiff < 0 {
-						ds.Host.Breakpoint()
+						ds.Host.Paused("step")
 						ds.runState = PAUSE
-						log.Println("step out")
 						return
 					}
 				default:
@@ -284,9 +307,8 @@ func (ds *Session) Play() {
 
 			// must be after exec to avoid reentry
 			if ds.instBreaks[p.PC] != 0 {
-				ds.Host.Breakpoint()
+				ds.Host.Paused("breakpoint")
 				ds.runState = PAUSE
-				log.Println("breakpoint")
 				return
 			}
 
@@ -344,8 +366,7 @@ func (ds *Session) SetBreakpoints(bps []int) []int {
 
 func (ds *Session) StopOnEntry() {
 	ds.withOuterLock(func() {
-		ds.instBreaks[0] = 1
-		ds.lineBreaks[0] = 1
+		ds.stopOnEntry = true
 	})
 }
 

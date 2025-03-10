@@ -78,19 +78,21 @@ func Assemble(prog *ast.Program) *Assembly {
 	}
 
 	// If there is a module named main with no arguments, call it at the very end.
+	finalReturnSi := prog.Block.SourceInfo.Tail()
 	ref := prog.Scope.Lookup("main")
 	if ref != nil && ref.ModuleStmt != nil && len(ref.ModuleStmt.Params) == 0 {
 		scope := ref.ModuleStmt.Scope
 		v.code = append(v.code, Call{
-			SourceInfo: prog.Block.SourceInfo.Tail(),
+			SourceInfo: ref.ModuleStmt.SourceInfo.Head(),
 			Scope:      scope,
 			Label:      v.modules[ref.ModuleStmt],
 		})
+		finalReturnSi = ref.ModuleStmt.SourceInfo.Tail()
 	}
 
 	// terminate the program cleanly
 	v.code = append(v.code, Return{
-		SourceInfo: prog.Block.SourceInfo.Tail(), // should be end
+		SourceInfo: finalReturnSi,
 		NVal:       0,
 	})
 
