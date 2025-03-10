@@ -165,27 +165,20 @@
                 "description": "Absolute path to a text file.",
                 "default": "${workspaceFolder}/main.gad"
               },
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop after launch.",
-                "default": true
-              }
-            }
-          },
-          "attach": {
-            "required": [
-              "program"
-            ],
-            "properties": {
-              "program": {
+              "workDir": {
                 "type": "string",
-                "description": "Absolute path to a text file.",
-                "default": "${workspaceFolder}/main.gad"
+                "description": "Program working directory.",
+                "default": "${workspaceFolder}"
               },
               "stopOnEntry": {
                 "type": "boolean",
-                "description": "Automatically stop after attach.",
-                "default": true
+                "description": "Automatically stop after launch.",
+                "default": false
+              },
+              "noDebug": {
+                "type": "boolean",
+                "description": "Run without debugging.",
+                "default": false
               }
             }
           }
@@ -194,9 +187,9 @@
           {
             "type": "gaddis",
             "request": "launch",
-            "name": "Ask for file name",
+            "name": "main.gad",
             "program": "${workspaceFolder}/main.gad",
-            "stopOnEntry": true
+            "stopOnEntry": false
           }
         ],
         "configurationSnippets": [
@@ -206,9 +199,9 @@
             "body": {
               "type": "gaddis",
               "request": "launch",
-              "name": "Ask for file name",
+              "name": "main.gad",
               "program": "^\"\\${workspaceFolder}/\\main.gad\"",
-              "stopOnEntry": true
+              "stopOnEntry": false
             }
           }
         ]

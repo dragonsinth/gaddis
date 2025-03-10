@@ -10,11 +10,10 @@ import (
 
 func TestDisplay(t *testing.T) {
 	inbuf := strings.NewReader("")
-	var outbuf, errbuf bytes.Buffer
+	var outbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
 		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 	ctx.Display([]byte("the score is "), 17, []byte(" to "), 21.5, []byte(" is "), false)
 	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
@@ -22,11 +21,10 @@ func TestDisplay(t *testing.T) {
 
 func TestInputInteger(t *testing.T) {
 	inbuf := strings.NewReader("not a number\n123\n")
-	var outbuf, errbuf bytes.Buffer
+	var outbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
 		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputInteger()
@@ -39,11 +37,10 @@ func TestInputInteger(t *testing.T) {
 
 func TestInputReal(t *testing.T) {
 	inbuf := strings.NewReader("not a number\n123.456\n")
-	var outbuf, errbuf bytes.Buffer
+	var outbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
 		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputReal()
@@ -56,11 +53,10 @@ func TestInputReal(t *testing.T) {
 
 func TestInputString(t *testing.T) {
 	inbuf := strings.NewReader("David\n")
-	var outbuf, errbuf bytes.Buffer
+	var outbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
 		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputString()
@@ -73,11 +69,10 @@ func TestInputString(t *testing.T) {
 
 func TestInputCharacter(t *testing.T) {
 	inbuf := strings.NewReader("\ntrue\nc")
-	var outbuf, errbuf bytes.Buffer
+	var outbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
 		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputCharacter()
@@ -90,11 +85,10 @@ func TestInputCharacter(t *testing.T) {
 
 func TestInputBoolean(t *testing.T) {
 	inbuf := strings.NewReader("not a boolean\ntrue\n")
-	var outbuf, errbuf bytes.Buffer
+	var outbuf bytes.Buffer
 	ctx := IoContext{
 		Stdin:  bufio.NewScanner(inbuf),
 		Stdout: gaddis.NoopSyncWriter(&outbuf),
-		Stderr: gaddis.NoopSyncWriter(&errbuf),
 	}
 
 	got := ctx.InputBoolean()

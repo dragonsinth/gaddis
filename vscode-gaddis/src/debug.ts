@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as child_process from 'child_process';
+import * as path from 'path';
 import { gaddisCmd } from './platform';
 
 let serverPort: number = 0;
@@ -30,9 +31,12 @@ export function activateDebug(context: vscode.ExtensionContext) {
                         return undefined;	// abort launch
                     });
                 }
+                if (!config.workDir) {
+                    config.workDir = '${workspaceFolder}';
+                }
                 if (!config.debugServer) {
                     if (!serverPort) {
-                        return vscode.window.showWarningMessage("Debug server not running and no port specified").then(_ => {
+                        return vscode.window.showWarningMessage("Debug server not running").then(_ => {
                             return undefined;	// abort launch
                         });
                     }
@@ -51,7 +55,7 @@ export function activateDebug(context: vscode.ExtensionContext) {
                     type: 'gaddis',
                     name: 'Run File',
                     request: 'launch',
-                    program: targetResource.fsPath
+                    program: targetResource.fsPath,
                 },
                     { noDebug: true }
                 );

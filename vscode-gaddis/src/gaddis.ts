@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { CancellationToken, DebugConfiguration, ProviderResult, WorkspaceFolder } from 'vscode';
 import { GaddisRunProvider } from "./run_provider";
 import { GaddisTestProvider } from "./test_provider";
 import { makeTask } from './task';

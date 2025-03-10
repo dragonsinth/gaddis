@@ -35,7 +35,6 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 		IoContext: builtins.IoContext{
 			Stdin:  bufio.NewScanner(streams.Stdin),
 			Stdout: streams.Stdout,
-			Stderr: os.Stderr,
 		},
 	}
 

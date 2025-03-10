@@ -16,11 +16,25 @@ type Scope struct {
 	Locals       []*VarDecl
 }
 
+func (s *Scope) Desc() string {
+	if s.IsExternal {
+		return "external"
+	} else if s.IsGlobal {
+		return "global"
+	} else if s.ModuleStmt != nil {
+		return fmt.Sprintf("%s()", s.ModuleStmt.Name)
+	} else if s.FunctionStmt != nil {
+		return fmt.Sprintf("%s()", s.FunctionStmt.Name)
+	} else {
+		panic("unset")
+	}
+}
+
 func (s *Scope) String() string {
 	if s.IsExternal {
-		return "externa"
+		return "external"
 	} else if s.IsGlobal {
-		return "global block"
+		return "global"
 	} else if s.ModuleStmt != nil {
 		return fmt.Sprintf("Module %s", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {

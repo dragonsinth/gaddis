@@ -122,7 +122,6 @@ func RunTestInterp(t *testing.T, filename string) error {
 		IoContext: builtins.IoContext{
 			Stdin:  bufio.NewScanner(&input),
 			Stdout: gaddis.NoopSyncWriter(&output),
-			Stderr: gaddis.NoopSyncWriter(&errput),
 		},
 	})
 

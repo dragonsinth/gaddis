@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dragonsinth/gaddis"
+	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/debug"
 	"github.com/google/go-dap"
@@ -67,7 +67,7 @@ func handleConnection(conn net.Conn, dbgLog *log.Logger) {
 
 	debugSession := fakeDebugSession{
 		rw:        bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn)),
-		sendQueue: make(chan dap.Message),
+		sendQueue: make(chan dap.Message, 1024),
 		bps:       map[string][]int{},
 		dbgLog:    dbgLog,
 	}
@@ -86,6 +86,12 @@ func (ds *fakeDebugSession) Run() error {
 	go func() {
 		defer wg.Done()
 		ds.sendFromQueue()
+	}()
+
+	defer func() {
+		if ds.sess != nil {
+			ds.sess.Halt()
+		}
 	}()
 
 	for {
@@ -194,12 +200,77 @@ func (ds *fakeDebugSession) dispatchRequest(request dap.Message) {
 	}
 }
 
+type eventHost struct {
+	ds *fakeDebugSession
+}
+
+func (e eventHost) NormalExit() {
+	e.ds.send(&dap.ExitedEvent{
+		Event: *newEvent("exited"),
+		Body:  dap.ExitedEventBody{ExitCode: 0},
+	})
+	e.ds.send(&dap.TerminatedEvent{
+		Event: *newEvent("terminated"),
+	})
+}
+
+func (e eventHost) ExceptionExit(err error, si ast.Position, trace string) {
+	e.ds.send(&dap.OutputEvent{
+		Event: *newEvent("output"),
+		Body: dap.OutputEventBody{
+			Category: "stderr",
+			Output:   err.Error(),
+			Source:   &e.ds.source,
+			Line:     si.Line + e.ds.lineOff,
+			Column:   si.Column + e.ds.colOff,
+		},
+	})
+	e.ds.send(&dap.OutputEvent{
+		Event: *newEvent("output"),
+		Body: dap.OutputEventBody{
+			Category: "stderr",
+			Output:   trace,
+			Source:   &e.ds.source,
+		},
+	})
+	e.ds.send(&dap.ExitedEvent{
+		Event: *newEvent("exited"),
+		Body:  dap.ExitedEventBody{ExitCode: 1},
+	})
+}
+
+func (e eventHost) Breakpoint() {
+	e.ds.send(&dap.StoppedEvent{
+		Event: *newEvent("stopped"),
+		Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
+	})
+}
+
+func (e eventHost) Paused() {
+	e.ds.send(&dap.StoppedEvent{
+		Event: *newEvent("stopped"),
+		Body:  dap.StoppedEventBody{Reason: "pause", ThreadId: 1, AllThreadsStopped: true},
+	})
+}
+
+func (e eventHost) Terminated() {
+	e.ds.send(&dap.TerminatedEvent{
+		Event: *newEvent("terminated"),
+	})
+}
+
+var _ debug.EventHost = eventHost{}
+
 // send lets the sender goroutine know via a channel that there is
 // a message to be sent to client. This is called by per-request
 // goroutines to send events and responses for each request and
 // to notify of events triggered by the fake debugger.
 func (ds *fakeDebugSession) send(message dap.Message) {
-	ds.sendQueue <- message
+	select {
+	case ds.sendQueue <- message:
+	default:
+		// just drop messages if the queue is that backed up
+	}
 }
 
 // sendFromQueue is to be run in a separate goroutine to listen on a
@@ -255,44 +326,9 @@ type fakeDebugSession struct {
 	bps             map[string][]int
 	lineOff, colOff int
 	stopOnEntry     bool
-}
+	noDebug         bool
 
-// doContinue allows fake program execution to continue when the program
-// is started or unpaused. It simulates events from the debug session
-// by "stopping" on a breakpoint or terminating if there are no more
-// breakpoints. Safe to use concurrently.
-func (ds *fakeDebugSession) doContinue() {
-	if ds.line < 0 && ds.stopOnEntry {
-		e := &dap.ThreadEvent{Event: *newEvent("thread"), Body: dap.ThreadEventBody{Reason: "started", ThreadId: 1}}
-		ds.send(e)
-		ds.line = 0
-		if ds.stopOnEntry {
-			ds.send(&dap.StoppedEvent{
-				Event: *newEvent("stopped"),
-				Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
-			})
-			return
-		}
-	}
-
-	ds.line++
-	bps := ds.bps[ds.source.Path]
-	for _, bp := range bps {
-		if ds.line < bp {
-			// stop here
-			ds.line = bp
-			ds.send(&dap.StoppedEvent{
-				Event: *newEvent("stopped"),
-				Body:  dap.StoppedEventBody{Reason: "breakpoint", ThreadId: 1, AllThreadsStopped: true},
-			})
-			return
-		}
-	}
-
-	// no breakpoints hit
-	ds.send(&dap.TerminatedEvent{
-		Event: *newEvent("terminated"),
-	})
+	sess *debug.Session
 }
 
 // -----------------------------------------------------------------------
@@ -304,6 +340,11 @@ func (ds *fakeDebugSession) doContinue() {
 // and use their results to populate each response.
 
 func (ds *fakeDebugSession) onInitializeRequest(request *dap.InitializeRequest) {
+	if ds.sess != nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "already launched"))
+		return
+	}
+
 	if request.Arguments.LinesStartAt1 {
 		ds.lineOff = 1
 	}
@@ -335,22 +376,29 @@ func (ds *fakeDebugSession) onInitializeRequest(request *dap.InitializeRequest) 
 type launchArgs struct {
 	Name        string `json:"name"`
 	Program     string `json:"program"`
+	WorkingDir  string `json:"workingDir"`
 	StopOnEntry bool   `json:"stopOnEntry"`
 	NoDebug     bool   `json:"noDebug"`
 }
 
 func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
+	if ds.sess != nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "already launched"))
+		return
+	}
+
 	// This is where a real debug adaptor would check the soundness of the
 	// arguments (e.g. program from launch.json) and then use them to launch the
 	// debugger and attach to the program.
 	var args launchArgs
-	if err := json.Unmarshal(request.Arguments, &args); err != nil {
+	if err := fromJson(request.Arguments, &args); err != nil {
 		ds.send(newErrorResponse(request.Seq, request.Command, "could not parse launch request"))
 		return
 	}
 	ds.source.Name = args.Name
 	ds.source.Path = args.Program
 	ds.stopOnEntry = args.StopOnEntry
+	ds.noDebug = args.NoDebug
 	ds.line = -1
 
 	compileErr := func(err ast.Error) {
@@ -365,46 +413,37 @@ func (ds *fakeDebugSession) onLaunchRequest(request *dap.LaunchRequest) {
 			},
 		})
 	}
-	opts := debug.DebugOpts{
-		Stdout: ds.makeStream("stdout"),
-		Stderr: ds.makeStream("stderr"),
+
+	opts := debug.Opts{
+		Stdin: tryReadInput(args.Program),
+		Stdout: func(line string) {
+			ds.send(&dap.OutputEvent{
+				Event: *newEvent("output"),
+				Body: dap.OutputEventBody{
+					Category: "stdout",
+					Output:   line,
+					Source:   &ds.source,
+				},
+			})
+		},
+		WorkingDir: args.WorkingDir,
 	}
-	sess, err := debug.New(ds.source.Path, compileErr, ds, opts)
+	sess, err := debug.New(ds.source.Path, compileErr, eventHost{ds: ds}, opts)
 	if err != nil {
 		ds.send(newErrorResponse(request.Seq, request.Command, err.Error()))
 		return
 	}
-
-	if args.NoDebug {
-		// just run
-		go func() {
-			err := sess.Exec.Run()
-			_ = opts.Stdout.Sync()
-			_ = opts.Stderr.Sync()
-			if err != nil {
-				// TODO: call a method in sess.Exec (panic proof)
-				si := sess.Exec.Code[sess.Exec.PC].GetSourceInfo().Start
-				ds.send(&dap.OutputEvent{
-					Event: *newEvent("output"),
-					Body: dap.OutputEventBody{
-						Category: "stderr",
-						Output:   err.Error(),
-						Source:   &ds.source,
-						Line:     si.Line + ds.lineOff,
-						Column:   si.Column + ds.colOff,
-					},
-				})
-			}
-			ds.send(&dap.TerminatedEvent{
-				Event: *newEvent("terminated"),
-			})
-		}()
-		return
-	}
+	ds.sess = sess
 
 	response := &dap.LaunchResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
+
+	if ds.noDebug {
+		// launch immediately, otherwise wait for configuration done.
+		ds.sess.SetBreakpoints(nil)
+		ds.sess.Play()
+	}
 }
 
 func (ds *fakeDebugSession) onAttachRequest(request *dap.AttachRequest) {
@@ -412,12 +451,18 @@ func (ds *fakeDebugSession) onAttachRequest(request *dap.AttachRequest) {
 }
 
 func (ds *fakeDebugSession) onDisconnectRequest(request *dap.DisconnectRequest) {
+	if ds.sess != nil {
+		ds.sess.Terminate()
+	}
 	response := &dap.DisconnectResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
 }
 
 func (ds *fakeDebugSession) onTerminateRequest(request *dap.TerminateRequest) {
+	if ds.sess != nil {
+		ds.sess.Terminate()
+	}
 	response := &dap.TerminateResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(&dap.TerminatedEvent{
@@ -427,42 +472,79 @@ func (ds *fakeDebugSession) onTerminateRequest(request *dap.TerminateRequest) {
 }
 
 func (ds *fakeDebugSession) onRestartRequest(request *dap.RestartRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+
 	var wrap struct {
 		Arguments launchArgs `json:"arguments"`
 	}
 	args := &wrap.Arguments
-	if err := json.Unmarshal(request.Arguments, &args); err != nil {
+	if err := fromJson(request.Arguments, &args); err != nil {
 		ds.send(newErrorResponse(request.Seq, request.Command, "could not parse restart request"))
 		return
 	}
+
+	// surely these don't change right?
 	ds.source.Name = args.Name
 	ds.source.Path = args.Program
 	ds.stopOnEntry = args.StopOnEntry
+	ds.noDebug = args.NoDebug
 	ds.line = -1
 	response := &dap.RestartResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
-	if args.NoDebug {
-		// just run
-		ds.send(&dap.TerminatedEvent{
-			Event: *newEvent("terminated"),
-		})
-	} else {
-		ds.doContinue()
+
+	ds.sess.Halt()
+	ds.sess.Reset(debug.Opts{
+		IsTest:     false,
+		Stdin:      tryReadInput(args.Program),
+		Stdout:     ds.stdout,
+		WorkingDir: args.WorkingDir,
+	})
+
+	if ds.noDebug {
+		ds.sess.SetBreakpoints(nil)
+	} else if ds.stopOnEntry {
+		ds.sess.StopOnEntry()
 	}
+	ds.sess.Play()
 }
 
 func (ds *fakeDebugSession) onSetBreakpointsRequest(request *dap.SetBreakpointsRequest) {
 	response := &dap.SetBreakpointsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body.Breakpoints = make([]dap.Breakpoint, len(request.Arguments.Breakpoints))
+	if ds.noDebug {
+		ds.send(response)
+		return
+	}
+
 	newBps := make([]int, len(request.Arguments.Breakpoints))
 	for i, b := range request.Arguments.Breakpoints {
-		response.Body.Breakpoints[i].Line = b.Line
-		response.Body.Breakpoints[i].Verified = true
 		newBps[i] = b.Line - ds.lineOff
 	}
-	ds.bps[request.Arguments.Source.Path] = newBps
+
+	path := request.Arguments.Source.Path
+	var verified bool
+	if ds.sess == nil {
+		newBps, verified = debug.ValidateBreakpoints(path, newBps)
+		ds.bps[path] = newBps
+	} else if ds.sess.File == path {
+		newBps = ds.sess.SetBreakpoints(newBps)
+		verified = true
+	} else {
+		// cannot accept the breakpoints
+		// TODO: breakpoints in disassembly?
+		verified = false
+	}
+
+	for _, bp := range newBps {
+		response.Body.Breakpoints = append(response.Body.Breakpoints, dap.Breakpoint{
+			Line:     bp + ds.lineOff,
+			Verified: verified,
+		})
+	}
 	ds.send(response)
 }
 
@@ -471,12 +553,15 @@ func (ds *fakeDebugSession) onSetFunctionBreakpointsRequest(request *dap.SetFunc
 }
 
 func (ds *fakeDebugSession) onSetExceptionBreakpointsRequest(request *dap.SetExceptionBreakpointsRequest) {
-	response := &dap.SetExceptionBreakpointsResponse{}
-	response.Response = *newResponse(request.Seq, request.Command)
-	ds.send(response)
+	ds.send(newErrorResponse(request.Seq, request.Command, "SetExceptionBreakpointsRequest is not yet supported"))
 }
 
 func (ds *fakeDebugSession) onConfigurationDoneRequest(request *dap.ConfigurationDoneRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+
 	// This would be the place to check if the session was configured to
 	// stop on entry and if that is the case, to issue a
 	// stopped-on-breakpoint event. This being a mock implementation,
@@ -484,17 +569,33 @@ func (ds *fakeDebugSession) onConfigurationDoneRequest(request *dap.Configuratio
 	response := &dap.ConfigurationDoneResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
-	ds.doContinue()
+
+	if ds.noDebug {
+		return // we should already be running
+	}
+	ds.sess.SetBreakpoints(ds.bps[ds.sess.File])
+	if ds.stopOnEntry {
+		ds.sess.StopOnEntry()
+	}
+	ds.sess.Play()
 }
 
 func (ds *fakeDebugSession) onContinueRequest(request *dap.ContinueRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	ds.sess.Play()
 	response := &dap.ContinueResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
-	ds.doContinue()
 }
 
 func (ds *fakeDebugSession) onNextRequest(request *dap.NextRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
 	response := &dap.NextResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
@@ -531,30 +632,42 @@ func (ds *fakeDebugSession) onGotoRequest(request *dap.GotoRequest) {
 }
 
 func (ds *fakeDebugSession) onPauseRequest(request *dap.PauseRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	ds.sess.Pause()
 	response := &dap.PauseResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	ds.send(response)
 }
 
 func (ds *fakeDebugSession) onStackTraceRequest(request *dap.StackTraceRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
 	response := &dap.StackTraceResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body = dap.StackTraceResponseBody{
-		StackFrames: []dap.StackFrame{
-			{
-				Id:     1000,
-				Source: &ds.source,
-				Line:   ds.line + ds.lineOff,
-				Column: ds.colOff,
-				Name:   "main()",
-			},
-		},
-		TotalFrames: 1,
-	}
+	ds.sess.GetStackFrames(func(fr *asm.Frame, inst asm.Inst) {
+		pos := inst.GetSourceInfo().Start
+		response.Body.StackFrames = append(response.Body.StackFrames, dap.StackFrame{
+			Id:     fr.Id,
+			Source: &ds.source,
+			Line:   pos.Line + ds.lineOff,
+			Column: pos.Column + ds.colOff,
+			Name:   fr.Scope.Desc(),
+		})
+	})
+	response.Body.TotalFrames = len(response.Body.StackFrames)
 	ds.send(response)
 }
 
 func (ds *fakeDebugSession) onScopesRequest(request *dap.ScopesRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
 	response := &dap.ScopesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	response.Body = dap.ScopesResponseBody{
@@ -567,6 +680,10 @@ func (ds *fakeDebugSession) onScopesRequest(request *dap.ScopesRequest) {
 }
 
 func (ds *fakeDebugSession) onVariablesRequest(request *dap.VariablesRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
 	response := &dap.VariablesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	response.Body = dap.VariablesResponseBody{
@@ -588,6 +705,10 @@ func (ds *fakeDebugSession) onSourceRequest(request *dap.SourceRequest) {
 }
 
 func (ds *fakeDebugSession) onThreadsRequest(request *dap.ThreadsRequest) {
+	if ds.sess == nil {
+		ds.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
 	response := &dap.ThreadsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	response.Body = dap.ThreadsResponseBody{Threads: []dap.Thread{{Id: 1, Name: "main"}}}
@@ -646,62 +767,41 @@ func (ds *fakeDebugSession) onCancelRequest(request *dap.CancelRequest) {
 func (ds *fakeDebugSession) onBreakpointLocationsRequest(request *dap.BreakpointLocationsRequest) {
 	response := &dap.BreakpointLocationsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body = dap.BreakpointLocationsResponseBody{
-		Breakpoints: []dap.BreakpointLocation{
-			{
-				Line:      request.Arguments.Line,
+	if ds.sess == nil {
+		// anything goes I guess
+		for line := request.Arguments.Line; line < request.Arguments.Line; line++ {
+			response.Body.Breakpoints = append(response.Body.Breakpoints, dap.BreakpointLocation{
+				Line:      line,
 				Column:    ds.colOff,
-				EndLine:   request.Arguments.EndLine,
+				EndLine:   line,
 				EndColumn: ds.colOff,
-			},
-		},
+			})
+		}
+	} else {
+		// filter down only to lines that are actually executable
+		line := request.Arguments.Line
+		if ds.sess.MapSourceLine(line-1) >= 0 {
+			response.Body.Breakpoints = append(response.Body.Breakpoints, dap.BreakpointLocation{
+				Line:      line,
+				Column:    ds.colOff,
+				EndLine:   line,
+				EndColumn: ds.colOff,
+			})
+		}
 	}
 	ds.send(response)
 }
 
-func (ds *fakeDebugSession) makeStream(category string) gaddis.SyncWriter {
-	return &bufferedSyncWriter{
-		ds:       ds,
-		category: category,
-	}
+func (ds *fakeDebugSession) stdout(line string) {
+	ds.send(&dap.OutputEvent{
+		Event: *newEvent("output"),
+		Body: dap.OutputEventBody{
+			Category: "stdout",
+			Output:   line,
+			Source:   &ds.source,
+		},
+	})
 }
-
-type bufferedSyncWriter struct {
-	ds       *fakeDebugSession
-	category string
-	buffer   bytes.Buffer
-}
-
-func (b *bufferedSyncWriter) Write(p []byte) (n int, err error) {
-	if pos := bytes.LastIndex(p, []byte{'\n'}); pos > 0 {
-		// force a flush
-		first, rest := p[:pos+1], p[pos+1:]
-		b.buffer.Write(first)
-		_ = b.Sync()
-		b.buffer.Write(rest)
-	} else {
-		return b.buffer.Write(p)
-	}
-	return len(p), nil
-}
-
-func (b *bufferedSyncWriter) Sync() error {
-	if b.buffer.Len() > 0 {
-		output := b.buffer.String()
-		b.buffer.Reset()
-		b.ds.send(&dap.OutputEvent{
-			Event: *newEvent("output"),
-			Body: dap.OutputEventBody{
-				Category: b.category,
-				Output:   output,
-				Source:   &b.ds.source,
-			},
-		})
-	}
-	return nil
-}
-
-var _ gaddis.SyncWriter = &bufferedSyncWriter{}
 
 func newEvent(event string) *dap.Event {
 	return &dap.Event{
@@ -785,6 +885,16 @@ func debugCmd(port int, verbose bool) error {
 
 		return debugSession.Run()
 	}
+}
+
+func tryReadInput(program string) []byte {
+	buf, _ := os.ReadFile(program + ".in")
+	return buf
+}
+
+func fromJson(buf json.RawMessage, obj any) error {
+	dec := json.NewDecoder(bytes.NewReader(buf))
+	return dec.Decode(obj)
 }
 
 func toJson(obj any) string {

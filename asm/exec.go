@@ -14,32 +14,37 @@ func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 		PC:   0,
 		Code: a.Code,
 		Stack: []Frame{{
+			Id:     1,
 			Scope:  a.GlobalScope,
 			Return: 0,
 			Locals: make([]any, len(a.GlobalScope.Locals)),
 			Eval:   make([]any, 0, 16),
 		}},
-		Frame: nil,
-		Lib:   ec.CreateLibrary(),
+		Frame:       nil,
+		NextFrameId: 2,
+		Lib:         ec.CreateLibrary(),
 	}
 	p.Frame = &p.Stack[0]
 	return p
 }
 
 type Execution struct {
-	PC    int
-	Code  []Inst
-	Stack []Frame
-	Frame *Frame
-	Lib   []LibFunc
+	PC          int
+	Code        []Inst
+	Stack       []Frame
+	Frame       *Frame
+	NextFrameId int
+	Lib         []LibFunc
 }
 
 type Frame struct {
+	Id     int
 	Scope  *ast.Scope
 	Return int
 	Args   []any // original function args
 	Locals []any // current params+locals
 	Eval   []any
+
 	// try/catch stack?
 }
 
@@ -57,13 +62,19 @@ func (p *Execution) Run() (err error) {
 	return nil
 }
 
-func (p *Execution) GetStackTrace(filename string) string {
-	// TODO: return a more structured trace for debugging.
-	var sb strings.Builder
+func (p *Execution) GetStackFrames(f func(fr *Frame, inst Inst)) {
 	pc := p.PC
 	for i := len(p.Stack) - 1; i >= 0; i-- {
 		fr := p.Stack[i]
 		inst := p.Code[pc]
+		f(&fr, inst)
+		pc = fr.Return
+	}
+}
+
+func (p *Execution) GetStackTrace(filename string) string {
+	var sb strings.Builder
+	p.GetStackFrames(func(fr *Frame, inst Inst) {
 		line := inst.GetSourceInfo().Start.Line + 1
 		scopeName := fr.Scope.String()
 		if !fr.Scope.IsGlobal {
@@ -79,8 +90,7 @@ func (p *Execution) GetStackTrace(filename string) string {
 			scopeName += sb.String()
 		}
 		_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scopeName)
-		pc = fr.Return
-	}
+	})
 	return sb.String()
 }
 
