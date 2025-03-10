@@ -12,7 +12,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -45,9 +44,10 @@ type Session struct {
 	Context *asm.ExecutionContext
 	Exec    *asm.Execution
 
-	NLines, NInst int
-	SourceToInst  []int // line mapping from source to instruction; -1 for lines that have no instruction
-	InstToSource  []int // line mapping from instruction to source, cannot be empty
+	NLines, NInst   int
+	SourceToInst    []int // line mapping from source to instruction; -1 for lines that have no instruction
+	InstToSource    []int // line mapping from instruction to source, cannot be empty
+	ValidLineBreaks map[int]bool
 
 	// Private running state
 
@@ -129,14 +129,18 @@ func New(
 		ds.InstToSource[i] = line
 		ds.NLines = max(ds.NLines, line+1)
 	}
+
+	// prefill with invalid
 	ds.SourceToInst = make([]int, ds.NLines)
 	for i := range ds.SourceToInst {
 		ds.SourceToInst[i] = -1
 	}
+	ds.ValidLineBreaks = make(map[int]bool, ds.NLines)
 	for i, inst := range assembled.Code {
 		line := inst.GetSourceInfo().GetSourceInfo().Start.Line
 		if ds.SourceToInst[line] < 0 {
 			ds.SourceToInst[line] = i
+			ds.ValidLineBreaks[line] = true
 		}
 	}
 
@@ -348,20 +352,22 @@ func (ds *Session) Halt() {
 	}
 }
 
-func (ds *Session) SetBreakpoints(bps []int) []int {
-	bps = slices.DeleteFunc(bps, func(bp int) bool {
-		return ds.MapSourceLine(bp) < 0
-	})
+func (ds *Session) SetBreakpoints(bps []int) {
 	ds.withOuterLock(func() {
 		clear(ds.instBreaks)
 		clear(ds.lineBreaks)
 		for _, bp := range bps {
+			if bp < 0 || bp >= len(ds.lineBreaks) {
+				continue
+			}
+			pc := ds.SourceToInst[bp]
+			if pc < 0 {
+				continue
+			}
 			ds.lineBreaks[bp] = 1
-			idx := ds.SourceToInst[bp]
-			ds.instBreaks[idx] = 1
+			ds.instBreaks[pc] = 1
 		}
 	})
-	return bps
 }
 
 func (ds *Session) StopOnEntry() {

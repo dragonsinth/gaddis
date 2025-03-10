@@ -363,7 +363,6 @@ func (v *Visitor) mapScope(scope *ast.Scope) {
 }
 
 func (v *Visitor) PostVisitFunctionStmt(ms *ast.FunctionStmt) {
-	v.code = append(v.code, Return{SourceInfo: ms.SourceInfo.Tail(), NVal: 1})
 }
 
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {

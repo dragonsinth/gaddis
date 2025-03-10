@@ -5,19 +5,18 @@ import (
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
 	"os"
-	"slices"
 )
 
-func ValidateBreakpoints(filename string, bps []int) ([]int, bool) {
+func FindBreakpoints(filename string) map[int]bool {
 	buf, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, false
+		return nil
 	}
 	src := string(buf)
 
 	prog, _, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
-		return nil, false
+		return nil
 	}
 
 	assembled := asm.Assemble(prog)
@@ -27,9 +26,7 @@ func ValidateBreakpoints(filename string, bps []int) ([]int, bool) {
 		line := inst.GetSourceInfo().Start.Line
 		found[line] = true
 	}
-	return slices.DeleteFunc(bps, func(line int) bool {
-		return !found[line]
-	}), true
+	return found
 }
 
 type bufferedSyncWriter struct {
