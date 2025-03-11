@@ -17,7 +17,7 @@ func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
 		response.Body.StackFrames = append(response.Body.StackFrames, api.StackFrame{
 			Id:         id,
 			Name:       fr.Scope.Desc(),
-			Source:     &h.source,
+			Source:     h.source,
 			Line:       pos.Line + h.lineOff,
 			Column:     h.colOff, // don't do columns yet... it's too weird
 			CanRestart: true,
@@ -48,7 +48,7 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 				NamedVariables:     len(fr.Locals),
 				IndexedVariables:   0, // should also be len?
 				Expensive:          false,
-				Source:             &h.source,
+				Source:             h.source,
 				Line:               si.Start.Line + h.lineOff,
 				Column:             si.Start.Column + h.colOff,
 				EndLine:            si.End.Line + h.lineOff,
@@ -62,7 +62,7 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 				NamedVariables:     len(fr.Locals),
 				IndexedVariables:   0, // should also be len?
 				Expensive:          false,
-				Source:             &h.source,
+				Source:             h.source,
 				Line:               si.Start.Line + h.lineOff,
 				Column:             si.Start.Column + h.colOff,
 				EndLine:            si.End.Line + h.lineOff,
@@ -75,7 +75,7 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 				NamedVariables:     len(fr.Args),
 				IndexedVariables:   0, // should also be len?
 				Expensive:          false,
-				Source:             &h.source,
+				Source:             h.source,
 				Line:               si.Start.Line + h.lineOff,
 				Column:             si.Start.Column + h.colOff,
 				EndLine:            si.End.Line + h.lineOff,

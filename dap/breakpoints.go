@@ -6,8 +6,26 @@ import (
 )
 
 func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
-	source := &request.Arguments.Source
-	path := source.Path
+	var source *debug.Source
+	if !request.Arguments.SourceModified {
+		source = h.sourceBySum[getChecksum(request.Arguments.Source)]
+		if source == nil {
+			source = h.sourceByPath[request.Arguments.Source.Path]
+		}
+	}
+	if source == nil {
+		var err error
+		source, err = debug.LoadSource(request.Arguments.Source.Path)
+		if err != nil {
+			h.send(newErrorResponse(request.Seq, request.Command, "error loading source"))
+			return
+		} else if source.Breakpoints == nil {
+			h.send(newErrorResponse(request.Seq, request.Command, "parsing source"))
+			return
+		}
+		h.sourceByPath[source.Path] = source
+		h.sourceBySum[source.Sum] = source
+	}
 
 	response := &api.SetBreakpointsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
@@ -16,37 +34,25 @@ func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
 		return
 	}
 
-	var found map[int]bool
-	var isSourceSession bool
-	if h.sess != nil && h.sess.File == path {
-		isSourceSession = true
-		found = h.sess.ValidLineBreaks
-	} else if h.sess == nil {
-		found = debug.FindBreakpoints(path)
-	} else {
-		// cannot accept the breakpoints
-		found = nil
-	}
+	breakpoints := source.Breakpoints
 
 	var bps []int
+	srcPtr := dapSource(*source)
 	for _, bp := range request.Arguments.Breakpoints {
 		var msg string
 		srcLine := bp.Line - h.lineOff
-		if found[srcLine] {
+		instLine := breakpoints.InstFromSource(srcLine)
+		if instLine > 0 {
 			bps = append(bps, srcLine)
-			var ref string
-			if isSourceSession {
-				ref = pcRef(h.sess.SourceToInst[srcLine])
-			}
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.Breakpoint{
 				Verified:             true,
 				Message:              msg,
-				Source:               source,
+				Source:               srcPtr,
 				Line:                 bp.Line,
 				Column:               h.colOff,
-				InstructionReference: ref,
+				InstructionReference: pcRef(instLine),
 			})
-			source = nil
+			srcPtr = nil
 		} else {
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.Breakpoint{
 				Verified: false,
@@ -56,10 +62,9 @@ func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
 
 	}
 
-	if isSourceSession {
+	h.bpsBySum[source.Sum] = bps
+	if h.sess != nil && source.Sum == h.sess.Source.Sum {
 		h.sess.SetLineBreakpoints(bps)
-	} else if h.sess == nil {
-		h.bps[path] = bps
 	}
 	h.send(response)
 }
@@ -79,11 +84,12 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 	response := &api.SetInstructionBreakpointsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 
+	breakpoints := h.sess.Source.Breakpoints
 	var pcs []int
 	for _, bp := range request.Arguments.Breakpoints {
 		origPc := refPc(bp.InstructionReference)
 		pc := origPc + (bp.Offset / 4)
-		if origPc < 0 || pc < 0 || pc >= h.sess.NInst {
+		if origPc < 0 || pc < 0 || pc >= breakpoints.NInst {
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.Breakpoint{
 				Verified: false,
 				Message:  "failed",
@@ -92,7 +98,7 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 			pcs = append(pcs, pc)
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.Breakpoint{
 				Verified:             true,
-				Line:                 h.sess.InstToSource[pc] + h.lineOff,
+				Line:                 breakpoints.SourceFromInst(pc) + h.lineOff,
 				Column:               h.colOff,
 				InstructionReference: pcRef(pc),
 			})
@@ -104,23 +110,32 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 }
 
 func (h *Session) onBreakpointLocationsRequest(request *api.BreakpointLocationsRequest) {
-	path := request.Arguments.Source.Path
+	source := h.sourceBySum[getChecksum(request.Arguments.Source)]
+	if source == nil {
+		source = h.sourceByPath[request.Arguments.Source.Path]
+	}
+	if source == nil {
+		var err error
+		source, err = debug.LoadSource(request.Arguments.Source.Path)
+		if err != nil {
+			h.send(newErrorResponse(request.Seq, request.Command, "error loading source"))
+			return
+		} else if source.Breakpoints == nil {
+			h.send(newErrorResponse(request.Seq, request.Command, "parsing source"))
+			return
+		}
+		h.sourceByPath[source.Path] = source
+		h.sourceBySum[source.Sum] = source
+	}
+
 	response := &api.BreakpointLocationsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	startLine := request.Arguments.Line
 	endLine := max(startLine, request.Arguments.EndLine)
 
-	var found map[int]bool
-	if h.sess != nil && h.sess.File == path {
-		found = h.sess.ValidLineBreaks
-	} else if h.sess == nil {
-		found = debug.FindBreakpoints(path)
-	} else {
-		found = nil
-	}
-
 	for line := startLine; line <= endLine; line++ {
-		if found[line-h.lineOff] {
+		srcLine := line - h.lineOff
+		if source.Breakpoints.ValidSrcLine(srcLine) {
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.BreakpointLocation{
 				Line:   line,
 				Column: h.colOff,

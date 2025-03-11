@@ -13,10 +13,12 @@ import (
 // NewSession return a new DAP Session.
 func NewSession(rw *bufio.ReadWriter, dbgLog *log.Logger) *Session {
 	return &Session{
-		rw:        rw,
-		sendQueue: make(chan api.Message, 1024),
-		bps:       map[string][]int{},
-		dbgLog:    dbgLog,
+		rw:           rw,
+		dbgLog:       dbgLog,
+		sendQueue:    make(chan api.Message, 1024),
+		bpsBySum:     map[string][]int{},
+		sourceByPath: map[string]*debug.Source{},
+		sourceBySum:  map[string]*debug.Source{},
 	}
 }
 
@@ -34,13 +36,16 @@ type Session struct {
 	// the sendFromQueue goroutine that it can exit.
 	sendQueue chan api.Message
 
-	source          api.Source
-	bps             map[string][]int
+	bpsBySum     map[string][]int
+	sourceByPath map[string]*debug.Source
+	sourceBySum  map[string]*debug.Source
+
 	lineOff, colOff int
 	stopOnEntry     bool
 	noDebug         bool
 
-	sess *debug.Session
+	sess   *debug.Session
+	source *api.Source
 }
 
 // Run runs the session for as long as it last.
@@ -128,7 +133,7 @@ func (h *Session) stdout(line string) {
 		Body: api.OutputEventBody{
 			Category: "stdout",
 			Output:   line,
-			Source:   &h.source,
+			Source:   h.source,
 		},
 	})
 }

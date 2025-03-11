@@ -27,16 +27,17 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 
 	lastLine := -1
-	srcRef := &h.source
+	source := h.sess.Source
+	srcRef := h.source
 	for i := 0; i < args.InstructionCount; i++ {
 		pc := i + start
-		if pc < 0 || pc >= h.sess.NInst {
+		if pc < 0 || pc >= source.Breakpoints.NInst {
 			response.Body.Instructions = append(response.Body.Instructions, api.DisassembledInstruction{
 				Address:     "",
 				Instruction: "invalid",
 			})
 		} else {
-			inst := h.sess.Assembled.Code[pc]
+			inst := source.Assembled.Code[pc]
 			si := inst.GetSourceInfo()
 			pos := si.Start
 			di := api.DisassembledInstruction{

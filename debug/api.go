@@ -132,10 +132,7 @@ func (ds *Session) SetLineBreakpoints(bps []int) {
 	ds.withOuterLock(func() {
 		clear(ds.lineBreaks)
 		for _, bp := range bps {
-			if bp < 0 || bp >= ds.NLines {
-				continue
-			}
-			pc := ds.SourceToInst[bp]
+			pc := ds.Source.Breakpoints.InstFromSource(bp)
 			if pc < 0 {
 				continue
 			}
@@ -148,7 +145,7 @@ func (ds *Session) SetInstBreakpoints(pcs []int) {
 	ds.withOuterLock(func() {
 		clear(ds.instBreaks)
 		for _, pc := range pcs {
-			if pc < 0 || pc >= ds.NInst {
+			if pc < 0 || pc >= ds.Source.Breakpoints.NInst {
 				continue
 			}
 			ds.instBreaks[pc] = 1

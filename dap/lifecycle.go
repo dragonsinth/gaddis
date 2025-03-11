@@ -1,8 +1,6 @@
 package dap
 
 import (
-	"github.com/dragonsinth/gaddis/ast"
-	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
 )
 
@@ -18,13 +16,13 @@ func (h *Session) onInitializeRequest(request *api.InitializeRequest) {
 	if request.Arguments.ColumnsStartAt1 {
 		h.colOff = 1
 	}
+
 	response := &api.InitializeResponse{
 		Response: *newResponse(request.Seq, request.Command),
 		Body: api.Capabilities{
 			SupportsConfigurationDoneRequest:   true,
 			SupportsSetVariable:                true,
 			SupportsRestartFrame:               true,
-			SupportsStepInTargetsRequest:       false, // what is this
 			SupportsRestartRequest:             true,
 			SupportsExceptionInfoRequest:       true,
 			SupportTerminateDebuggee:           true,
@@ -33,8 +31,36 @@ func (h *Session) onInitializeRequest(request *api.InitializeRequest) {
 			SupportsTerminateRequest:           true,
 			SupportsDisassembleRequest:         true,
 			SupportsBreakpointLocationsRequest: true,
-			SupportsSteppingGranularity:        false, // support later
 			SupportsInstructionBreakpoints:     true,
+			SupportedChecksumAlgorithms:        []api.ChecksumAlgorithm{"SHA256"},
+
+			SupportsStepInTargetsRequest: false, // what is this
+			SupportsSteppingGranularity:  false, // support later
+			SupportsSetExpression:        false, // support later
+
+			SupportsFunctionBreakpoints:           false,
+			SupportsConditionalBreakpoints:        false,
+			SupportsHitConditionalBreakpoints:     false,
+			SupportsEvaluateForHovers:             false,
+			ExceptionBreakpointFilters:            nil,
+			SupportsStepBack:                      false,
+			SupportsGotoTargetsRequest:            false,
+			SupportsCompletionsRequest:            false,
+			CompletionTriggerCharacters:           nil,
+			SupportsModulesRequest:                false,
+			AdditionalModuleColumns:               nil,
+			SupportsExceptionOptions:              false,
+			SupportsValueFormattingOptions:        false,
+			SupportsDelayedStackTraceLoading:      false,
+			SupportsLogPoints:                     false,
+			SupportsTerminateThreadsRequest:       false,
+			SupportsDataBreakpoints:               false,
+			SupportsReadMemoryRequest:             false,
+			SupportsWriteMemoryRequest:            false,
+			SupportsCancelRequest:                 false,
+			SupportsClipboardContext:              false,
+			SupportsExceptionFilterOptions:        false,
+			SupportsSingleThreadExecutionRequests: false,
 		},
 	}
 	e := &api.InitializedEvent{Event: *newEvent("initialized")}
@@ -56,42 +82,10 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 		h.send(newErrorResponse(request.Seq, request.Command, "could not parse launch request"))
 		return
 	}
-	h.source.Name = args.Name
-	h.source.Path = args.Program
-	h.stopOnEntry = args.StopOnEntry
-	h.noDebug = args.NoDebug
 
-	compileErr := func(err ast.Error) {
-		h.send(&api.OutputEvent{
-			Event: *newEvent("output"),
-			Body: api.OutputEventBody{
-				Category: "stderr",
-				Output:   err.Desc + "\n",
-				Source:   &h.source,
-				Line:     err.Start.Line + h.lineOff,
-				Column:   err.Start.Column + h.colOff,
-			},
-		})
+	if !h.tryStartSession(args, request.GetRequest()) {
+		return // already notified
 	}
-
-	opts := debug.Opts{
-		Stdin:   tryReadInput(args.Program),
-		Stdout:  h.stdout,
-		WorkDir: args.WorkDir,
-	}
-	host := eventHost{
-		send:    h.send,
-		source:  h.source,
-		lineOff: h.lineOff,
-		colOff:  h.colOff,
-	}
-
-	sess, err := debug.New(h.source.Path, compileErr, host, opts)
-	if err != nil {
-		h.send(newErrorResponse(request.Seq, request.Command, err.Error()))
-		return
-	}
-	h.sess = sess
 
 	response := &api.LaunchResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
@@ -103,6 +97,42 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 		h.sess.SetLineBreakpoints(nil)
 		h.sess.Play()
 	}
+}
+
+func (h *Session) onRestartRequest(request *api.RestartRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	h.sess.Halt()
+	h.sess = nil
+
+	var wrap struct {
+		Arguments launchArgs `json:"arguments"`
+	}
+	if err := fromJson(request.Arguments, &wrap); err != nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "could not parse restart request"))
+		return
+	}
+
+	if !h.tryStartSession(wrap.Arguments, request.GetRequest()) {
+		return // already notified
+	}
+
+	response := &api.RestartResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	h.send(response)
+
+	if h.noDebug {
+		h.sess.SetNoDebug()
+		h.sess.SetLineBreakpoints(nil)
+	} else {
+		if h.stopOnEntry {
+			h.sess.StopOnEntry()
+		}
+		h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
+	}
+	h.sess.Play()
 }
 
 func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneRequest) {
@@ -122,10 +152,10 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 	if h.noDebug {
 		return // we should already be running
 	}
-	h.sess.SetLineBreakpoints(h.bps[h.sess.File])
 	if h.stopOnEntry {
 		h.sess.StopOnEntry()
 	}
+	h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
 	h.sess.Play()
 }
 
@@ -148,46 +178,4 @@ func (h *Session) onTerminateRequest(request *api.TerminateRequest) {
 		Event: *newEvent("terminated"),
 	})
 	h.send(response)
-}
-
-func (h *Session) onRestartRequest(request *api.RestartRequest) {
-	if h.sess == nil {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
-		return
-	}
-
-	var wrap struct {
-		Arguments launchArgs `json:"arguments"`
-	}
-	if err := fromJson(request.Arguments, &wrap); err != nil {
-		h.send(newErrorResponse(request.Seq, request.Command, "could not parse restart request"))
-		return
-	}
-
-	// surely these don't change right?
-	args := &wrap.Arguments
-	h.source.Name = args.Name
-	h.source.Path = args.Program
-	h.stopOnEntry = args.StopOnEntry
-	h.noDebug = args.NoDebug
-
-	response := &api.RestartResponse{}
-	response.Response = *newResponse(request.Seq, request.Command)
-	h.send(response)
-
-	h.sess.Halt()
-	h.sess.Reset(debug.Opts{
-		IsTest:  false,
-		Stdin:   tryReadInput(args.Program),
-		Stdout:  h.stdout,
-		WorkDir: args.WorkDir,
-	})
-
-	if h.noDebug {
-		h.sess.SetNoDebug()
-		h.sess.SetLineBreakpoints(nil)
-	} else if h.stopOnEntry {
-		h.sess.StopOnEntry()
-	}
-	h.sess.Play()
 }

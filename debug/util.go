@@ -2,31 +2,55 @@ package debug
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
+	"github.com/dragonsinth/gaddis/ast"
 	"os"
 )
 
-func FindBreakpoints(filename string) map[int]bool {
+type Source struct {
+	Name string
+	Path string
+	Src  string
+	Sum  string
+
+	Errors  []ast.Error
+	Program *ast.Program
+
+	// will be nil if the source is invalid
+	Assembled   *asm.Assembly
+	Breakpoints *Breakpoints
+}
+
+func LoadSource(filename string) (*Source, error) {
 	buf, err := os.ReadFile(filename)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("reading: %s", filename)
 	}
 	src := string(buf)
 
+	sh := sha256.New()
+	sh.Write(buf)
+	sum := hex.EncodeToString(sh.Sum(nil))
+
 	prog, _, errs := gaddis.Compile(src)
-	if len(errs) > 0 {
-		return nil
+	ret := &Source{
+		Path: filename,
+		Src:  src,
+		Sum:  sum,
+
+		Errors:  errs,
+		Program: prog,
+	}
+	if len(errs) == 0 {
+		ret.Assembled = asm.Assemble(prog)
+		ret.Breakpoints = NewBreakpoints(ret.Assembled.Code)
 	}
 
-	assembled := asm.Assemble(prog)
-
-	found := map[int]bool{}
-	for _, inst := range assembled.Code {
-		line := inst.GetSourceInfo().Start.Line
-		found[line] = true
-	}
-	return found
+	return ret, nil
 }
 
 type bufferedSyncWriter struct {

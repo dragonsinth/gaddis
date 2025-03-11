@@ -12,7 +12,7 @@ type eventHost struct {
 	send func(api.Message)
 
 	// copy variables from session to avoid memory races
-	source  api.Source
+	source  *api.Source
 	lineOff int
 	colOff  int
 }
@@ -38,7 +38,7 @@ func (eh eventHost) Panicked(err error, pos []ast.Position, trace []string) {
 		Body: api.OutputEventBody{
 			Category: "stderr",
 			Output:   "error: " + err.Error() + "\n",
-			Source:   &eh.source,
+			Source:   eh.source,
 		},
 	})
 	for i := range pos {
@@ -47,7 +47,7 @@ func (eh eventHost) Panicked(err error, pos []ast.Position, trace []string) {
 			Body: api.OutputEventBody{
 				Category: "stderr",
 				Output:   "\tin " + trace[i] + "\n",
-				Source:   &eh.source,
+				Source:   eh.source,
 				Line:     pos[i].Line + eh.lineOff,
 				Column:   pos[i].Column + eh.colOff,
 			},

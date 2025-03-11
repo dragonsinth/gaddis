@@ -63,7 +63,7 @@ func (ds *Session) play() {
 					// stop on exception
 					ds.runState = PAUSE
 					ds.exception = err
-					file := strings.TrimPrefix(ds.File, ds.Opts.WorkDir)
+					file := strings.TrimPrefix(ds.Source.Path, ds.Opts.WorkDir)
 					ds.exceptionTrace = ds.Exec.GetStackTrace(file)
 					ds.Host.Exception(err)
 				}
