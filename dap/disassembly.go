@@ -33,8 +33,8 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 		pc := i + start
 		if pc < 0 || pc >= source.Breakpoints.NInst {
 			response.Body.Instructions = append(response.Body.Instructions, api.DisassembledInstruction{
-				Address:     "",
-				Instruction: "invalid",
+				Address:     pcRef(pc),
+				Instruction: "noop",
 			})
 		} else {
 			inst := source.Assembled.Code[pc]
@@ -64,6 +64,12 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 func pcRef(pc int) string {
 	pc = pc * 4
 	pc += 0x1000 // start program here
+	if pc < 0 || pc > 0xffff {
+		return "0x0000"
+	}
+	if pc > 0xffff {
+		return "0xFFFF"
+	}
 	ret := fmt.Sprintf("0x%04X", pc)
 	return ret
 }
@@ -73,10 +79,10 @@ func refPc(s string) int {
 	if err != nil {
 		return -1
 	}
-	if pc < 0x1000 || pc > 0x7fff {
+	pc -= 0x1000
+	if pc < 0x0000 || pc > 0xffff {
 		return -1
 	}
-	pc -= 0x1000
 	pc = pc / 4
 	return int(pc)
 }

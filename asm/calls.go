@@ -8,6 +8,7 @@ import (
 
 type Begin struct {
 	baseInst
+	NArgs int
 	Label *Label
 }
 
@@ -15,10 +16,27 @@ func (i Begin) Exec(p *Execution) {
 }
 
 func (i Begin) String() string {
-	return fmt.Sprintf("begin :%s", i.Label.Name)
+	return fmt.Sprintf("begin(%d) :%s", i.NArgs, i.Label.Name)
 }
 
 func (i Begin) Sym() string {
+	return i.Label.Name
+}
+
+type End struct {
+	baseInst
+	Label *Label
+}
+
+func (i End) Exec(p *Execution) {
+	panic("unreachable")
+}
+
+func (i End) String() string {
+	return fmt.Sprintf("end :%s", i.Label.Name)
+}
+
+func (i End) Sym() string {
 	return i.Label.Name
 }
 
@@ -50,7 +68,7 @@ func (i Call) Exec(p *Execution) {
 }
 
 func (i Call) String() string {
-	return fmt.Sprintf("call %s(%d)", i.Label.Name, len(i.Scope.Params))
+	return fmt.Sprintf("call(%d) :%s", len(i.Scope.Params), i.Label.Name)
 }
 
 func (i Call) Sym() string {
@@ -84,6 +102,7 @@ func (i Return) Exec(p *Execution) {
 func (i Return) String() string {
 	if i.NVal == 0 {
 		return "return"
+	} else {
+		return fmt.Sprintf("return(%d)", i.NVal)
 	}
-	return fmt.Sprintf("return(%d)", i.NVal)
 }

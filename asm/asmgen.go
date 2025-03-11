@@ -71,9 +71,11 @@ func Assemble(prog *ast.Program) *Assembly {
 	}
 
 	// Emit the global block's begin statement.
+	globalLabel := &Label{Name: "__global", PC: 0}
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{prog.Block.SourceInfo},
-		Label:    &Label{Name: "__start", PC: 0},
+		NArgs:    0,
+		Label:    globalLabel,
 	})
 
 	// Emit all global block non-decls.
@@ -103,6 +105,10 @@ func Assemble(prog *ast.Program) *Assembly {
 	v.code = append(v.code, Return{
 		baseInst: baseInst{finalReturnSi},
 		NVal:     0,
+	})
+	v.code = append(v.code, End{
+		baseInst: baseInst{finalReturnSi},
+		Label:    globalLabel,
 	})
 
 	// Now emit all modules and functions.
@@ -333,7 +339,10 @@ func (v *Visitor) stepExpr(fs *ast.ForStmt) {
 }
 
 func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
-	v.code = append(v.code, Return{baseInst: baseInst{rs.SourceInfo}, NVal: 1})
+	v.code = append(v.code, Return{
+		baseInst: baseInst{rs.SourceInfo},
+		NVal:     1,
+	})
 }
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
@@ -350,19 +359,26 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.mapScope(ms.Scope)
 	lbl := v.modules[ms]
 	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{baseInst: baseInst{ms.SourceInfo}, Label: lbl})
+	v.code = append(v.code, Begin{baseInst: baseInst{ms.SourceInfo}, NArgs: len(ms.Scope.Params), Label: lbl})
 	return true
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
-	v.code = append(v.code, Return{baseInst: baseInst{ms.SourceInfo.Tail()}, NVal: 0})
+	v.code = append(v.code, Return{
+		baseInst: baseInst{ms.SourceInfo.Tail()},
+		NVal:     0,
+	})
+	v.code = append(v.code, End{
+		baseInst: baseInst{ms.SourceInfo.Tail()},
+		Label:    v.modules[ms],
+	})
 }
 
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.mapScope(fs.Scope)
 	lbl := v.functions[fs]
 	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{baseInst: baseInst{fs.SourceInfo}, Label: lbl})
+	v.code = append(v.code, Begin{baseInst: baseInst{fs.SourceInfo}, NArgs: len(fs.Scope.Params), Label: lbl})
 	return true
 }
 
@@ -375,7 +391,11 @@ func (v *Visitor) mapScope(scope *ast.Scope) {
 	}
 }
 
-func (v *Visitor) PostVisitFunctionStmt(ms *ast.FunctionStmt) {
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+	v.code = append(v.code, End{
+		baseInst: baseInst{fs.SourceInfo.Tail()},
+		Label:    v.functions[fs],
+	})
 }
 
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {
