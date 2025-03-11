@@ -5,6 +5,13 @@
     "include": "./light_vs.json",
     "tokenColors": [
         {
+            "name": "Comments",
+            "scope": "comment.line.double-slash.gaddis",
+            "settings": {
+                "foreground": "#808080"
+            }
+        },
+        {
             "name": "Operators",
             "scope": "keyword.operator.gaddis",
             "settings": {
@@ -15,7 +22,7 @@
             "name": "Storage",
             "scope": "storage.type.gaddis",
             "settings": {
-                "foreground": "#0000DD"
+                "foreground": "#0000AA"
             }
         },
         {
@@ -28,6 +35,48 @@
         {
             "name": "Variables",
             "scope": "variable.other.gaddis",
+            "settings": {
+                "foreground": "#004000"
+            }
+        },
+        {
+            "name": "Comments",
+            "scope": "comment.line.semi-colon.gadasm",
+            "settings": {
+                "foreground": "#B0B0B0"
+            }
+        },
+        {
+            "name": "Operators",
+            "scope": "keyword.operator.gadasm",
+            "settings": {
+                "foreground": "#800000"
+            }
+        },
+        {
+            "name": "Storage",
+            "scope": "storage.type.gadasm",
+            "settings": {
+                "foreground": "#0000AA"
+            }
+        },
+        {
+            "name": "Addresses",
+            "scope": "constant.numeric.address.gadasm",
+            "settings": {
+                "foreground": "#808080"
+            }
+        },
+        {
+            "name": "Labels",
+            "scope": "entity.name.label.gadasm",
+            "settings": {
+                "foreground": "#004000"
+            }
+        },
+        {
+            "name": "Variables",
+            "scope": "variable.other.register.gadasm",
             "settings": {
                 "foreground": "#004000"
             }
