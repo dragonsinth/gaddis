@@ -29,7 +29,6 @@ func (ds *Session) play() {
 	ds.runState = RUN
 	ds.exception = nil
 	ds.exceptionTrace = ""
-	log.Println("running")
 
 	go func() {
 		defer ds.running.Store(false)
