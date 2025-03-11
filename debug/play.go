@@ -114,17 +114,23 @@ func (ds *Session) play() {
 			inst := p.Code[p.PC]
 			if ds.stepType != STEP_NONE {
 				stackDiff := len(p.Stack) - ds.stepFrame
-				line := inst.GetSourceInfo().Start.Line
+				var ptrDiff bool
+				if ds.stepGran == LineGran {
+					ptrDiff = inst.GetSourceInfo().Start.Line != ds.stepLine
+				} else {
+					ptrDiff = p.PC != ds.stepInst
+				}
+
 				switch ds.stepType {
 				case STEP_NEXT:
-					if stackDiff < 0 || (stackDiff == 0 && ds.stepLine != line) {
+					if stackDiff < 0 || (stackDiff == 0 && ptrDiff) {
 						ds.Host.Paused("step")
 						ds.runState = PAUSE
 						return
 					}
 				case STEP_IN:
 					// break on any change
-					if stackDiff != 0 || ds.stepLine != line {
+					if stackDiff != 0 || ptrDiff {
 						ds.Host.Paused("step")
 						ds.runState = PAUSE
 						return

@@ -32,10 +32,10 @@ func (h *Session) onInitializeRequest(request *api.InitializeRequest) {
 			SupportsDisassembleRequest:         true,
 			SupportsBreakpointLocationsRequest: true,
 			SupportsInstructionBreakpoints:     true,
+			SupportsSteppingGranularity:        true,
 			SupportedChecksumAlgorithms:        []api.ChecksumAlgorithm{"SHA256"},
 
 			SupportsStepInTargetsRequest: false, // what is this
-			SupportsSteppingGranularity:  false, // support later
 			SupportsSetExpression:        false, // support later
 
 			SupportsFunctionBreakpoints:           false,

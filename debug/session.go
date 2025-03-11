@@ -36,6 +36,8 @@ type Session struct {
 
 	stopOnEntry bool
 	stepType    StepType
+	stepGran    StepGran
+	stepInst    int
 	stepLine    int
 	stepFrame   int
 }
@@ -79,6 +81,8 @@ func New(
 		instBreaks:     make([]byte, source.Breakpoints.NInst),
 		stopOnEntry:    false,
 		stepType:       STEP_NONE,
+		stepGran:       LineGran,
+		stepInst:       0,
 		stepLine:       0,
 		stepFrame:      0,
 	}

@@ -43,6 +43,13 @@ const (
 	STEP_OUT
 )
 
+type StepGran bool
+
+const (
+	LineGran StepGran = false
+	InstGran StepGran = true
+)
+
 func (ds *Session) Play() {
 	ds.play()
 }
@@ -78,11 +85,14 @@ func (ds *Session) StopOnEntry() {
 		ds.stopOnEntry = true
 	})
 }
-func (ds *Session) Step(stepType StepType) {
+
+func (ds *Session) Step(stepType StepType, stepGran StepGran) {
 	ds.withOuterLock(func() {
 		p := ds.Exec
 		si := p.Code[p.PC].GetSourceInfo()
 		ds.stepType = stepType
+		ds.stepGran = stepGran
+		ds.stepInst = p.PC
 		ds.stepLine = si.Start.Line
 		ds.stepFrame = len(p.Stack)
 	})

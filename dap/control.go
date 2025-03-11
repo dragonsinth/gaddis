@@ -37,8 +37,8 @@ func (h *Session) onNextRequest(request *api.NextRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	// TODO: step granularity!
-	h.sess.Step(debug.STEP_NEXT)
+	gran := request.Arguments.Granularity == "instruction"
+	h.sess.Step(debug.STEP_NEXT, debug.StepGran(gran))
 	h.sess.Play()
 }
 
@@ -52,7 +52,8 @@ func (h *Session) onStepInRequest(request *api.StepInRequest) {
 	h.send(response)
 
 	// TODO: step granularity!
-	h.sess.Step(debug.STEP_IN)
+	gran := request.Arguments.Granularity == "instruction"
+	h.sess.Step(debug.STEP_IN, debug.StepGran(gran))
 	h.sess.Play()
 }
 
@@ -65,8 +66,8 @@ func (h *Session) onStepOutRequest(request *api.StepOutRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	// TODO: step granularity!
-	h.sess.Step(debug.STEP_OUT)
+	gran := request.Arguments.Granularity == "instruction"
+	h.sess.Step(debug.STEP_OUT, debug.StepGran(gran))
 	h.sess.Play()
 }
 

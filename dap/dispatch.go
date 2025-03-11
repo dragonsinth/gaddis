@@ -1,7 +1,6 @@
 package dap
 
 import (
-	"fmt"
 	api "github.com/google/go-dap"
 )
 
@@ -91,8 +90,4 @@ func (h *Session) dispatchRequest(req api.RequestMessage) {
 	default:
 		h.unhandled(req.GetRequest().GetRequest().GetRequest())
 	}
-}
-
-func (h *Session) unhandled(request *api.Request) {
-	h.send(newErrorResponse(request.GetSeq(), request.Command, fmt.Sprintf("%s is not yet supported", request.Command)))
 }
