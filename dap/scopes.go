@@ -22,7 +22,7 @@ func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
 			Column:     h.colOff, // don't do columns yet... it's too weird
 			CanRestart: true,
 
-			InstructionPointerReference: pcRef(pc),
+			InstructionPointerReference: asm.PcRef(pc),
 		})
 	})
 	response.Body.TotalFrames = len(response.Body.StackFrames)
@@ -36,15 +36,15 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 	}
 	response := &api.ScopesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	frameId := request.Arguments.FrameId
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, _ int) {
+	targetFrameId := request.Arguments.FrameId
+	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
 		si := fr.Scope.SourceInfo
-		scopeId := id * 1024
+		ids := getScopeIds(frameId)
 		if fr.Scope.IsGlobal {
 			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
 				Name:               "Globals",
 				PresentationHint:   "globals",
-				VariablesReference: scopeId,
+				VariablesReference: ids.localId,
 				NamedVariables:     len(fr.Locals),
 				IndexedVariables:   0, // should also be len?
 				Expensive:          false,
@@ -54,12 +54,25 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 				EndLine:            si.End.Line + h.lineOff,
 				EndColumn:          si.End.Column + h.colOff,
 			})
-		} else if id == frameId {
+		} else if frameId == targetFrameId {
 			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
 				Name:               "Locals",
 				PresentationHint:   "locals",
-				VariablesReference: scopeId,
+				VariablesReference: ids.localId,
 				NamedVariables:     len(fr.Locals),
+				IndexedVariables:   0, // should also be len?
+				Expensive:          false,
+				Source:             h.source,
+				Line:               si.Start.Line + h.lineOff,
+				Column:             si.Start.Column + h.colOff,
+				EndLine:            si.End.Line + h.lineOff,
+				EndColumn:          si.End.Column + h.colOff,
+			})
+			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
+				Name:               "Params",
+				PresentationHint:   "locals",
+				VariablesReference: ids.paramId,
+				NamedVariables:     len(fr.Params),
 				IndexedVariables:   0, // should also be len?
 				Expensive:          false,
 				Source:             h.source,
@@ -71,7 +84,7 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
 				Name:               "Arguments",
 				PresentationHint:   "arguments",
-				VariablesReference: scopeId + 512,
+				VariablesReference: ids.argsId,
 				NamedVariables:     len(fr.Args),
 				IndexedVariables:   0, // should also be len?
 				Expensive:          false,
@@ -95,5 +108,33 @@ func (h *Session) onThreadsRequest(request *api.ThreadsRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	response.Body = api.ThreadsResponseBody{Threads: []api.Thread{{Id: 1, Name: "main"}}}
 	h.send(response)
+}
 
+type scopeIds struct {
+	localId int
+	paramId int
+	argsId  int
+}
+
+func getScopeIds(frameId int) scopeIds {
+	scopeId := frameId << 16
+	paramId := scopeId + (1 << 14)
+	argsId := scopeId + (2 << 14)
+	return scopeIds{
+		localId: scopeId,
+		paramId: paramId,
+		argsId:  argsId,
+	}
+}
+
+func getFrameId(scopeId int) int {
+	return scopeId >> 16
+}
+
+func getScopeId(varId int) int {
+	return (varId >> 14) << 14
+}
+
+func getVarIndex(varId int) int {
+	return varId & 0x3FFF
 }

@@ -1,29 +1,14 @@
 package asm
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/base"
 	"github.com/dragonsinth/gaddis/gogen/builtins"
-	"strings"
 )
 
 type Assembly struct {
 	GlobalScope *ast.Scope
 	Code        []Inst
-}
-
-func (a *Assembly) AsmDump(source string) string {
-	var sb bytes.Buffer
-	for i, inst := range a.Code {
-		si := inst.GetSourceInfo()
-		line := si.Start.Line + 1
-		text := strings.TrimSpace(source[si.Start.Pos:si.End.Pos])
-		lhs := fmt.Sprintf("%3d: %s", i, inst)
-		_, _ = fmt.Fprintf(&sb, "%-40s; %3d: %s\n", lhs, line, strings.SplitN(text, "\n", 2)[0])
-	}
-	return sb.String()
 }
 
 type Inst interface {
@@ -44,6 +29,7 @@ func (baseInst) Sym() string {
 func Assemble(prog *ast.Program) *Assembly {
 	v := &Visitor{
 		globalIds: map[*ast.VarDecl]int{},
+		paramIds:  map[*ast.VarDecl]int{},
 		localIds:  map[*ast.VarDecl]int{},
 		functions: map[*ast.FunctionStmt]*Label{},
 		modules:   map[*ast.ModuleStmt]*Label{},
@@ -74,7 +60,7 @@ func Assemble(prog *ast.Program) *Assembly {
 	globalLabel := &Label{Name: "__global", PC: 0}
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{prog.Block.SourceInfo},
-		NArgs:    0,
+		NParams:  0,
 		Label:    globalLabel,
 	})
 
@@ -131,6 +117,7 @@ type Visitor struct {
 	base.Visitor
 	code      []Inst
 	globalIds map[*ast.VarDecl]int
+	paramIds  map[*ast.VarDecl]int
 	localIds  map[*ast.VarDecl]int
 	functions map[*ast.FunctionStmt]*Label
 	modules   map[*ast.ModuleStmt]*Label
@@ -359,7 +346,12 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.mapScope(ms.Scope)
 	lbl := v.modules[ms]
 	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{baseInst: baseInst{ms.SourceInfo}, NArgs: len(ms.Scope.Params), Label: lbl})
+	v.code = append(v.code, Begin{
+		baseInst: baseInst{ms.SourceInfo},
+		NParams:  len(ms.Scope.Params),
+		NLocals:  len(ms.Scope.Locals),
+		Label:    lbl,
+	})
 	return true
 }
 
@@ -378,16 +370,21 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.mapScope(fs.Scope)
 	lbl := v.functions[fs]
 	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{baseInst: baseInst{fs.SourceInfo}, NArgs: len(fs.Scope.Params), Label: lbl})
+	v.code = append(v.code, Begin{
+		baseInst: baseInst{fs.SourceInfo},
+		NParams:  len(fs.Scope.Params),
+		NLocals:  len(fs.Scope.Locals),
+		Label:    lbl,
+	})
 	return true
 }
 
 func (v *Visitor) mapScope(scope *ast.Scope) {
 	for i, decl := range scope.Params {
-		v.localIds[decl] = i
+		v.paramIds[decl] = i
 	}
 	for i, decl := range scope.Locals {
-		v.localIds[decl] = i + len(scope.Params)
+		v.localIds[decl] = i
 	}
 }
 
@@ -501,24 +498,42 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 			})
 		}
 		return
-	} else {
-		// Local
-		if decl.IsRef == needRef {
+	} else if decl.IsParam {
+		// Param
+		if isRef == needRef {
 			// if we have a ref and need a ref, or we have a val and need a val, we good
-			v.code = append(v.code, LocalVal{
+			v.code = append(v.code, ParamVal{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.localIds[decl],
+				Index:    v.paramIds[decl],
 			})
 		} else if needRef {
+			v.code = append(v.code, ParamRef{
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.paramIds[decl],
+			})
+		} else {
+			// Take the value (it's a reference) then derefence it.
+			v.code = append(v.code, ParamPtr{
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    v.paramIds[decl],
+			})
+		}
+	} else {
+		// Local
+		if isRef {
+			panic("here")
+		}
+		if needRef {
 			v.code = append(v.code, LocalRef{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
 				Index:    v.localIds[decl],
 			})
 		} else {
-			// Take the value (it's a reference) then derefence it.
-			v.code = append(v.code, LocalPtr{
+			v.code = append(v.code, LocalVal{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
 				Index:    v.localIds[decl],

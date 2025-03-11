@@ -8,15 +8,16 @@ import (
 
 type Begin struct {
 	baseInst
-	NArgs int
-	Label *Label
+	NParams int
+	NLocals int
+	Label   *Label
 }
 
 func (i Begin) Exec(p *Execution) {
 }
 
 func (i Begin) String() string {
-	return fmt.Sprintf("begin(%d) :%s", i.NArgs, i.Label.Name)
+	return fmt.Sprintf("begin(%d,%d) :%s", i.NParams, i.NLocals, i.Label.Name)
 }
 
 func (i Begin) Sym() string {
@@ -53,14 +54,14 @@ func (i Call) Exec(p *Execution) {
 
 	nArg := len(i.Scope.Params)
 	args := slices.Clone(p.PopN(nArg))
-	locals := make([]any, len(i.Scope.Locals))
 
 	p.Stack = append(p.Stack, Frame{
 		Scope:  i.Scope,
 		Start:  i.Label.PC,
 		Return: p.PC,
 		Args:   args,
-		Locals: append(args, locals...),
+		Params: slices.Clone(args),
+		Locals: make([]any, len(i.Scope.Locals)),
 		Eval:   make([]any, 0, 16),
 	})
 	p.Frame = &p.Stack[len(p.Stack)-1]
@@ -68,7 +69,7 @@ func (i Call) Exec(p *Execution) {
 }
 
 func (i Call) String() string {
-	return fmt.Sprintf("call(%d) :%s", len(i.Scope.Params), i.Label.Name)
+	return fmt.Sprintf("call(%d) %s", len(i.Scope.Params), i.Label)
 }
 
 func (i Call) Sym() string {

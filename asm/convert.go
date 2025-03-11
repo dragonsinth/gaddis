@@ -10,7 +10,7 @@ func (i IntToReal) Exec(p *Execution) {
 }
 
 func (i IntToReal) String() string {
-	return "int_to_real"
+	return "conv int real"
 }
 
 type RealToInt struct {
@@ -23,5 +23,5 @@ func (i RealToInt) Exec(p *Execution) {
 }
 
 func (i RealToInt) String() string {
-	return "real_to_int"
+	return "conv real int"
 }

@@ -21,7 +21,7 @@ func (i UnaryOpInt) Exec(p *Execution) {
 }
 
 func (i UnaryOpInt) String() string {
-	return fmt.Sprintf("%s_int", i.Op.Name())
+	return fmt.Sprintf("%s int", i.Op.Name())
 }
 
 type UnaryOpFloat struct {
@@ -40,7 +40,7 @@ func (i UnaryOpFloat) Exec(p *Execution) {
 }
 
 func (i UnaryOpFloat) String() string {
-	return fmt.Sprintf("%s_real", i.Op.Name())
+	return fmt.Sprintf("%s real", i.Op.Name())
 }
 
 type UnaryOpBool struct {

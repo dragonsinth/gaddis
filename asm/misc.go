@@ -10,7 +10,7 @@ type Label struct {
 }
 
 func (l *Label) String() string {
-	return fmt.Sprintf("%d:%s", l.PC, l.Name)
+	return fmt.Sprintf("%s:%s", PcRef(l.PC), l.Name)
 }
 
 type Dup struct {

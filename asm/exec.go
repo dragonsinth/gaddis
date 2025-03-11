@@ -20,6 +20,7 @@ func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 			Scope:  a.GlobalScope,
 			Start:  0,
 			Return: 0,
+			Params: nil,
 			Locals: make([]any, len(a.GlobalScope.Locals)),
 			Eval:   make([]any, 0, 16),
 		}},
@@ -43,8 +44,9 @@ type Frame struct {
 	Start  int   // starting pc for this function
 	Return int   // return address
 	Args   []any // original function args
-	Locals []any // current params+locals
-	Eval   []any
+	Params []any // current params
+	Locals []any // current locals
+	Eval   []any // eval stack
 
 	// try/catch stack?
 }

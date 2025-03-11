@@ -18,10 +18,7 @@
 			"include": "#operators"
 		},
 		{
-			"include": "#booleans"
-		},
-		{
-			"include": "#numbers"
+			"include": "#constants"
 		},
 		{
 			"include": "#storage"
@@ -121,16 +118,12 @@
 				}
 			]
 		},
-		"booleans": {
+		"constants": {
 			"patterns": [
 				{
 					"name": "constant.language.gaddis",
 					"match": "\\b(True|False|Tab)\\b"
-				}
-			]
-		},
-		"numbers": {
-			"patterns": [
+				},
 				{
 					"name": "constant.numeric.gaddis",
 					"match": "\\b(\\-?[0-9]+(\\.[0-9]+)?)\\b"
@@ -141,7 +134,7 @@
 			"patterns": [
 				{
 					"name": "storage.type.gaddis",
-					"match": "\\b(Integer|Real|String|Float|Boolean)\\b"
+					"match": "\\b(Integer|Real|String|Character|Boolean)\\b"
 				}
 			]
 		},

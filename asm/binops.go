@@ -31,7 +31,7 @@ func (i BinOpInt) Exec(p *Execution) {
 }
 
 func (i BinOpInt) String() string {
-	return fmt.Sprintf("%s_int", i.Op.Name())
+	return fmt.Sprintf("%s int", i.Op.Name())
 }
 
 type BinOpReal struct {
@@ -46,7 +46,7 @@ func (i BinOpReal) Exec(p *Execution) {
 }
 
 func (i BinOpReal) String() string {
-	return fmt.Sprintf("%s_real", i.Op.Name())
+	return fmt.Sprintf("%s real", i.Op.Name())
 }
 
 type BinOpStr struct {
@@ -61,7 +61,7 @@ func (i BinOpStr) Exec(p *Execution) {
 }
 
 func (i BinOpStr) String() string {
-	return fmt.Sprintf("%s_str", i.Op.Name())
+	return fmt.Sprintf("%s str", i.Op.Name())
 }
 
 type BinOpChar struct {
@@ -76,7 +76,7 @@ func (i BinOpChar) Exec(p *Execution) {
 }
 
 func (i BinOpChar) String() string {
-	return fmt.Sprintf("%s_char", i.Op.Name())
+	return fmt.Sprintf("%s char", i.Op.Name())
 }
 
 type BinOpBool struct {
@@ -91,5 +91,5 @@ func (i BinOpBool) Exec(p *Execution) {
 }
 
 func (i BinOpBool) String() string {
-	return fmt.Sprintf("%s_bool", i.Op.Name())
+	return fmt.Sprintf("%s bool", i.Op.Name())
 }

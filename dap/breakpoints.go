@@ -1,6 +1,7 @@
 package dap
 
 import (
+	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
 )
@@ -50,7 +51,7 @@ func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
 				Source:               srcPtr,
 				Line:                 bp.Line,
 				Column:               h.colOff,
-				InstructionReference: pcRef(instLine),
+				InstructionReference: asm.PcRef(instLine),
 			})
 			srcPtr = nil
 		} else {
@@ -87,7 +88,7 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 	breakpoints := h.sess.Source.Breakpoints
 	var pcs []int
 	for _, bp := range request.Arguments.Breakpoints {
-		origPc := refPc(bp.InstructionReference)
+		origPc := asm.RefPc(bp.InstructionReference)
 		pc := origPc + (bp.Offset / 4)
 		if origPc < 0 || pc < 0 || pc >= breakpoints.NInst {
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.Breakpoint{
@@ -100,7 +101,7 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 				Verified:             true,
 				Line:                 breakpoints.SourceFromInst(pc) + h.lineOff,
 				Column:               h.colOff,
-				InstructionReference: pcRef(pc),
+				InstructionReference: asm.PcRef(pc),
 			})
 		}
 

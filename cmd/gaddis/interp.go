@@ -15,7 +15,7 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 	assembled := asm.Assemble(prog)
 	if opts.leaveBuildOutputs {
 		asmFile := src.desc() + ".asm"
-		asmDump := assembled.AsmDump(src.src)
+		asmDump := asm.AsmDump(src.src, assembled.Code)
 		if err := os.WriteFile(asmFile, []byte(asmDump), 0644); err != nil {
 			return fmt.Errorf("writing to %s: %w", asmFile, err)
 		}

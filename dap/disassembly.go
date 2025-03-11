@@ -1,9 +1,8 @@
 package dap
 
 import (
-	"fmt"
+	"github.com/dragonsinth/gaddis/asm"
 	api "github.com/google/go-dap"
-	"strconv"
 )
 
 func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
@@ -13,7 +12,7 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 	}
 
 	args := request.Arguments
-	origPC := refPc(args.MemoryReference)
+	origPC := asm.RefPc(args.MemoryReference)
 	if origPC < 0 {
 		// TODO: return all invalid?
 		h.send(newErrorResponse(request.Seq, request.Command, "unable to disassemble"))
@@ -33,7 +32,7 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 		pc := i + start
 		if pc < 0 || pc >= source.Breakpoints.NInst {
 			response.Body.Instructions = append(response.Body.Instructions, api.DisassembledInstruction{
-				Address:     pcRef(pc),
+				Address:     asm.PcRef(pc),
 				Instruction: "noop",
 			})
 		} else {
@@ -41,7 +40,7 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 			si := inst.GetSourceInfo()
 			pos := si.Start
 			di := api.DisassembledInstruction{
-				Address:     pcRef(pc),
+				Address:     asm.PcRef(pc),
 				Instruction: inst.String(),
 				Symbol:      inst.Sym(),
 			}
@@ -59,30 +58,4 @@ func (h *Session) onDisassembleRequest(request *api.DisassembleRequest) {
 	}
 
 	h.send(response)
-}
-
-func pcRef(pc int) string {
-	pc = pc * 4
-	pc += 0x1000 // start program here
-	if pc < 0 || pc > 0xffff {
-		return "0x0000"
-	}
-	if pc > 0xffff {
-		return "0xFFFF"
-	}
-	ret := fmt.Sprintf("0x%04X", pc)
-	return ret
-}
-
-func refPc(s string) int {
-	pc, err := strconv.ParseUint(s, 0, 64)
-	if err != nil {
-		return -1
-	}
-	pc -= 0x1000
-	if pc < 0x0000 || pc > 0xffff {
-		return -1
-	}
-	pc = pc / 4
-	return int(pc)
 }

@@ -117,7 +117,7 @@ func (i LibCall) Exec(p *Execution) {
 }
 
 func (i LibCall) String() string {
-	return fmt.Sprintf("libcall(%d) :%s", i.NArg, i.Name)
+	return fmt.Sprintf("libcall(%d) %d:%s", i.NArg, i.Index, i.Name)
 }
 
 func (i LibCall) Sym() string {

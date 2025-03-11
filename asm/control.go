@@ -14,7 +14,7 @@ func (i Jump) Exec(p *Execution) {
 }
 
 func (i Jump) String() string {
-	return fmt.Sprintf("jump %s", i.Label)
+	return fmt.Sprintf("jump %s", PcRef(i.Label.PC))
 }
 
 type JumpFalse struct {
@@ -30,7 +30,7 @@ func (i JumpFalse) Exec(p *Execution) {
 }
 
 func (i JumpFalse) String() string {
-	return fmt.Sprintf("jump_false %s", i.Label)
+	return fmt.Sprintf("jump false %s", PcRef(i.Label.PC))
 }
 
 type JumpTrue struct {
@@ -46,7 +46,7 @@ func (i JumpTrue) Exec(p *Execution) {
 }
 
 func (i JumpTrue) String() string {
-	return fmt.Sprintf("jump_true %s", i.Label)
+	return fmt.Sprintf("jump true %s", PcRef(i.Label.PC))
 }
 
 type ForInt struct {
@@ -67,7 +67,7 @@ func (i ForInt) Exec(p *Execution) {
 }
 
 func (i ForInt) String() string {
-	return "for_int"
+	return "for int"
 }
 
 type ForReal struct {
@@ -88,7 +88,7 @@ func (i ForReal) Exec(p *Execution) {
 }
 
 func (i ForReal) String() string {
-	return "for_real"
+	return "for real"
 }
 
 type StepInt struct {
@@ -110,7 +110,7 @@ func (i StepInt) Exec(p *Execution) {
 }
 
 func (i StepInt) String() string {
-	return "step_int"
+	return "step int"
 }
 
 type StepReal struct {
@@ -132,5 +132,5 @@ func (i StepReal) Exec(p *Execution) {
 }
 
 func (i StepReal) String() string {
-	return "step_real"
+	return "step real"
 }

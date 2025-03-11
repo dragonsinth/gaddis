@@ -13,10 +13,11 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
-	varId := request.Arguments.VariablesReference
-	scopeId := varId / 1024
-	isParamScope := varId&512 != 0
-	_ = varId % 512 // TODO
+	targetVarId := request.Arguments.VariablesReference
+	targetScopeId := getScopeId(targetVarId)
+	targetFrameId := getFrameId(targetScopeId)
+	_ = getVarIndex(targetVarId) // TODO: individual variables
+
 	response := &api.VariablesResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 
@@ -34,21 +35,23 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 		})
 	}
 
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, _ int) {
-		if id != scopeId {
+	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
+		if frameId != targetFrameId {
 			return
 		}
-		if isParamScope {
-			for i, vd := range fr.Scope.Params {
-				addVar(fr.Args[i], vd, i)
-			}
-		} else {
-			nArgs := len(fr.Args)
-			for i, vd := range fr.Scope.Params {
+		ids := getScopeIds(frameId)
+		switch targetScopeId {
+		case ids.localId:
+			for i, vd := range fr.Scope.Locals {
 				addVar(fr.Locals[i], vd, i)
 			}
-			for i, vd := range fr.Scope.Locals {
-				addVar(fr.Locals[i+nArgs], vd, i)
+		case ids.paramId:
+			for i, vd := range fr.Scope.Params {
+				addVar(fr.Params[i], vd, i)
+			}
+		case ids.argsId:
+			for i, vd := range fr.Scope.Params {
+				addVar(fr.Args[i], vd, i)
 			}
 		}
 	})
@@ -58,36 +61,39 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 	name := request.Arguments.Name
 	value := request.Arguments.Value
-	varId := request.Arguments.VariablesReference
-	scopeId := varId / 1024
-	isParamScope := varId&512 != 0
-	_ = varId % 512 // TODO
+
+	targetVarId := request.Arguments.VariablesReference
+	targetScopeId := getScopeId(targetVarId)
+	targetFrameId := getFrameId(targetScopeId)
+	_ = getVarIndex(targetVarId) // TODO: individual variables
 
 	var err error
 	var typStr string
 	var valStr string
-	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, _ int) {
-		if id != scopeId {
+	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
+		if frameId != targetFrameId {
 			return
 		}
 
 		decl, ref := func() (*ast.VarDecl, *any) {
-			if isParamScope {
-				for i, vd := range fr.Scope.Params {
-					if vd.Name == name {
-						return vd, &fr.Args[i]
-					}
-				}
-			} else {
-				nArgs := len(fr.Args)
-				for i, vd := range fr.Scope.Params {
+			ids := getScopeIds(frameId)
+			switch targetScopeId {
+			case ids.localId:
+				for i, vd := range fr.Scope.Locals {
 					if vd.Name == name {
 						return vd, &fr.Locals[i]
 					}
 				}
-				for i, vd := range fr.Scope.Locals {
+			case ids.paramId:
+				for i, vd := range fr.Scope.Params {
 					if vd.Name == name {
-						return vd, &fr.Locals[i+nArgs]
+						return vd, &fr.Params[i]
+					}
+				}
+			case ids.argsId:
+				for i, vd := range fr.Scope.Params {
+					if vd.Name == name {
+						return vd, &fr.Args[i]
 					}
 				}
 			}

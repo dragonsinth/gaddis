@@ -41,6 +41,7 @@
   "main": "./out/gaddis.js",
   "activationEvents": [
     "onLanguage:gaddis",
+    "onLanguage:gadasm",
     "onDebugResolve:gaddis"
   ],
   "contributes": {
@@ -125,7 +126,20 @@
           ".gad",
           ".gaddis"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./gaddis-language-configuration.json"
+      },
+      {
+        "id": "gadasm",
+        "aliases": [
+          "Gaddis Assembly",
+          "gadasm"
+        ],
+        "extensions": [
+          ".gadasm",
+          ".gad.asm",
+          ".gaddis.asm"
+        ],
+        "configuration": "./gadasm-language-configuration.json"
       }
     ],
     "grammars": [
@@ -133,6 +147,11 @@
         "language": "gaddis",
         "scopeName": "source.gaddis",
         "path": "./syntaxes/gaddis.tmLanguage.json"
+      },
+      {
+        "language": "gadasm",
+        "scopeName": "source.gadasm",
+        "path": "./syntaxes/gadasm.tmLanguage.json"
       }
     ],
     "themes": [
