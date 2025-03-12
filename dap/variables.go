@@ -42,16 +42,16 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 		ids := getScopeIds(frameId)
 		switch targetScopeId {
 		case ids.localId:
-			for i, vd := range fr.Scope.Locals {
-				addVar(fr.Locals[i], vd, i)
+			for i := range fr.Locals {
+				addVar(fr.Locals[i], fr.Scope.Locals[i], i)
 			}
 		case ids.paramId:
-			for i, vd := range fr.Scope.Params {
-				addVar(fr.Params[i], vd, i)
+			for i := range fr.Params {
+				addVar(fr.Params[i], fr.Scope.Params[i], i)
 			}
 		case ids.argsId:
-			for i, vd := range fr.Scope.Params {
-				addVar(fr.Args[i], vd, i)
+			for i := range fr.Args {
+				addVar(fr.Args[i], fr.Scope.Params[i], i)
 			}
 		}
 	})

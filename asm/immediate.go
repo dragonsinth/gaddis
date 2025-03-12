@@ -83,7 +83,7 @@ type GlobalVal struct {
 func (i GlobalVal) Exec(p *Execution) {
 	val := p.Stack[0].Locals[i.Index]
 	if val == nil {
-		panic(fmt.Sprintf("global variable %s read before assignment", p.Stack[0].Scope.Locals[i.Index].Name))
+		panic(fmt.Sprintf("global variable %s read before assignment", i.Name))
 	}
 	p.Push(val)
 }

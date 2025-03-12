@@ -8,12 +8,16 @@ import (
 
 type Begin struct {
 	baseInst
+	Scope   *ast.Scope
+	Label   *Label
 	NParams int
 	NLocals int
-	Label   *Label
 }
 
 func (i Begin) Exec(p *Execution) {
+	p.Frame.Params = slices.Clone(p.Frame.Args)
+	p.Frame.Locals = make([]any, i.NLocals)
+	p.Frame.Eval = make([]any, 0, 16)
 }
 
 func (i Begin) String() string {
@@ -45,6 +49,7 @@ type Call struct {
 	baseInst
 	Scope *ast.Scope
 	Label *Label
+	NArgs int
 }
 
 func (i Call) Exec(p *Execution) {
@@ -52,24 +57,22 @@ func (i Call) Exec(p *Execution) {
 		panic("stack overflow")
 	}
 
-	nArg := len(i.Scope.Params)
-	args := slices.Clone(p.PopN(nArg))
+	be := p.Code[i.Label.PC].(Begin)
+
+	args := slices.Clone(p.PopN(i.NArgs))
 
 	p.Stack = append(p.Stack, Frame{
-		Scope:  i.Scope,
+		Scope:  be.Scope,
 		Start:  i.Label.PC,
 		Return: p.PC,
 		Args:   args,
-		Params: slices.Clone(args),
-		Locals: make([]any, len(i.Scope.Locals)),
-		Eval:   make([]any, 0, 16),
 	})
 	p.Frame = &p.Stack[len(p.Stack)-1]
 	p.PC = i.Label.PC - 1 // will advance to next instruction
 }
 
 func (i Call) String() string {
-	return fmt.Sprintf("call(%d) %s", len(i.Scope.Params), i.Label)
+	return fmt.Sprintf("call(%d) %s", i.NArgs, i.Label)
 }
 
 func (i Call) Sym() string {

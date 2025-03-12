@@ -55,45 +55,51 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 				EndColumn:          si.End.Column + h.colOff,
 			})
 		} else if frameId == targetFrameId {
-			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
-				Name:               "Locals",
-				PresentationHint:   "locals",
-				VariablesReference: ids.localId,
-				NamedVariables:     len(fr.Locals),
-				IndexedVariables:   0, // should also be len?
-				Expensive:          false,
-				Source:             h.source,
-				Line:               si.Start.Line + h.lineOff,
-				Column:             si.Start.Column + h.colOff,
-				EndLine:            si.End.Line + h.lineOff,
-				EndColumn:          si.End.Column + h.colOff,
-			})
-			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
-				Name:               "Params",
-				PresentationHint:   "locals",
-				VariablesReference: ids.paramId,
-				NamedVariables:     len(fr.Params),
-				IndexedVariables:   0, // should also be len?
-				Expensive:          false,
-				Source:             h.source,
-				Line:               si.Start.Line + h.lineOff,
-				Column:             si.Start.Column + h.colOff,
-				EndLine:            si.End.Line + h.lineOff,
-				EndColumn:          si.End.Column + h.colOff,
-			})
-			response.Body.Scopes = append(response.Body.Scopes, api.Scope{
-				Name:               "Arguments",
-				PresentationHint:   "arguments",
-				VariablesReference: ids.argsId,
-				NamedVariables:     len(fr.Args),
-				IndexedVariables:   0, // should also be len?
-				Expensive:          false,
-				Source:             h.source,
-				Line:               si.Start.Line + h.lineOff,
-				Column:             si.Start.Column + h.colOff,
-				EndLine:            si.End.Line + h.lineOff,
-				EndColumn:          si.End.Column + h.colOff,
-			})
+			if len(fr.Locals) > 0 {
+				response.Body.Scopes = append(response.Body.Scopes, api.Scope{
+					Name:               "Locals",
+					PresentationHint:   "locals",
+					VariablesReference: ids.localId,
+					NamedVariables:     len(fr.Locals),
+					IndexedVariables:   0, // should also be len?
+					Expensive:          false,
+					Source:             h.source,
+					Line:               si.Start.Line + h.lineOff,
+					Column:             si.Start.Column + h.colOff,
+					EndLine:            si.End.Line + h.lineOff,
+					EndColumn:          si.End.Column + h.colOff,
+				})
+			}
+			if len(fr.Params) > 0 {
+				response.Body.Scopes = append(response.Body.Scopes, api.Scope{
+					Name:               "Params",
+					PresentationHint:   "locals",
+					VariablesReference: ids.paramId,
+					NamedVariables:     len(fr.Params),
+					IndexedVariables:   0, // should also be len?
+					Expensive:          false,
+					Source:             h.source,
+					Line:               si.Start.Line + h.lineOff,
+					Column:             si.Start.Column + h.colOff,
+					EndLine:            si.End.Line + h.lineOff,
+					EndColumn:          si.End.Column + h.colOff,
+				})
+			}
+			if len(fr.Args) > 0 {
+				response.Body.Scopes = append(response.Body.Scopes, api.Scope{
+					Name:               "Arguments",
+					PresentationHint:   "arguments",
+					VariablesReference: ids.argsId,
+					NamedVariables:     len(fr.Args),
+					IndexedVariables:   0, // should also be len?
+					Expensive:          false,
+					Source:             h.source,
+					Line:               si.Start.Line + h.lineOff,
+					Column:             si.Start.Column + h.colOff,
+					EndLine:            si.End.Line + h.lineOff,
+					EndColumn:          si.End.Column + h.colOff,
+				})
+			}
 		}
 	})
 	h.send(response)

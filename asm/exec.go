@@ -29,8 +29,6 @@ func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 			Start:  0,
 			Return: 0,
 			Params: nil,
-			Locals: make([]any, len(a.GlobalScope.Locals)),
-			Eval:   make([]any, 0, 16),
 		}},
 		Frame: nil,
 		Lib:   extlib,

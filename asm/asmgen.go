@@ -60,8 +60,10 @@ func Assemble(prog *ast.Program) *Assembly {
 	globalLabel := &Label{Name: "__global", PC: 0}
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{prog.Block.SourceInfo},
-		NParams:  0,
+		Scope:    prog.Scope,
 		Label:    globalLabel,
+		NParams:  0,
+		NLocals:  len(prog.Scope.Locals),
 	})
 
 	// Emit all global block non-decls.
@@ -83,6 +85,7 @@ func Assemble(prog *ast.Program) *Assembly {
 			baseInst: baseInst{ref.ModuleStmt.SourceInfo.Head()},
 			Scope:    scope,
 			Label:    v.modules[ref.ModuleStmt],
+			NArgs:    len(scope.Params),
 		})
 		finalReturnSi = ref.ModuleStmt.SourceInfo.Tail()
 	}
@@ -338,6 +341,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 		baseInst: baseInst{cs.SourceInfo},
 		Scope:    cs.Ref.Scope,
 		Label:    v.modules[cs.Ref],
+		NArgs:    len(cs.Args),
 	})
 	return false
 }
@@ -348,9 +352,10 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	lbl.PC = len(v.code)
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{ms.SourceInfo},
+		Scope:    ms.Scope,
+		Label:    lbl,
 		NParams:  len(ms.Scope.Params),
 		NLocals:  len(ms.Scope.Locals),
-		Label:    lbl,
 	})
 	return true
 }
@@ -372,9 +377,10 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	lbl.PC = len(v.code)
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{fs.SourceInfo},
+		Scope:    fs.Scope,
+		Label:    lbl,
 		NParams:  len(fs.Scope.Params),
 		NLocals:  len(fs.Scope.Locals),
-		Label:    lbl,
 	})
 	return true
 }
@@ -442,6 +448,7 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 			baseInst: baseInst{ce.SourceInfo},
 			Scope:    ce.Ref.Scope,
 			Label:    v.functions[ce.Ref],
+			NArgs:    len(ce.Args),
 		})
 	}
 	return false

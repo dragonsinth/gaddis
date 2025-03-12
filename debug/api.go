@@ -107,9 +107,9 @@ func (ds *Session) RestartFrame(id int) {
 		p.Stack = p.Stack[:id]
 		p.Frame = &p.Stack[id-1]
 		p.PC = p.Frame.Start
-		clear(p.Frame.Locals)
-		copy(p.Frame.Params, p.Frame.Args)
-		p.Frame.Eval = p.Frame.Eval[:0]
+		p.Frame.Params = nil
+		p.Frame.Locals = nil
+		p.Frame.Eval = nil
 	})
 }
 
