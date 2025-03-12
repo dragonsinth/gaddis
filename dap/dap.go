@@ -36,6 +36,7 @@ type Session struct {
 	// the sendFromQueue goroutine that it can exit.
 	sendQueue chan api.Message
 
+	instBps      []int
 	bpsBySum     map[string][]int
 	sourceByPath map[string]*debug.Source
 	sourceBySum  map[string]*debug.Source

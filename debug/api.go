@@ -147,6 +147,9 @@ func (ds *Session) SetLineBreakpoints(bps []int) {
 				continue
 			}
 			ds.lineBreaks[pc] = 1
+			if pc == 0 {
+				ds.stopOnEntry = true // only way to actually break on inst 0
+			}
 		}
 	})
 }
@@ -159,6 +162,9 @@ func (ds *Session) SetInstBreakpoints(pcs []int) {
 				continue
 			}
 			ds.instBreaks[pc] = 1
+			if pc == 0 {
+				ds.stopOnEntry = true // only way to actually break on inst 0
+			}
 		}
 	})
 }

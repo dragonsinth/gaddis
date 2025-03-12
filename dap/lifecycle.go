@@ -95,6 +95,7 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 		// launch immediately, otherwise wait for configuration done.
 		h.sess.SetNoDebug()
 		h.sess.SetLineBreakpoints(nil)
+		h.sess.SetInstBreakpoints(nil)
 		h.sess.Play()
 	}
 }
@@ -126,11 +127,13 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 	if h.noDebug {
 		h.sess.SetNoDebug()
 		h.sess.SetLineBreakpoints(nil)
+		h.sess.SetInstBreakpoints(nil)
 	} else {
 		if h.stopOnEntry {
 			h.sess.StopOnEntry()
 		}
 		h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
+		h.sess.SetInstBreakpoints(h.instBps)
 	}
 	h.sess.Play()
 }
@@ -156,6 +159,7 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 		h.sess.StopOnEntry()
 	}
 	h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
+	h.sess.SetInstBreakpoints(h.instBps)
 	h.sess.Play()
 }
 

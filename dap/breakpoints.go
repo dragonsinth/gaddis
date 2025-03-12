@@ -43,7 +43,7 @@ func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
 		var msg string
 		srcLine := bp.Line - h.lineOff
 		instLine := breakpoints.InstFromSource(srcLine)
-		if instLine > 0 {
+		if instLine >= 0 {
 			bps = append(bps, srcLine)
 			response.Body.Breakpoints = append(response.Body.Breakpoints, api.Breakpoint{
 				Verified:             true,
@@ -106,6 +106,7 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 		}
 
 	}
+	h.instBps = pcs
 	h.sess.SetInstBreakpoints(pcs)
 	h.send(response)
 }
