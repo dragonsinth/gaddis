@@ -30,6 +30,44 @@ func AsmDump(source string, code []Inst) string {
 		}
 		_, _ = fmt.Fprintf(&sb, "%s\t\t\t%s\n", PcRef(i), inst)
 	}
+	// Now dump all symbol tables.
+	var endPcs []int
+	for pc, inst := range code {
+		if _, ok := inst.(End); ok {
+			endPcs = append(endPcs, pc)
+		}
+	}
+
+	for pc, inst := range code {
+		if be, ok := inst.(Begin); ok {
+			sb.WriteRune(';')
+			sb.WriteString(PcRef(pc))
+			sb.WriteRune('-')
+			sb.WriteString(PcRef(endPcs[0]))
+			sb.WriteRune(':')
+			sb.WriteString(be.Label.Name)
+			endPcs = endPcs[1:]
+			sb.WriteRune('(')
+			for i, vd := range be.Scope.Params {
+				if i > 0 {
+					sb.WriteRune('|')
+				}
+				sb.WriteString(vd.Type.String())
+				sb.WriteRune('#')
+				sb.WriteString(vd.Name)
+			}
+			sb.WriteRune(')')
+			for i, vd := range be.Scope.Locals {
+				if i > 0 {
+					sb.WriteRune('|')
+				}
+				sb.WriteString(vd.Type.String())
+				sb.WriteRune('#')
+				sb.WriteString(vd.Name)
+			}
+			sb.WriteRune('\n')
+		}
+	}
 	return sb.String()
 }
 
