@@ -14,10 +14,10 @@ func computeExternalScope() *Scope {
 		Decls:      map[string]*Decl{},
 	}
 
-	for name, f := range lib.External {
-		fs := translateMethod(name, reflect.TypeOf(f))
+	for _, entry := range lib.GetLibrary() {
+		fs := translateMethod(entry.Name, entry.FuncPtr.Type())
 		fs.Scope = ret
-		ret.Decls[name] = &Decl{FunctionStmt: fs}
+		ret.Decls[entry.Name] = &Decl{FunctionStmt: fs}
 	}
 
 	return ret

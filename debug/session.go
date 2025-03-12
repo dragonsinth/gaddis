@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"github.com/dragonsinth/gaddis/asm"
-	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/lib"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -16,8 +16,7 @@ type Session struct {
 	Host   EventHost
 	Source Source
 
-	Context *asm.ExecutionContext
-	Exec    *asm.Execution
+	Exec *asm.Execution
 
 	// Private running state
 
@@ -54,7 +53,7 @@ func New(
 
 	ec := &asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
-		IoContext: builtins.IoContext{
+		IoContext: lib.IoContext{
 			Stdin:   bufio.NewScanner(bytes.NewReader(opts.Stdin)),
 			Stdout:  &bufferedSyncWriter{out: opts.Stdout},
 			WorkDir: opts.WorkDir,
@@ -67,7 +66,6 @@ func New(
 		Opts:           opts,
 		Host:           host,
 		Source:         source,
-		Context:        ec,
 		Exec:           exec,
 		yield:          atomic.Bool{},
 		running:        atomic.Bool{},

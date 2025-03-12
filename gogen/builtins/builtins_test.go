@@ -1,103 +1,8 @@
 package builtins
 
 import (
-	"bufio"
-	"bytes"
-	"github.com/dragonsinth/gaddis"
-	"strings"
 	"testing"
 )
-
-func TestDisplay(t *testing.T) {
-	inbuf := strings.NewReader("")
-	var outbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-	ctx.Display([]byte("the score is "), 17, []byte(" to "), 21.5, []byte(" is "), false)
-	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
-}
-
-func TestInputInteger(t *testing.T) {
-	inbuf := strings.NewReader("not a number\n123\n")
-	var outbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
-	got := ctx.InputInteger()
-	assertEqual(t, int64(123), got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "integer> error, invalid integer, try again\ninteger> ", outbuf.String())
-}
-
-func TestInputReal(t *testing.T) {
-	inbuf := strings.NewReader("not a number\n123.456\n")
-	var outbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
-	got := ctx.InputReal()
-	assertEqual(t, float64(123.456), got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "real> error, invalid real, try again\nreal> ", outbuf.String())
-}
-
-func TestInputString(t *testing.T) {
-	inbuf := strings.NewReader("David\n")
-	var outbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
-	got := ctx.InputString()
-	assertEqual(t, "David", string(got))
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "string> ", outbuf.String())
-}
-
-func TestInputCharacter(t *testing.T) {
-	inbuf := strings.NewReader("\ntrue\nc")
-	var outbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
-	got := ctx.InputCharacter()
-	assertEqual(t, 'c', got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "character> error, input exactly 1 character, try again\ncharacter> error, input exactly 1 character, try again\ncharacter> ", outbuf.String())
-}
-
-func TestInputBoolean(t *testing.T) {
-	inbuf := strings.NewReader("not a boolean\ntrue\n")
-	var outbuf bytes.Buffer
-	ctx := IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
-	got := ctx.InputBoolean()
-	assertEqual(t, true, got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", outbuf.String())
-}
 
 func TestModInteger(t *testing.T) {
 	assertEqual(t, 0, ModInteger(5, 1))
@@ -127,25 +32,39 @@ func TestExpReal(t *testing.T) {
 	// TODO: zero, negative behavior spec?
 }
 
-//func TestStepInteger(t *testing.T) {
-//	assertEqual(t, true, StepInteger(0, 1, 1))
-//	assertEqual(t, true, StepInteger(1, 1, 1))
-//	assertEqual(t, false, StepInteger(2, 1, 1))
-//
-//	assertEqual(t, true, StepInteger(2, 1, -1))
-//	assertEqual(t, true, StepInteger(1, 1, -1))
-//	assertEqual(t, false, StepInteger(0, 1, -1))
-//}
-//
-//func TestStepReal(t *testing.T) {
-//	assertEqual(t, true, StepReal(0, 1, 1))
-//	assertEqual(t, true, StepReal(1, 1, 1))
-//	assertEqual(t, false, StepReal(2, 1, 1))
-//
-//	assertEqual(t, true, StepReal(2, 1, -1))
-//	assertEqual(t, true, StepReal(1, 1, -1))
-//	assertEqual(t, false, StepReal(0, 1, -1))
-//}
+func TestStepInteger(t *testing.T) {
+	var i int64
+	assertEqual(t, true, StepInteger(&i, 2, 1))
+	assertEqual(t, 1, i)
+	assertEqual(t, true, StepInteger(&i, 2, 1))
+	assertEqual(t, 2, i)
+	assertEqual(t, false, StepInteger(&i, 2, 1))
+	assertEqual(t, 3, i)
+
+	assertEqual(t, true, StepInteger(&i, 1, -1))
+	assertEqual(t, 2, i)
+	assertEqual(t, true, StepInteger(&i, 1, -1))
+	assertEqual(t, 1, i)
+	assertEqual(t, false, StepInteger(&i, 1, -1))
+	assertEqual(t, 0, i)
+}
+
+func TestStepReal(t *testing.T) {
+	var i float64
+	assertEqual(t, true, StepReal(&i, 2, 1))
+	assertEqual(t, 1, i)
+	assertEqual(t, true, StepReal(&i, 2, 1))
+	assertEqual(t, 2, i)
+	assertEqual(t, false, StepReal(&i, 2, 1))
+	assertEqual(t, 3, i)
+
+	assertEqual(t, true, StepReal(&i, 1, -1))
+	assertEqual(t, 2, i)
+	assertEqual(t, true, StepReal(&i, 1, -1))
+	assertEqual(t, 1, i)
+	assertEqual(t, false, StepReal(&i, 1, -1))
+	assertEqual(t, 0, i)
+}
 
 func assertEqual[T comparable](t *testing.T, want T, got T) {
 	if want != got {

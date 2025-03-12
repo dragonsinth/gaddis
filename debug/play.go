@@ -156,7 +156,7 @@ func (ds *Session) play() {
 			}
 
 			instructionCount++
-			if instructionCount > asm.MAX_INSTRUCTIONS {
+			if instructionCount > asm.MaxInstructions {
 				panic("infinite loop detected")
 			}
 		}

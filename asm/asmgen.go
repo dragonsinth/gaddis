@@ -3,7 +3,7 @@ package asm
 import (
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/base"
-	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/lib"
 )
 
 type Assembly struct {
@@ -144,7 +144,7 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 			v.code = append(v.code, Literal{
 				baseInst: baseInst{arg.GetSourceInfo()},
 				Typ:      lit.Type,
-				Val:      builtins.TabDisplay,
+				Val:      lib.TabDisplay,
 			})
 		} else {
 			arg.Visit(v)
@@ -154,7 +154,7 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 		baseInst: baseInst{d.GetSourceInfo()},
 		Name:     "Display",
 		Type:     ast.UnresolvedType,
-		Index:    libFunc("Display"),
+		Index:    lib.IndexOf("Display"),
 		NArg:     len(d.Exprs),
 	})
 	return false
@@ -167,7 +167,7 @@ func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 		baseInst: baseInst{i.SourceInfo},
 		Name:     name,
 		Type:     typ,
-		Index:    libFunc(name),
+		Index:    lib.IndexOf(name),
 		NArg:     0,
 	})
 	v.varRef(i.Ref, true)
@@ -434,7 +434,7 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 			baseInst: baseInst{ce.SourceInfo},
 			Name:     ce.Name,
 			Type:     ce.Type.AsPrimitive(),
-			Index:    libFunc(ce.Name),
+			Index:    lib.IndexOf(ce.Name),
 			NArg:     len(ce.Args),
 		})
 	} else {

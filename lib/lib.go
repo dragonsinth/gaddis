@@ -1,15 +1,19 @@
 package lib
 
-import "bytes"
-import "math"
-import "math/rand"
-import "strconv"
-import "time"
+import (
+	"bytes"
+	"math"
+	"math/rand"
+	"strconv"
+	"time"
+)
 
-var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+type RandContext struct {
+	Rng *rand.Rand
+}
 
-func random(lo int64, hi int64) int64 {
-	return lo + rng.Int63n(hi-lo+1)
+func (ctx RandContext) random(lo int64, hi int64) int64 {
+	return lo + ctx.Rng.Int63n(hi-lo+1)
 }
 
 var (
@@ -114,3 +118,13 @@ func isReal(s []byte) bool {
 	_, err := strconv.ParseFloat(string(s), 64)
 	return err == nil
 }
+
+// BELOW: Used only by the gogen runtime.
+
+var (
+	randCtx = &RandContext{
+		Rng: rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+
+	random = randCtx.random
+)

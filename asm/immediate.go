@@ -3,7 +3,7 @@ package asm
 import (
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
-	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/lib"
 	"strconv"
 )
 
@@ -30,7 +30,7 @@ func (i Literal) String() string {
 	case ast.Real:
 		str = strconv.FormatFloat(i.Val.(float64), 'g', -1, 64)
 	case ast.String:
-		if i.Val == builtins.TabDisplay {
+		if i.Val == lib.TabDisplay {
 			str = "tab"
 		} else {
 			str = fmt.Sprintf("[%d]", len(i.Val.(string)))

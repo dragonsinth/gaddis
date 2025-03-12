@@ -1,6 +1,7 @@
 package gogen
 
 import (
+	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/lib"
 	"io"
@@ -14,15 +15,17 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 	sb.WriteString("package main\n")
 
 	var imports, code []string
-	parseGoCode(lib.Source, &imports, &code)
+	parseGoCode(lib.IoSource, &imports, &code)
+	parseGoCode(lib.LibSource, &imports, &code)
 	parseGoCode(builtins, &imports, &code)
 
 	slices.Sort(imports)
 	imports = slices.Compact(imports)
+	sb.WriteString("import (\n")
 	for _, imp := range imports {
-		sb.WriteString(imp)
-		sb.WriteByte('\n')
+		fmt.Fprintf(&sb, "\t%q\n", imp)
 	}
+	sb.WriteString(")\n")
 	for _, c := range code {
 		sb.WriteString(c)
 		sb.WriteByte('\n')
@@ -34,7 +37,7 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 
 	if isTest {
 		// Lock the rng in test mode.
-		v.output("func init() { rng.Seed(0) }\n\n")
+		v.output("func init() { randCtx.Rng.Seed(0) }\n\n")
 	}
 
 	// First, iterate the global block and emit any declarations.
@@ -43,6 +46,9 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 		case *ast.DeclareStmt:
 			// emit declaration only, not assignment
 			for _, decl := range stmt.Decls {
+				if decl.IsConst {
+					continue
+				}
 				v.indent()
 				v.output("var ")
 				v.ident(decl)
@@ -65,15 +71,13 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 		case *ast.DeclareStmt:
 			// emit either an assignment or a dummy assignment
 			for _, decl := range stmt.Decls {
-				v.indent()
-				if decl.Expr != nil {
-					v.ident(decl)
-					v.output(" = ")
-					v.maybeCast(decl.Type, decl.Expr)
-				} else {
-					v.output("_ = ")
-					v.ident(decl)
+				if decl.IsConst || decl.Expr == nil {
+					continue
 				}
+				v.indent()
+				v.ident(decl)
+				v.output(" = ")
+				v.maybeCast(decl.Type, decl.Expr)
 				v.output("\n")
 			}
 		case *ast.ModuleStmt, *ast.FunctionStmt:
@@ -117,6 +121,9 @@ func (v *Visitor) PostVisitBlock(bl *ast.Block) {
 }
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
+	if vd.IsConst {
+		return false
+	}
 	if vd.IsParam {
 		v.ident(vd)
 		v.output(" ")
@@ -127,11 +134,7 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 		return false
 	}
 	v.indent()
-	if vd.IsConst {
-		v.output("const ")
-	} else {
-		v.output("var ")
-	}
+	v.output("var ")
 	v.ident(vd)
 	v.output(" ")
 	v.typeName(vd.Type)
@@ -416,12 +419,6 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.indent()
 	v.output("}\n")
 
-	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
-	v.indent()
-	v.output("var _ = ")
-	v.ident(ms)
-	v.output("\n")
-
 	return false
 }
 
@@ -454,12 +451,6 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	fs.Block.Visit(v)
 	v.indent()
 	v.output("}\n")
-
-	// Also emit a no-op assignment to avoid Go unreferenced variable errors.
-	v.indent()
-	v.output("var _ = ")
-	v.ident(fs)
-	v.output("\n")
 
 	return false
 }
@@ -588,13 +579,32 @@ func (v *Visitor) ident(named ast.HasName) {
 	v.output("_")
 }
 
+func (v *Visitor) outputLiteral(typ ast.PrimitiveType, val any) {
+	switch typ {
+	case ast.Integer:
+		v.output(strconv.FormatInt(val.(int64), 10))
+	case ast.Real:
+		v.output(strconv.FormatFloat(val.(float64), 'f', -1, 64))
+	case ast.String:
+		v.output("String(")
+		v.output(strconv.Quote(val.(string)))
+		v.output(")")
+	case ast.Character:
+		v.output(strconv.QuoteRune(rune(val.(byte))))
+	case ast.Boolean:
+		v.output(strconv.FormatBool(val.(bool)))
+	default:
+		panic(typ)
+	}
+}
+
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	if dstType == ast.Real && exp.GetType() == ast.Integer {
-		v.output("float64(")
+		v.output("Real(")
 		exp.Visit(v)
 		v.output(")")
 	} else if dstType == ast.Integer && exp.GetType() == ast.Real {
-		v.output("int64(")
+		v.output("Integer(")
 		exp.Visit(v)
 		v.output(")")
 	} else if dstType == goStringType && exp.GetType() == ast.String {
@@ -625,7 +635,7 @@ func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
 		if val == nil {
 			panic("here")
 		}
-		v.ident(decl)
+		v.outputLiteral(decl.Type.AsPrimitive(), val)
 	} else if decl.Scope.IsGlobal {
 		if isRef {
 			panic("here")
@@ -673,15 +683,7 @@ func (v *Visitor) typeName(t ast.Type) {
 	if !t.IsPrimitive() {
 		panic("TODO: implement non-primitive types")
 	}
-	v.output(goTypes[t.AsPrimitive()])
-}
-
-var goTypes = [...]string{
-	ast.Integer:   "int64",
-	ast.Real:      "float64",
-	ast.String:    "String",
-	ast.Character: "byte",
-	ast.Boolean:   "bool",
+	v.output(t.String())
 }
 
 var goBinaryOperators = [...]string{

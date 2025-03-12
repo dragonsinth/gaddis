@@ -4,15 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
-	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/lib"
+	"math/rand"
 	"reflect"
 	"strings"
 )
 
-const MAX_INSTRUCTIONS = 1 << 30
-const MAX_STACK = 1024
+const MaxInstructions = 1 << 30
+const MaxStack = 1024
+
+type ExecutionContext struct {
+	Rng *rand.Rand
+	lib.IoContext
+}
 
 func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
+	extlib := lib.CreateLibrary(ec.IoContext, lib.RandContext{Rng: ec.Rng})
+
 	p := &Execution{
 		PC:   0,
 		Code: a.Code,
@@ -25,7 +33,7 @@ func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 			Eval:   make([]any, 0, 16),
 		}},
 		Frame: nil,
-		Lib:   ec.CreateLibrary(),
+		Lib:   extlib,
 	}
 	p.Frame = &p.Stack[0]
 	return p
@@ -36,7 +44,7 @@ type Execution struct {
 	Code  []Inst
 	Stack []Frame
 	Frame *Frame
-	Lib   []LibFunc
+	Lib   []lib.Func
 }
 
 type Frame struct {
@@ -65,7 +73,7 @@ func (p *Execution) Run() (err error) {
 		p.PC++
 
 		instructionCount++
-		if instructionCount > MAX_INSTRUCTIONS {
+		if instructionCount > MaxInstructions {
 			panic("infinite loop detected")
 		}
 	}
@@ -157,7 +165,7 @@ func DebugStringVal(arg any) string {
 	if reflect.TypeOf(arg).Kind() == reflect.Pointer {
 		return "<ref>"
 	}
-	if arg == builtins.TabDisplay {
+	if arg == lib.TabDisplay {
 		return "Tab"
 	}
 

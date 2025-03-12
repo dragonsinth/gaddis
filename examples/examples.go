@@ -11,7 +11,7 @@ import (
 	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
-	"github.com/dragonsinth/gaddis/gogen/builtins"
+	"github.com/dragonsinth/gaddis/lib"
 	"io"
 	"math/rand"
 	"os"
@@ -119,7 +119,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 
 	p := cp.NewExecution(&asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(0)),
-		IoContext: builtins.IoContext{
+		IoContext: lib.IoContext{
 			Stdin:   bufio.NewScanner(&input),
 			Stdout:  gaddis.NoopSyncWriter(&output),
 			WorkDir: ".",
