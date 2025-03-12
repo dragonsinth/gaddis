@@ -61,13 +61,8 @@
         "icon": "$(play)"
       },
       {
-        "command": "extension.gaddis.runTask",
-        "title": "Gaddis Run File",
-        "icon": "$(run)"
-      },
-      {
         "command": "extension.gaddis.testTask",
-        "title": "Gaddis Test File",
+        "title": "Test File",
         "icon": "$(beaker)"
       }
     ],
@@ -84,14 +79,9 @@
           "group": "navigation@2"
         },
         {
-          "command": "extension.gaddis.runTask",
-          "when": "editorLangId == gaddis",
-          "group": "navigation@3"
-        },
-        {
           "command": "extension.gaddis.testTask",
           "when": "editorLangId == gaddis",
-          "group": "navigation@4"
+          "group": "navigation@3"
         }
       ],
       "editor/title/run": [
@@ -105,14 +95,18 @@
           "when": "resourceLangId == gaddis",
           "group": "navigation@2"
         }
+      ],
+      "editor/title": [
+        {
+          "command": "extension.gaddis.testTask",
+          "when": "resourceLangId == gaddis",
+          "group": "navigation@3"
+        }
       ]
     },
     "taskDefinitions": [
       {
-        "type": "gaddis.run"
-      },
-      {
-        "type": "gaddis.test"
+        "type": "extension.gaddis.test"
       }
     ],
     "languages": [

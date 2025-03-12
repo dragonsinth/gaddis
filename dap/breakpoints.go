@@ -149,7 +149,7 @@ func (h *Session) onBreakpointLocationsRequest(request *api.BreakpointLocationsR
 }
 
 func (h *Session) onExceptionInfoRequest(request *api.ExceptionInfoRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}

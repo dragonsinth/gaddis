@@ -15,7 +15,7 @@ var (
 	fNoRun   = flag.Bool("no-run", false, "compile only, do not run")
 	fJson    = flag.Bool("json", false, "emit errors as json")
 	fGogen   = flag.Bool("gogen", false, "run using go compile")
-	fPort    = flag.Int("port", -1, "port to listen on; only valid with debug")
+	fPort    = flag.Int("port", -1, "debug: port to listen on; terminal: port to connect to")
 )
 
 const help = `Usage: gaddis <command> [options] [arguments]
@@ -66,6 +66,8 @@ func main() {
 		err = debugCmd(*fPort, *fVerbose)
 	case "run":
 		err = runCmd(args[1:], opts)
+	case "terminal":
+		err = terminalCmd(*fPort)
 	default:
 		if *fTest {
 			err = test(args, opts)

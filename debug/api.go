@@ -3,6 +3,7 @@ package debug
 import (
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
+	"io"
 )
 
 // EventHost is how the VM pushes out debug events.
@@ -12,11 +13,12 @@ type EventHost interface {
 	Panicked(error, []ast.Position, []string)
 	Exited(code int)
 	Terminated()
+	SuppressAllEvents()
 }
 
 type Opts struct {
 	IsTest  bool
-	Stdin   []byte
+	Stdin   io.Reader
 	Stdout  func(string)
 	WorkDir string
 }
@@ -28,8 +30,6 @@ const (
 	RUN RunState = iota
 	// halt with a pause event
 	PAUSE
-	// halt with no event
-	HALT
 	// halt with a terminate event
 	TERMINATE
 )
@@ -54,6 +54,13 @@ func (ds *Session) Play() {
 	ds.play()
 }
 
+// Wait for the interpreter to stop running.
+func (ds *Session) Wait() {
+	for ds.running.Load() {
+		ds.withOuterLock(func() {})
+	}
+}
+
 func (ds *Session) Pause() {
 	ds.yield.Store(true)
 	ds.runMu.Lock()
@@ -62,14 +69,12 @@ func (ds *Session) Pause() {
 	ds.runState = PAUSE
 }
 
-// Halt without sending any events. Wait for halt.
+// Halt terminates without sending any events.
 func (ds *Session) Halt() {
 	ds.withOuterLock(func() {
-		ds.runState = HALT
+		ds.runState = TERMINATE
+		ds.Host.SuppressAllEvents()
 	})
-	for ds.running.Load() {
-		ds.withOuterLock(func() {})
-	}
 }
 
 func (ds *Session) Terminate() {

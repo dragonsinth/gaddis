@@ -71,8 +71,6 @@ func (ds *Session) play() {
 
 		runStateEvent := func() {
 			switch ds.runState {
-			case HALT:
-				log.Println("halting")
 			case PAUSE:
 				ds.Host.Paused("pause")
 				log.Println("pausing")
@@ -103,11 +101,11 @@ func (ds *Session) play() {
 					ds.runMu.Unlock()
 					defer ds.runMu.Lock()
 				}()
+			}
 
-				if ds.runState != RUN {
-					runStateEvent()
-					return
-				}
+			if ds.runState != RUN {
+				runStateEvent()
+				return
 			}
 
 			inst := p.Code[p.PC]

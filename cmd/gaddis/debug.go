@@ -22,7 +22,7 @@ func debugServer(port int, dbgLog *log.Logger) error {
 	defer func() {
 		_ = listener.Close()
 	}()
-	log.Println("Started server at", listener.Addr())
+	log.Println("Started server at ", listener.Addr())
 
 	for {
 		conn, err := listener.Accept()

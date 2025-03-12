@@ -6,7 +6,7 @@ import (
 )
 
 func (h *Session) onContinueRequest(request *api.ContinueRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
@@ -18,7 +18,7 @@ func (h *Session) onContinueRequest(request *api.ContinueRequest) {
 }
 
 func (h *Session) onPauseRequest(request *api.PauseRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
@@ -29,7 +29,7 @@ func (h *Session) onPauseRequest(request *api.PauseRequest) {
 }
 
 func (h *Session) onNextRequest(request *api.NextRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
@@ -43,7 +43,7 @@ func (h *Session) onNextRequest(request *api.NextRequest) {
 }
 
 func (h *Session) onStepInRequest(request *api.StepInRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
@@ -58,7 +58,7 @@ func (h *Session) onStepInRequest(request *api.StepInRequest) {
 }
 
 func (h *Session) onStepOutRequest(request *api.StepOutRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}

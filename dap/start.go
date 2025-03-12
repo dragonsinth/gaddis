@@ -1,8 +1,14 @@
 package dap
 
 import (
+	"fmt"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
+	"io"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 )
 
 func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
@@ -29,25 +35,64 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		return false
 	}
 
+	if h.terminal == nil && h.canTerminal {
+		title := "Gaddis Debug " + args.Name
+		if args.NoDebug {
+			title = "Gaddis Run " + title
+		}
+
+		if term, err := StartTerminal(); err != nil {
+			log.Println("error: failed to start terminal conn:", err)
+		} else {
+			h.terminal = term
+			terminalArgs := []string{os.Args[0], "-port", strconv.Itoa(term.Port), "terminal"}
+			h.send(&api.RunInTerminalRequest{
+				Request: *newRequest("runInTerminal"),
+				Arguments: api.RunInTerminalRequestArguments{
+					Kind:  "integrated",
+					Title: title,
+					Cwd:   "",
+					Args:  terminalArgs,
+					Env:   nil,
+				},
+			})
+		}
+	}
+
+	var stdin io.Reader
+	stdout := h.stdout
+
+	if h.terminal != nil {
+		stdin = h.terminal
+		stdout = func(line string) {
+			h.stdout(line)
+			h.terminal.Output(line)
+		}
+		banner := strings.Repeat("-", len(args.Name))
+		h.terminal.Output(fmt.Sprintf("\x1b[H\x1b[J/%s\\\n|%s|\n\\%s/\n", banner, args.Name, banner))
+	} else {
+		stdin = tryReadInput(args.Program)
+	}
+
 	source.Name = args.Name
 	h.sourceByPath[source.Path] = source
 	h.sourceBySum[source.Sum] = source
 	h.source = dapSource(*source)
-	h.stopOnEntry = args.StopOnEntry
-	h.noDebug = args.NoDebug
+	h.launchArgs = args
 
 	opts := debug.Opts{
-		Stdin:   tryReadInput(args.Program),
-		Stdout:  h.stdout,
+		Stdin:   stdin,
+		Stdout:  stdout,
 		WorkDir: args.WorkDir,
 	}
 	host := eventHost{
-		send:    h.send,
-		source:  h.source,
-		lineOff: h.lineOff,
-		colOff:  h.colOff,
+		sendFunc: h.send,
+		source:   h.source,
+		lineOff:  h.lineOff,
+		colOff:   h.colOff,
 	}
 
-	h.sess = debug.New(*source, host, opts)
+	h.sess = debug.New(*source, &host, opts)
+	h.runId++
 	return true
 }

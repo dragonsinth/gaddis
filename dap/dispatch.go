@@ -2,7 +2,20 @@ package dap
 
 import (
 	api "github.com/google/go-dap"
+	"log"
 )
+
+// dispatchRequest processes each response.
+func (h *Session) dispatchResponse(rsp api.ResponseMessage) {
+	switch response := rsp.(type) {
+	case *api.RunInTerminalResponse:
+		h.onRunInTerminalResponse(response)
+	case *api.StartDebuggingResponse:
+		h.onStartDebuggingResponse(response)
+	default:
+		log.Printf("Unknown response type: %T", response)
+	}
+}
 
 // dispatchRequest processes each request and sends back events and responses.
 func (h *Session) dispatchRequest(req api.RequestMessage) {
@@ -88,6 +101,6 @@ func (h *Session) dispatchRequest(req api.RequestMessage) {
 	case *api.BreakpointLocationsRequest:
 		h.onBreakpointLocationsRequest(request)
 	default:
-		h.unhandled(req.GetRequest().GetRequest().GetRequest())
+		h.unhandled(req.GetRequest())
 	}
 }

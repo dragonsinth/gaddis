@@ -2,7 +2,6 @@ package debug
 
 import (
 	"bufio"
-	"bytes"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/lib"
 	"math/rand"
@@ -54,7 +53,7 @@ func New(
 	ec := &asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
 		IoContext: lib.IoContext{
-			Stdin:   bufio.NewScanner(bytes.NewReader(opts.Stdin)),
+			Stdin:   bufio.NewScanner(opts.Stdin),
 			Stdout:  &bufferedSyncWriter{out: opts.Stdout},
 			WorkDir: opts.WorkDir,
 		},

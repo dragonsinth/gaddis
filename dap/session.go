@@ -45,8 +45,14 @@ type Session struct {
 	stopOnEntry     bool
 	noDebug         bool
 
-	sess   *debug.Session
-	source *api.Source
+	sess       *debug.Session
+	source     *api.Source
+	launchArgs launchArgs
+	runId      int // new per sess
+
+	canTerminal bool
+	terminal    *Terminal
+	terminalPid int
 }
 
 // Run runs the session for as long as it last.
@@ -54,6 +60,10 @@ func (h *Session) Run() error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 	defer close(h.sendQueue)
+
+	defer func() {
+
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -63,7 +73,17 @@ func (h *Session) Run() error {
 
 	defer func() {
 		if h.sess != nil {
+			h.sess.Host.SuppressAllEvents()
 			h.sess.Halt()
+		}
+	}()
+
+	defer func() {
+		if h.terminal != nil {
+			h.terminal.Close()
+			if h.terminalPid > 0 {
+				// TODO: kill?
+			}
 		}
 	}()
 
@@ -84,6 +104,8 @@ func (h *Session) handleRequest() error {
 	h.dbgLog.Printf("Received request: %s", toJson(request))
 	if req, ok := request.(api.RequestMessage); ok {
 		h.dispatchRequest(req)
+	} else if rsp, ok := request.(api.ResponseMessage); ok {
+		h.dispatchResponse(rsp)
 	} else {
 		log.Println("error: not a request message!\n", toJson(request))
 	}
@@ -108,6 +130,8 @@ func (h *Session) sendFromQueue() {
 	seq := 1
 	for message := range h.sendQueue {
 		switch m := message.(type) {
+		case api.RequestMessage:
+			m.GetRequest().Seq = seq
 		case api.ResponseMessage:
 			m.GetResponse().Seq = seq
 		case api.EventMessage:

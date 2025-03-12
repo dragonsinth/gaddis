@@ -3,6 +3,7 @@ package dap
 import (
 	"fmt"
 	api "github.com/google/go-dap"
+	"log"
 )
 
 func (h *Session) unhandled(request *api.Request) {
@@ -76,4 +77,8 @@ func (h *Session) onReadMemoryRequest(request *api.ReadMemoryRequest) {
 
 func (h *Session) onCancelRequest(request *api.CancelRequest) {
 	h.send(newErrorResponse(request.GetSeq(), request.Command, ""))
+}
+
+func (h *Session) onStartDebuggingResponse(response *api.StartDebuggingResponse) {
+	log.Printf("Unexpected response type: %T", response)
 }

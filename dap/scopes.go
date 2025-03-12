@@ -6,7 +6,7 @@ import (
 )
 
 func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
-	if h.sess == nil {
+	if h.sess == nil || request.Arguments.ThreadId != h.runId {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
@@ -112,7 +112,7 @@ func (h *Session) onThreadsRequest(request *api.ThreadsRequest) {
 	}
 	response := &api.ThreadsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body = api.ThreadsResponseBody{Threads: []api.Thread{{Id: 1, Name: "main"}}}
+	response.Body = api.ThreadsResponseBody{Threads: []api.Thread{{Id: h.runId, Name: "main"}}}
 	h.send(response)
 }
 

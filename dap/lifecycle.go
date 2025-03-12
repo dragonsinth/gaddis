@@ -16,6 +16,7 @@ func (h *Session) onInitializeRequest(request *api.InitializeRequest) {
 	if request.Arguments.ColumnsStartAt1 {
 		h.colOff = 1
 	}
+	h.canTerminal = request.Arguments.SupportsRunInTerminalRequest
 
 	response := &api.InitializeResponse{
 		Response: *newResponse(request.Seq, request.Command),
@@ -105,8 +106,22 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
+	h.sess.Host.SuppressAllEvents()
+	if h.terminal != nil {
+		h.terminal.Interrupt()
+	}
 	h.sess.Halt()
+	h.sess.Wait()
+	if h.terminal != nil {
+		h.terminal.Continue()
+	}
 	h.sess = nil
+
+	// clear any lingering client state for the old session
+	h.send(&api.ExitedEvent{
+		Event: *newEvent("exited"),
+		Body:  api.ExitedEventBody{ExitCode: 1},
+	})
 
 	var wrap struct {
 		Arguments launchArgs `json:"arguments"`
@@ -164,6 +179,9 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 }
 
 func (h *Session) onDisconnectRequest(request *api.DisconnectRequest) {
+	if h.terminal != nil {
+		h.terminal.Interrupt()
+	}
 	if h.sess != nil {
 		h.sess.Terminate()
 	}
@@ -173,6 +191,9 @@ func (h *Session) onDisconnectRequest(request *api.DisconnectRequest) {
 }
 
 func (h *Session) onTerminateRequest(request *api.TerminateRequest) {
+	if h.terminal != nil {
+		h.terminal.Interrupt()
+	}
 	if h.sess != nil {
 		h.sess.Terminate()
 	}
@@ -182,4 +203,8 @@ func (h *Session) onTerminateRequest(request *api.TerminateRequest) {
 		Event: *newEvent("terminated"),
 	})
 	h.send(response)
+}
+
+func (h *Session) onRunInTerminalResponse(response *api.RunInTerminalResponse) {
+	h.terminalPid = response.Body.ProcessId
 }

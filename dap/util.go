@@ -27,6 +27,16 @@ func newEvent(event string) *api.Event {
 	}
 }
 
+func newRequest(command string) *api.Request {
+	return &api.Request{
+		ProtocolMessage: api.ProtocolMessage{
+			Seq:  0,
+			Type: "request",
+		},
+		Command: command,
+	}
+}
+
 func newResponse(requestSeq int, command string) *api.Response {
 	return &api.Response{
 		ProtocolMessage: api.ProtocolMessage{
@@ -48,9 +58,9 @@ func newErrorResponse(requestSeq int, command string, message string) *api.Error
 	return er
 }
 
-func tryReadInput(program string) []byte {
+func tryReadInput(program string) *bytes.Reader {
 	buf, _ := os.ReadFile(program + ".in")
-	return buf
+	return bytes.NewReader(buf)
 }
 
 func fromJson(buf json.RawMessage, obj any) error {
