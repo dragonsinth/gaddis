@@ -34,7 +34,16 @@ type End struct {
 }
 
 func (i End) Exec(p *Execution) {
-	panic("unreachable")
+	if len(p.Frame.Eval) != 0 {
+		panic(p.Frame.Eval)
+	}
+	p.PC = p.Frame.Return
+	p.Stack = p.Stack[:len(p.Stack)-1]
+	if len(p.Stack) > 0 {
+		p.Frame = &p.Stack[len(p.Stack)-1]
+	} else {
+		p.Frame = nil
+	}
 }
 
 func (i End) String() string {
@@ -47,7 +56,6 @@ func (i End) Sym() string {
 
 type Call struct {
 	baseInst
-	Scope *ast.Scope
 	Label *Label
 	NArgs int
 }
@@ -85,22 +93,16 @@ type Return struct {
 }
 
 func (i Return) Exec(p *Execution) {
+	if len(p.Frame.Eval) != i.NVal {
+		panic(p.Frame.Eval)
+	}
 	p.PC = p.Frame.Return
 	p.Stack = p.Stack[:len(p.Stack)-1]
-	if len(p.Stack) > 0 {
-		if len(p.Frame.Eval) != i.NVal {
-			panic(p.Frame.Eval)
-		}
-		// copy return value(s) from the old frame to the new frame
-		rets := p.Frame.Eval
-		p.Frame = &p.Stack[len(p.Stack)-1]
-		p.Frame.Eval = append(p.Frame.Eval, rets...)
-	} else {
-		if len(p.Frame.Eval) != 0 {
-			panic(p.Frame.Eval)
-		}
-		p.Frame = nil
-	}
+
+	// copy return value(s) from the old frame to the new frame
+	rets := p.Frame.Eval
+	p.Frame = &p.Stack[len(p.Stack)-1]
+	p.Frame.Eval = append(p.Frame.Eval, rets...)
 }
 
 func (i Return) String() string {

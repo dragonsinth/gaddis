@@ -110,8 +110,10 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	}
 	if !vd.IsConst {
 		if vd.IsParam {
+			vd.Id = len(s.Params)
 			s.Params = append(s.Params, vd)
 		} else {
+			vd.Id = len(s.Locals)
 			s.Locals = append(s.Locals, vd)
 		}
 	}

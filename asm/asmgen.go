@@ -28,25 +28,13 @@ func (baseInst) Sym() string {
 
 func Assemble(prog *ast.Program) *Assembly {
 	v := &Visitor{
-		globalIds: map[*ast.VarDecl]int{},
-		paramIds:  map[*ast.VarDecl]int{},
-		localIds:  map[*ast.VarDecl]int{},
 		functions: map[*ast.FunctionStmt]*Label{},
 		modules:   map[*ast.ModuleStmt]*Label{},
 	}
 
 	// Map the global scope up front.
-	globalId := 0
 	for _, stmt := range prog.Block.Statements {
 		switch stmt := stmt.(type) {
-		case *ast.DeclareStmt:
-			// emit declaration only, not assignment
-			for _, decl := range stmt.Decls {
-				if !decl.IsConst {
-					v.globalIds[decl] = globalId
-					globalId++
-				}
-			}
 		case *ast.ModuleStmt:
 			v.modules[stmt] = &Label{Name: stmt.Name}
 		case *ast.FunctionStmt:
@@ -83,7 +71,6 @@ func Assemble(prog *ast.Program) *Assembly {
 		scope := ref.ModuleStmt.Scope
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ref.ModuleStmt.SourceInfo.Head()},
-			Scope:    scope,
 			Label:    v.modules[ref.ModuleStmt],
 			NArgs:    len(scope.Params),
 		})
@@ -91,10 +78,6 @@ func Assemble(prog *ast.Program) *Assembly {
 	}
 
 	// terminate the program cleanly
-	v.code = append(v.code, Return{
-		baseInst: baseInst{finalReturnSi},
-		NVal:     0,
-	})
 	v.code = append(v.code, End{
 		baseInst: baseInst{finalReturnSi},
 		Label:    globalLabel,
@@ -119,9 +102,6 @@ func Assemble(prog *ast.Program) *Assembly {
 type Visitor struct {
 	base.Visitor
 	code      []Inst
-	globalIds map[*ast.VarDecl]int
-	paramIds  map[*ast.VarDecl]int
-	localIds  map[*ast.VarDecl]int
 	functions map[*ast.FunctionStmt]*Label
 	modules   map[*ast.ModuleStmt]*Label
 }
@@ -339,7 +319,6 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	v.code = append(v.code, Call{
 		baseInst: baseInst{cs.SourceInfo},
-		Scope:    cs.Ref.Scope,
 		Label:    v.modules[cs.Ref],
 		NArgs:    len(cs.Args),
 	})
@@ -347,7 +326,6 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 }
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
-	v.mapScope(ms.Scope)
 	lbl := v.modules[ms]
 	lbl.PC = len(v.code)
 	v.code = append(v.code, Begin{
@@ -361,10 +339,6 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
-	v.code = append(v.code, Return{
-		baseInst: baseInst{ms.SourceInfo.Tail()},
-		NVal:     0,
-	})
 	v.code = append(v.code, End{
 		baseInst: baseInst{ms.SourceInfo.Tail()},
 		Label:    v.modules[ms],
@@ -372,7 +346,6 @@ func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
 }
 
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
-	v.mapScope(fs.Scope)
 	lbl := v.functions[fs]
 	lbl.PC = len(v.code)
 	v.code = append(v.code, Begin{
@@ -383,15 +356,6 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 		NLocals:  len(fs.Scope.Locals),
 	})
 	return true
-}
-
-func (v *Visitor) mapScope(scope *ast.Scope) {
-	for i, decl := range scope.Params {
-		v.paramIds[decl] = i
-	}
-	for i, decl := range scope.Locals {
-		v.localIds[decl] = i
-	}
 }
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
@@ -446,7 +410,6 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	} else {
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ce.SourceInfo},
-			Scope:    ce.Ref.Scope,
 			Label:    v.functions[ce.Ref],
 			NArgs:    len(ce.Args),
 		})
@@ -495,13 +458,13 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 			v.code = append(v.code, GlobalRef{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.globalIds[decl],
+				Index:    decl.Id,
 			})
 		} else {
 			v.code = append(v.code, GlobalVal{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.globalIds[decl],
+				Index:    decl.Id,
 			})
 		}
 		return
@@ -512,20 +475,20 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 			v.code = append(v.code, ParamVal{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.paramIds[decl],
+				Index:    decl.Id,
 			})
 		} else if needRef {
 			v.code = append(v.code, ParamRef{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.paramIds[decl],
+				Index:    decl.Id,
 			})
 		} else {
 			// Take the value (it's a reference) then derefence it.
 			v.code = append(v.code, ParamPtr{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.paramIds[decl],
+				Index:    decl.Id,
 			})
 		}
 	} else {
@@ -537,13 +500,13 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 			v.code = append(v.code, LocalRef{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.localIds[decl],
+				Index:    decl.Id,
 			})
 		} else {
 			v.code = append(v.code, LocalVal{
 				baseInst: baseInst{hs.GetSourceInfo()},
 				Name:     decl.Name,
-				Index:    v.localIds[decl],
+				Index:    decl.Id,
 			})
 		}
 	}
