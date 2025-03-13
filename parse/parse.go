@@ -25,6 +25,12 @@ func Parse(input string) (*ast.Program, []ast.Comment, []ast.Error) {
 	return ret, p.comments, errors
 }
 
+func ParseExpr(input string) (ast.Expression, error) {
+	l := lex.New(input)
+	p := New(l)
+	return p.safeParseExpression()
+}
+
 func New(l *lex.Lexer) *Parser {
 	return &Parser{
 		lex:  l,
@@ -126,6 +132,20 @@ func (p *Parser) safeParseStatement(isGlobalBlock bool) ast.Statement {
 	}()
 
 	return p.parseStatement(isGlobalBlock)
+}
+
+func (p *Parser) safeParseExpression() (_ ast.Expression, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			if pe, ok := e.(ast.Error); ok {
+				err = pe
+			} else {
+				panic(e)
+			}
+		}
+	}()
+
+	return p.parseExpression(), nil
 }
 
 type EmptyStatement struct {

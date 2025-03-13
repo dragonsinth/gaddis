@@ -18,7 +18,7 @@ func Compile(src string) (*ast.Program, []ast.Comment, []ast.Error) {
 
 	// report collection and resolution errors together
 	errs = collect.Collect(prog)
-	errs = append(errs, resolve.Resolve(prog)...)
+	errs = append(errs, resolve.Resolve(prog, prog.Scope)...)
 	if len(errs) > 0 {
 		return prog, comments, errs
 	}

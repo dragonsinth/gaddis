@@ -6,46 +6,23 @@ import (
 	"github.com/dragonsinth/gaddis/lib"
 )
 
-type Assembly struct {
-	GlobalScope *ast.Scope
-	Code        []Inst
-}
-
-type Inst interface {
-	ast.HasSourceInfo
-	Exec(p *Execution)
-	String() string
-	Sym() string
-}
-
-type baseInst struct {
-	ast.SourceInfo
-}
-
-func (baseInst) Sym() string {
-	return ""
-}
-
 func Assemble(prog *ast.Program) *Assembly {
-	v := &Visitor{
-		functions: map[*ast.FunctionStmt]*Label{},
-		modules:   map[*ast.ModuleStmt]*Label{},
-	}
+	v := &Visitor{}
 
 	// Map the global scope up front.
 	for _, stmt := range prog.Block.Statements {
 		switch stmt := stmt.(type) {
 		case *ast.ModuleStmt:
-			v.modules[stmt] = &Label{Name: stmt.Name}
+			v.newLabel(stmt.Name)
 		case *ast.FunctionStmt:
-			v.functions[stmt] = &Label{Name: stmt.Name}
+			v.newLabel(stmt.Name)
 		default:
 			// nothing
 		}
 	}
 
 	// Emit the global block's begin statement.
-	globalLabel := &Label{Name: "__global", PC: 0}
+	globalLabel := v.newLabel("global!")
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{prog.Block.SourceInfo},
 		Scope:    prog.Scope,
@@ -71,7 +48,7 @@ func Assemble(prog *ast.Program) *Assembly {
 		scope := ref.ModuleStmt.Scope
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ref.ModuleStmt.SourceInfo.Head()},
-			Label:    v.modules[ref.ModuleStmt],
+			Label:    v.refLabel("main"),
 			NArgs:    len(scope.Params),
 		})
 		finalReturnSi = ref.ModuleStmt.SourceInfo.Tail()
@@ -96,14 +73,14 @@ func Assemble(prog *ast.Program) *Assembly {
 	return &Assembly{
 		GlobalScope: prog.Scope,
 		Code:        v.code,
+		Labels:      v.labels,
 	}
 }
 
 type Visitor struct {
 	base.Visitor
-	code      []Inst
-	functions map[*ast.FunctionStmt]*Label
-	modules   map[*ast.ModuleStmt]*Label
+	code   []Inst
+	labels map[string]*Label
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -319,14 +296,14 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	v.code = append(v.code, Call{
 		baseInst: baseInst{cs.SourceInfo},
-		Label:    v.modules[cs.Ref],
+		Label:    v.refLabel(cs.Ref.Name),
 		NArgs:    len(cs.Args),
 	})
 	return false
 }
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
-	lbl := v.modules[ms]
+	lbl := v.refLabel(ms.Name)
 	lbl.PC = len(v.code)
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{ms.SourceInfo},
@@ -341,12 +318,12 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
 	v.code = append(v.code, End{
 		baseInst: baseInst{ms.SourceInfo.Tail()},
-		Label:    v.modules[ms],
+		Label:    v.refLabel(ms.Name),
 	})
 }
 
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
-	lbl := v.functions[fs]
+	lbl := v.refLabel(fs.Name)
 	lbl.PC = len(v.code)
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{fs.SourceInfo},
@@ -361,7 +338,7 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
 	v.code = append(v.code, End{
 		baseInst: baseInst{fs.SourceInfo.Tail()},
-		Label:    v.functions[fs],
+		Label:    v.refLabel(fs.Name),
 	})
 }
 
@@ -410,7 +387,7 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	} else {
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ce.SourceInfo},
-			Label:    v.functions[ce.Ref],
+			Label:    v.refLabel(ce.Ref.Name),
 			NArgs:    len(ce.Args),
 		})
 	}
@@ -525,6 +502,25 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 			v.maybeCast(param.Type, arg)
 		}
 	}
+}
+
+func (v *Visitor) newLabel(name string) *Label {
+	if v.labels == nil {
+		v.labels = map[string]*Label{}
+	}
+	if _, ok := v.labels[name]; ok {
+		panic(name)
+	}
+	l := &Label{Name: name}
+	v.labels[name] = l
+	return l
+}
+
+func (v *Visitor) refLabel(name string) *Label {
+	if _, ok := v.labels[name]; !ok {
+		panic(name)
+	}
+	return v.labels[name]
 }
 
 func makeBinaryOp(t ast.PrimitiveType, hs ast.HasSourceInfo, op ast.Operator) Inst {

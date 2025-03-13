@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"errors"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"io"
@@ -210,4 +211,21 @@ func (ds *Session) SetInstBreakpoints(pcs []int) {
 			}
 		}
 	})
+}
+
+func (ds *Session) EvaluateExpressionInFrame(targetFrameId int, expr string) (val any, typ ast.Type, err error) {
+	found := false
+	ds.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
+		if fr.Native != nil {
+			return
+		}
+		if frameId == targetFrameId || fr.Scope.IsGlobal && targetFrameId == 0 {
+			found = true
+			val, typ, err = ds.evaluateExprInFrame(fr, expr)
+		}
+	})
+	if !found {
+		err = errors.New("frame not found")
+	}
+	return
 }

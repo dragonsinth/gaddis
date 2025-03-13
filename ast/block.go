@@ -5,6 +5,16 @@ type Program struct {
 	Scope *Scope
 }
 
+func (p *Program) GetSourceInfo() SourceInfo {
+	return p.Block.GetSourceInfo()
+}
+
+func (p *Program) Visit(v Visitor) {
+	p.Block.Visit(v)
+}
+
+var _ Node = &Program{}
+
 type Block struct {
 	SourceInfo
 	Statements []Statement

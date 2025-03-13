@@ -3,56 +3,9 @@ package asm
 import (
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
+	"reflect"
 	"slices"
 )
-
-type Begin struct {
-	baseInst
-	Scope   *ast.Scope
-	Label   *Label
-	NParams int
-	NLocals int
-}
-
-func (i Begin) Exec(p *Execution) {
-	p.Frame.Params = slices.Clone(p.Frame.Args)
-	p.Frame.Locals = make([]any, i.NLocals)
-	p.Frame.Eval = make([]any, 0, 16)
-}
-
-func (i Begin) String() string {
-	return fmt.Sprintf("begin(%d,%d) :%s", i.NParams, i.NLocals, i.Label.Name)
-}
-
-func (i Begin) Sym() string {
-	return i.Label.Name
-}
-
-type End struct {
-	baseInst
-	Label *Label
-}
-
-func (i End) Exec(p *Execution) {
-	if len(p.Frame.Eval) != 0 {
-		panic(p.Frame.Eval)
-	}
-	p.PC = p.Frame.Return
-	p.Stack = p.Stack[:len(p.Stack)-1]
-	if len(p.Stack) > 0 {
-		p.Frame = &p.Stack[len(p.Stack)-1]
-	} else {
-		p.Frame = nil
-	}
-}
-
-func (i End) String() string {
-	return fmt.Sprintf("end :%s", i.Label.Name)
-}
-
-func (i End) Sym() string {
-	return i.Label.Name
-}
 
 type Call struct {
 	baseInst
@@ -111,4 +64,43 @@ func (i Return) String() string {
 	} else {
 		return fmt.Sprintf("return(%d)", i.NVal)
 	}
+}
+
+type LibCall struct {
+	baseInst
+	Name  string
+	Type  ast.PrimitiveType
+	Index int
+	NArg  int
+}
+
+func (i LibCall) Exec(p *Execution) {
+	args := p.PopN(i.NArg)
+	fn := p.Lib[i.Index].FuncPtr
+	var ret []reflect.Value
+	if fn.Type().IsVariadic() {
+		ret = fn.CallSlice([]reflect.Value{reflect.ValueOf(args)})
+	} else {
+		rArgs := make([]reflect.Value, i.NArg)
+		for i, arg := range args {
+			rArgs[i] = reflect.ValueOf(arg)
+		}
+		ret = fn.Call(rArgs)
+	}
+
+	switch len(ret) {
+	case 0:
+	case 1:
+		p.Push(ret[0].Interface())
+	default:
+		panic(ret)
+	}
+}
+
+func (i LibCall) String() string {
+	return fmt.Sprintf("libcall(%d) %d:%s", i.NArg, i.Index, i.Name)
+}
+
+func (i LibCall) Sym() string {
+	return i.Name
 }

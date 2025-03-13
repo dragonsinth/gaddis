@@ -2,7 +2,79 @@ package asm
 
 import (
 	"fmt"
+	"github.com/dragonsinth/gaddis/ast"
+	"slices"
 )
+
+type Begin struct {
+	baseInst
+	Scope   *ast.Scope
+	Label   *Label
+	NParams int
+	NLocals int
+}
+
+func (i Begin) Exec(p *Execution) {
+	p.Frame.Params = slices.Clone(p.Frame.Args)
+	p.Frame.Locals = make([]any, i.NLocals)
+	p.Frame.Eval = make([]any, 0, 16)
+}
+
+func (i Begin) String() string {
+	return fmt.Sprintf("begin(%d,%d) :%s", i.NParams, i.NLocals, i.Label.Name)
+}
+
+func (i Begin) Sym() string {
+	return i.Label.Name
+}
+
+type End struct {
+	baseInst
+	Label *Label
+}
+
+func (i End) Exec(p *Execution) {
+	if len(p.Frame.Eval) != 0 {
+		panic(p.Frame.Eval)
+	}
+	p.PC = p.Frame.Return
+	p.Stack = p.Stack[:len(p.Stack)-1]
+	if len(p.Stack) > 0 {
+		p.Frame = &p.Stack[len(p.Stack)-1]
+	} else {
+		p.Frame = nil
+	}
+}
+
+func (i End) String() string {
+	return fmt.Sprintf("end :%s", i.Label.Name)
+}
+
+func (i End) Sym() string {
+	return i.Label.Name
+}
+
+// Halt terminates the program with an expected number of values left on the eval stack.
+// Used for expression evaluation.
+type Halt struct {
+	baseInst
+	NVal int
+}
+
+func (i Halt) Exec(p *Execution) {
+	if len(p.Frame.Eval) != i.NVal {
+		panic(p.Frame.Eval)
+	}
+	p.Frame = nil
+}
+
+func (i Halt) String() string {
+	if i.NVal == 0 {
+		return "halt"
+	} else {
+		return fmt.Sprintf("halt(%d)", i.NVal)
+	}
+}
 
 type Jump struct {
 	baseInst
@@ -47,90 +119,4 @@ func (i JumpTrue) Exec(p *Execution) {
 
 func (i JumpTrue) String() string {
 	return fmt.Sprintf("jump true %s", PcRef(i.Label.PC))
-}
-
-type ForInt struct {
-	baseInst
-}
-
-func (i ForInt) Exec(p *Execution) {
-	step := p.Pop().(int64)
-	stop := p.Pop().(int64)
-	val := p.Pop().(int64)
-	ref := p.Pop().(*any)
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
-}
-
-func (i ForInt) String() string {
-	return "for int"
-}
-
-type ForReal struct {
-	baseInst
-}
-
-func (i ForReal) Exec(p *Execution) {
-	step := p.Pop().(float64)
-	stop := p.Pop().(float64)
-	val := p.Pop().(float64)
-	ref := p.Pop().(*any)
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
-}
-
-func (i ForReal) String() string {
-	return "for real"
-}
-
-type StepInt struct {
-	baseInst
-}
-
-func (i StepInt) Exec(p *Execution) {
-	step := p.Pop().(int64)
-	stop := p.Pop().(int64)
-	ref := p.Pop().(*any)
-	val := (*ref).(int64)
-	val += step
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
-}
-
-func (i StepInt) String() string {
-	return "step int"
-}
-
-type StepReal struct {
-	baseInst
-}
-
-func (i StepReal) Exec(p *Execution) {
-	step := p.Pop().(float64)
-	stop := p.Pop().(float64)
-	ref := p.Pop().(*any)
-	val := (*ref).(float64)
-	val += step
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
-}
-
-func (i StepReal) String() string {
-	return "step real"
 }

@@ -5,12 +5,10 @@ import (
 	"github.com/dragonsinth/gaddis/base"
 )
 
-// TODO: ensure the resolved thing is the correct type of thing.
-
 // Resolve resolves symbols.
-func Resolve(prog *ast.Program) []ast.Error {
-	v := &Visitor{currScope: prog.Scope}
-	prog.Block.Visit(v)
+func Resolve(node ast.Node, scope *ast.Scope) []ast.Error {
+	v := &Visitor{currScope: scope}
+	node.Visit(v)
 	return v.Errors
 }
 

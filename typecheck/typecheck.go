@@ -5,10 +5,10 @@ import (
 	"github.com/dragonsinth/gaddis/base"
 )
 
-func TypeCheck(program *ast.Program) []ast.Error {
+func TypeCheck(node ast.Node) []ast.Error {
 	// visit the statements in the global block
 	v := &Visitor{}
-	program.Block.Visit(v)
+	node.Visit(v)
 	return v.Errors
 }
 

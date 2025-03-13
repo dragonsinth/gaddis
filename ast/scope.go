@@ -8,8 +8,9 @@ import "fmt"
 type Scope struct {
 	SourceInfo   SourceInfo
 	Parent       *Scope
-	IsExternal   bool          // if true, external scope
-	IsGlobal     bool          // if true, global scope
+	IsExternal   bool // if true, external scope
+	IsGlobal     bool // if true, global scope
+	IsEval       bool
 	ModuleStmt   *ModuleStmt   // if true, enclosing module
 	FunctionStmt *FunctionStmt // if true, enclosing function
 	Decls        map[string]*Decl
@@ -22,6 +23,8 @@ func (s *Scope) Desc() string {
 		return "external"
 	} else if s.IsGlobal {
 		return "global"
+	} else if s.IsEval {
+		return "eval"
 	} else if s.ModuleStmt != nil {
 		return fmt.Sprintf("%s()", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
@@ -36,6 +39,8 @@ func (s *Scope) String() string {
 		return "external"
 	} else if s.IsGlobal {
 		return "global"
+	} else if s.IsEval {
+		return "eval"
 	} else if s.ModuleStmt != nil {
 		return fmt.Sprintf("Module %s", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
@@ -145,5 +150,14 @@ func NewFunctionScope(fs *FunctionStmt, parent *Scope) *Scope {
 		Parent:       parent,
 		FunctionStmt: fs,
 		Decls:        map[string]*Decl{},
+	}
+}
+
+func NewEvalScope(expr Expression, parent *Scope) *Scope {
+	return &Scope{
+		SourceInfo: expr.GetSourceInfo(),
+		Parent:     parent,
+		IsEval:     true,
+		Decls:      map[string]*Decl{},
 	}
 }

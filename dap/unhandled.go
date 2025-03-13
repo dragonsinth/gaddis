@@ -24,11 +24,6 @@ func (h *Session) onSetExpressionRequest(request *api.SetExpressionRequest) {
 	h.unhandled(request)
 }
 
-func (h *Session) onEvaluateRequest(request *api.EvaluateRequest) {
-	// TODO: support
-	h.unhandled(request)
-}
-
 func (h *Session) onStepBackRequest(request *api.StepBackRequest) {
 	h.unhandled(request)
 }

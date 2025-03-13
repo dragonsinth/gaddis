@@ -61,6 +61,9 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 }
 
 func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
 	name := request.Arguments.Name
 	value := request.Arguments.Value
 
@@ -145,5 +148,23 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 		NamedVariables:     0,
 		IndexedVariables:   0,
 	}
+	h.send(response)
+}
+
+func (h *Session) onEvaluateRequest(request *api.EvaluateRequest) {
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
+
+	val, typ, err := h.sess.EvaluateExpressionInFrame(request.Arguments.FrameId, request.Arguments.Expression)
+	if err != nil {
+		h.send(newErrorResponse(request.Seq, request.Command, err.Error()))
+		return
+	}
+
+	response := &api.EvaluateResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	response.Body.Result = asm.DebugStringVal(val)
+	response.Body.Type = typ.String()
 	h.send(response)
 }

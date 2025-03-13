@@ -5,6 +5,17 @@ import (
 	api "github.com/google/go-dap"
 )
 
+func (h *Session) onThreadsRequest(request *api.ThreadsRequest) {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	response := &api.ThreadsResponse{}
+	response.Response = *newResponse(request.Seq, request.Command)
+	response.Body = api.ThreadsResponseBody{Threads: []api.Thread{{Id: h.runId, Name: "main"}}}
+	h.send(response)
+}
+
 func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
 	if h.pausedSessionRequiredError(request) {
 		return
@@ -118,17 +129,6 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 			}
 		}
 	})
-	h.send(response)
-}
-
-func (h *Session) onThreadsRequest(request *api.ThreadsRequest) {
-	if h.sess == nil {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
-		return
-	}
-	response := &api.ThreadsResponse{}
-	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body = api.ThreadsResponseBody{Threads: []api.Thread{{Id: h.runId, Name: "main"}}}
 	h.send(response)
 }
 
