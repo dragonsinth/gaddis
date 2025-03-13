@@ -6,7 +6,10 @@ import (
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/lib"
 	"math/rand"
+	"path/filepath"
 	"reflect"
+	"runtime"
+	"slices"
 	"strings"
 )
 
@@ -54,13 +57,21 @@ type Frame struct {
 	Locals []any // current locals
 	Eval   []any // eval stack
 
-	// try/catch stack?
+	// exception info only
+	Native *NativeFrame
+}
+
+type NativeFrame struct {
+	File string
+	Line int
+	Func string
 }
 
 func (p *Execution) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(fmt.Sprint(r))
+			p.AddPanicFrames()
 		}
 	}()
 
@@ -78,6 +89,50 @@ func (p *Execution) Run() (err error) {
 	return nil
 }
 
+func (p *Execution) AddPanicFrames() {
+	// scan the stack for any native lib frames
+	pcs := make([]uintptr, 256)
+	pcs = pcs[:runtime.Callers(1, pcs)]
+	frames := runtime.CallersFrames(pcs)
+	frame, more := frames.Next()
+
+	// top frame is me, find the gaddis root
+	myFile := filepath.Dir(frame.File)
+	var root string
+	for root = myFile; len(root) > 5 && filepath.Base(root) != "gaddis"; root = filepath.Dir(root) {
+	}
+
+	var newFrames []Frame
+	for ; more; frame, more = frames.Next() {
+		if strings.HasPrefix(frame.File, root) {
+			path := strings.TrimPrefix(frame.File, root)
+			dir := filepath.Base(filepath.Dir(path))
+			if dir == "lib" {
+				// found a hit; generate a synthetic frame
+				if pos := strings.LastIndex(frame.Function, "/lib."); pos >= 0 {
+					frame.Function = frame.Function[pos+1:]
+				}
+				newFrames = append(newFrames, Frame{
+					Scope: ast.ExternalScope,
+					Native: &NativeFrame{
+						File: frame.File,
+						Line: frame.Line - 1, // go uses 1-based numbering
+						Func: frame.Function,
+					},
+				})
+			}
+		}
+	}
+	// add the frames in reverse order
+	slices.Reverse(newFrames)
+	// set the last PC in the first frame
+	if len(newFrames) > 0 {
+		newFrames[0].Return = p.PC
+		p.Stack = append(p.Stack, newFrames...)
+		p.Frame = &p.Stack[len(p.Stack)-1]
+	}
+}
+
 func (p *Execution) GetStackFrames(f func(fr *Frame, id int, inst Inst, pc int)) {
 	pc := p.PC
 	for i := len(p.Stack) - 1; i >= 0; i-- {
@@ -91,14 +146,14 @@ func (p *Execution) GetStackFrames(f func(fr *Frame, id int, inst Inst, pc int))
 func (p *Execution) GetStackTrace(filename string) string {
 	var sb strings.Builder
 	p.GetStackFrames(func(fr *Frame, _ int, inst Inst, _ int) {
-		line := inst.GetSourceInfo().Start.Line + 1
-		if lc, ok := inst.(LibCall); ok {
-			// if the top of stack is a libcall with a native exception, generate a synthetic frame
-			libScope := FormatLibCall(lc)
-			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, libScope)
+		if fr.Native != nil {
+			n := fr.Native
+			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", n.File, n.Line, n.Func)
+		} else {
+			line := inst.GetSourceInfo().Start.Line + 1
+			scope := FormatFrameScope(fr)
+			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scope)
 		}
-		scope := FormatFrameScope(fr)
-		_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scope)
 	})
 	return sb.String()
 }

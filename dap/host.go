@@ -1,7 +1,6 @@
 package dap
 
 import (
-	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
 	"sync/atomic"
@@ -34,7 +33,7 @@ func (eh *eventHost) Exception(err error) {
 	})
 }
 
-func (eh *eventHost) Panicked(err error, pos []ast.Position, trace []string) {
+func (eh *eventHost) Panicked(err error, errFrames []debug.ErrFrame) {
 	// just send stack traces over stderr and exit
 	eh.send(&api.OutputEvent{
 		Event: *newEvent("output"),
@@ -44,16 +43,21 @@ func (eh *eventHost) Panicked(err error, pos []ast.Position, trace []string) {
 			Source:   eh.source,
 		},
 	})
-	for i := range pos {
+	for _, fr := range errFrames {
+		body := api.OutputEventBody{
+			Category: "stderr",
+			Output:   "\tin " + fr.Desc + "\n",
+		}
+		if fr.Pos != nil {
+			body.Source = eh.source
+			body.Line = fr.Pos.Line + eh.lineOff
+			body.Column = fr.Pos.Column + eh.colOff
+		} else {
+			body.Source = libSource(fr.File)
+		}
 		eh.send(&api.OutputEvent{
 			Event: *newEvent("output"),
-			Body: api.OutputEventBody{
-				Category: "stderr",
-				Output:   "\tin " + trace[i] + "\n",
-				Source:   eh.source,
-				Line:     pos[i].Line + eh.lineOff,
-				Column:   pos[i].Column + eh.colOff,
-			},
+			Body:  body,
 		})
 	}
 	eh.Exited(1)

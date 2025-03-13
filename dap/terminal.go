@@ -58,7 +58,7 @@ func (t *Terminal) Continue() {
 }
 
 func StartTerminal() (*Terminal, error) {
-	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:0"))
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, fmt.Errorf("creating terminal listener: %v", err)
 	}
@@ -86,19 +86,16 @@ func StartTerminal() (*Terminal, error) {
 			_ = listener.Close()
 		}()
 
-		for {
-			c, err := listener.Accept()
-			if err != nil {
-				log.Println(fmt.Errorf("accepting terminal listener: %v", err))
-				return
-			}
-			conn := c.(*net.TCPConn)
-
-			log.Println("Accepted terminal connection from", conn.RemoteAddr())
-			t.Conn = conn
-			_ = t.Conn.SetKeepAlive(true)
+		c, err := listener.Accept()
+		if err != nil {
+			log.Println(fmt.Errorf("accepting terminal listener: %v", err))
 			return
 		}
+		conn := c.(*net.TCPConn)
+
+		log.Println("Accepted terminal connection from", conn.RemoteAddr())
+		t.Conn = conn
+		_ = t.Conn.SetKeepAlive(true)
 	}()
 
 	return t, nil

@@ -1,6 +1,7 @@
 package dap
 
 import (
+	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
 )
@@ -77,11 +78,30 @@ func (h *Session) onRestartFrameRequest(request *api.RestartFrameRequest) {
 		return
 	}
 
+	found := false
+	native := false
+	targetFrameId := request.Arguments.FrameId
+	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, _ asm.Inst, _ int) {
+		if frameId != targetFrameId {
+			return
+		}
+		found = true
+		native = fr.Native != nil
+	})
+
+	if !found {
+		h.send(newErrorResponse(request.Seq, request.Command, "no frame found"))
+		return
+	} else if native {
+		h.send(newErrorResponse(request.Seq, request.Command, "cannot restart external frame"))
+		return
+	}
+
 	response := &api.RestartFrameResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	h.sess.RestartFrame(request.Arguments.FrameId)
+	h.sess.RestartFrame(targetFrameId)
 
 	h.send(&api.StoppedEvent{
 		Event: *newEvent("stopped"),

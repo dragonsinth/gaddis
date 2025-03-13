@@ -36,6 +36,9 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 	}
 
 	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
+		if fr.Native != nil {
+			return
+		}
 		if frameId != targetFrameId {
 			return
 		}
@@ -71,6 +74,9 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 	var typStr string
 	var valStr string
 	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
+		if fr.Native != nil {
+			return
+		}
 		if frameId != targetFrameId {
 			return
 		}

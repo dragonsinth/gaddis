@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dragonsinth/gaddis/asm"
-	"github.com/dragonsinth/gaddis/ast"
 	"log"
-	"strings"
 )
 
 func (ds *Session) play() {
@@ -42,28 +40,33 @@ func (ds *Session) play() {
 
 			if r := recover(); r != nil {
 				err := errors.New(fmt.Sprint(r))
+				p.AddPanicFrames()
+
 				log.Println("panicking:", err)
 				if ds.noDebug {
 					// execute the panic; send trace to stderr
-					var lines []ast.Position
-					var trace []string
+					var frames []ErrFrame
 					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst, _ int) {
-						if lc, ok := inst.(asm.LibCall); ok {
-							// if the top of stack is a libcall with a native exception, generate a synthetic frame
-							lines = append(lines, inst.GetSourceInfo().Start)
-							trace = append(trace, asm.FormatLibCall(lc))
+						if fr.Native != nil {
+							frames = append(frames, ErrFrame{
+								File: fr.Native.File,
+								Desc: fr.Native.Func,
+							})
+						} else {
+							pos := inst.GetSourceInfo().Start
+							frames = append(frames, ErrFrame{
+								Desc: asm.FormatFrameScope(fr),
+								Pos:  &pos,
+							})
 						}
-						lines = append(lines, inst.GetSourceInfo().Start)
-						trace = append(trace, asm.FormatFrameScope(fr))
 					})
-					ds.Host.Panicked(err, lines, trace)
+					ds.Host.Panicked(err, frames)
 					ds.isDone = true
 				} else {
 					// stop on exception
 					ds.runState = PAUSE
 					ds.exception = err
-					file := strings.TrimPrefix(ds.Source.Path, ds.Opts.WorkDir)
-					ds.exceptionTrace = ds.Exec.GetStackTrace(file)
+					ds.exceptionTrace = ds.Exec.GetStackTrace(ds.Source.Path)
 					ds.Host.Exception(err)
 				}
 			}

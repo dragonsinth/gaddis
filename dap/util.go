@@ -3,7 +3,6 @@ package dap
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
 	"os"
 	"strings"
@@ -77,26 +76,4 @@ func toJson(obj any) string {
 		panic(err)
 	}
 	return buf.String()
-}
-
-func dapSource(source debug.Source) *api.Source {
-	return &api.Source{
-		Name:             source.Name,
-		Path:             source.Path,
-		SourceReference:  0,
-		PresentationHint: "",
-		Origin:           "",
-		Sources:          nil,
-		AdapterData:      nil,
-		Checksums:        []api.Checksum{{Algorithm: "SHA256", Checksum: source.Sum}},
-	}
-}
-
-func getChecksum(source api.Source) string {
-	for _, cs := range source.Checksums {
-		if cs.Algorithm == "SHA256" {
-			return cs.Checksum
-		}
-	}
-	return ""
 }

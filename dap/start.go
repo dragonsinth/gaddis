@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -74,7 +75,7 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		stdin = tryReadInput(args.Program)
 	}
 
-	source.Name = args.Name
+	source.Name = filepath.Base(source.Path)
 	h.sourceByPath[source.Path] = source
 	h.sourceBySum[source.Sum] = source
 	h.source = dapSource(*source)

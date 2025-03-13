@@ -2,6 +2,7 @@ package lib
 
 import (
 	_ "embed"
+	"path/filepath"
 	"reflect"
 )
 
@@ -123,3 +124,33 @@ var IoSource string
 
 //go:embed lib.go
 var LibSource string
+
+type LibSrc struct {
+	Name string
+	Src  string
+	Id   int
+}
+
+var libSources = []LibSrc{
+	{"io.go", IoSource, 1000},
+	{"lib.go", LibSource, 2000},
+}
+
+func SrcByName(filename string) *LibSrc {
+	base := filepath.Base(filename)
+	for _, src := range libSources {
+		if src.Name == base {
+			return &src
+		}
+	}
+	return nil
+}
+
+func SrcById(id int) *LibSrc {
+	for _, src := range libSources {
+		if src.Id == id {
+			return &src
+		}
+	}
+	return nil
+}

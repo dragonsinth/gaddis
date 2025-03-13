@@ -10,10 +10,16 @@ import (
 type EventHost interface {
 	Paused(reason string)
 	Exception(err error)
-	Panicked(error, []ast.Position, []string)
+	Panicked(error, []ErrFrame)
 	Exited(code int)
 	Terminated()
 	SuppressAllEvents()
+}
+
+type ErrFrame struct {
+	File string
+	Desc string
+	Pos  *ast.Position
 }
 
 type Opts struct {

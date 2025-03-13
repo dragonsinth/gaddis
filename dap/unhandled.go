@@ -39,10 +39,6 @@ func (h *Session) onGotoRequest(request *api.GotoRequest) {
 	h.unhandled(request.GetRequest())
 }
 
-func (h *Session) onSourceRequest(request *api.SourceRequest) {
-	h.unhandled(request.GetRequest())
-}
-
 func (h *Session) onTerminateThreadsRequest(request *api.TerminateThreadsRequest) {
 	h.unhandled(request.GetRequest())
 }

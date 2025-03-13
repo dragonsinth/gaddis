@@ -13,17 +13,28 @@ func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
 	response := &api.StackTraceResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.sess.GetStackFrames(func(fr *asm.Frame, id int, inst asm.Inst, pc int) {
-		pos := inst.GetSourceInfo().Start
-		response.Body.StackFrames = append(response.Body.StackFrames, api.StackFrame{
-			Id:         id,
-			Name:       fr.Scope.Desc(),
-			Source:     h.source,
-			Line:       pos.Line + h.lineOff,
-			Column:     h.colOff, // don't do columns yet... it's too weird
-			CanRestart: true,
+		if fr.Native != nil {
+			n := fr.Native
+			response.Body.StackFrames = append(response.Body.StackFrames, api.StackFrame{
+				Id:         id,
+				Name:       n.Func + "()",
+				Source:     libSource(n.File),
+				Line:       n.Line + h.lineOff,
+				CanRestart: false,
+			})
+		} else {
+			pos := inst.GetSourceInfo().Start
+			response.Body.StackFrames = append(response.Body.StackFrames, api.StackFrame{
+				Id:         id,
+				Name:       fr.Scope.Desc(),
+				Source:     h.source,
+				Line:       pos.Line + h.lineOff,
+				Column:     h.colOff, // don't do columns yet... it's too weird
+				CanRestart: true,
 
-			InstructionPointerReference: asm.PcRef(pc),
-		})
+				InstructionPointerReference: asm.PcRef(pc),
+			})
+		}
 	})
 	response.Body.TotalFrames = len(response.Body.StackFrames)
 	h.send(response)
@@ -38,6 +49,9 @@ func (h *Session) onScopesRequest(request *api.ScopesRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	targetFrameId := request.Arguments.FrameId
 	h.sess.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
+		if fr.Native != nil {
+			return
+		}
 		si := fr.Scope.SourceInfo
 		ids := getScopeIds(frameId)
 		if fr.Scope.IsGlobal {
