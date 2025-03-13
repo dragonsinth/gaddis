@@ -42,8 +42,6 @@ type Session struct {
 	sourceBySum  map[string]*debug.Source
 
 	lineOff, colOff int
-	stopOnEntry     bool
-	noDebug         bool
 
 	sess       *debug.Session
 	source     *api.Source
@@ -97,17 +95,18 @@ func (h *Session) Run() error {
 }
 
 func (h *Session) handleRequest() error {
-	request, err := api.ReadProtocolMessage(h.rw.Reader)
+	msg, err := api.ReadProtocolMessage(h.rw.Reader)
 	if err != nil {
 		return err
 	}
-	h.dbgLog.Printf("Received request: %s", toJson(request))
-	if req, ok := request.(api.RequestMessage); ok {
+	if req, ok := msg.(api.RequestMessage); ok {
+		h.dbgLog.Printf("Received request: %s", toJson(msg))
 		h.dispatchRequest(req)
-	} else if rsp, ok := request.(api.ResponseMessage); ok {
+	} else if rsp, ok := msg.(api.ResponseMessage); ok {
+		h.dbgLog.Printf("Received response: %s", toJson(msg))
 		h.dispatchResponse(rsp)
 	} else {
-		log.Println("error: not a request message!\n", toJson(request))
+		log.Println("error: not a request message!\n", toJson(msg))
 	}
 	return nil
 }

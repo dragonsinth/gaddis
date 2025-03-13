@@ -30,10 +30,6 @@ func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
 
 	response := &api.SetBreakpointsResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	if h.noDebug {
-		h.send(response)
-		return
-	}
 
 	breakpoints := source.Breakpoints
 

@@ -213,7 +213,7 @@
               "type": "gaddis",
               "request": "launch",
               "name": "main.gad",
-              "program": "^\"\\${workspaceFolder}/\\main.gad\"",
+              "program": "^\"\\${workspaceFolder}/main.gad\"",
               "stopOnEntry": false
             }
           }

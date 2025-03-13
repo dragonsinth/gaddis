@@ -92,11 +92,9 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	if h.noDebug {
+	if args.NoDebug {
 		// launch immediately, otherwise wait for configuration done.
 		h.sess.SetNoDebug()
-		h.sess.SetLineBreakpoints(nil)
-		h.sess.SetInstBreakpoints(nil)
 		h.sess.Play()
 	}
 }
@@ -131,7 +129,8 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 		return
 	}
 
-	if !h.tryStartSession(wrap.Arguments, request.GetRequest()) {
+	args := wrap.Arguments
+	if !h.tryStartSession(args, request.GetRequest()) {
 		return // already notified
 	}
 
@@ -139,14 +138,9 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	if h.noDebug {
+	if args.NoDebug {
 		h.sess.SetNoDebug()
-		h.sess.SetLineBreakpoints(nil)
-		h.sess.SetInstBreakpoints(nil)
 	} else {
-		if h.stopOnEntry {
-			h.sess.StopOnEntry()
-		}
 		h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
 		h.sess.SetInstBreakpoints(h.instBps)
 	}
@@ -167,12 +161,6 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	if h.noDebug {
-		return // we should already be running
-	}
-	if h.stopOnEntry {
-		h.sess.StopOnEntry()
-	}
 	h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
 	h.sess.SetInstBreakpoints(h.instBps)
 	h.sess.Play()
