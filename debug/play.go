@@ -46,6 +46,7 @@ func (ds *Session) play() {
 				log.Println("panicking:", err)
 				if ds.noDebug {
 					// push the original trace to stdout
+					ds.Opts.Stdout(fmt.Sprintf("error: %s\n", err))
 					ds.Opts.Stdout(ds.Exec.GetStackTrace(ds.Source.Path))
 
 					// execute the panic; send trace to stderr
