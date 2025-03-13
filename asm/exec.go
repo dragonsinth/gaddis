@@ -6,7 +6,6 @@ import (
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/lib"
 	"math/rand"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
@@ -96,32 +95,19 @@ func (p *Execution) AddPanicFrames() {
 	frames := runtime.CallersFrames(pcs)
 	frame, more := frames.Next()
 
-	// top frame is me, find the gaddis root
-	myFile := filepath.Dir(frame.File)
-	var root string
-	for root = myFile; len(root) > 5 && filepath.Base(root) != "gaddis"; root = filepath.Dir(root) {
-	}
-
 	var newFrames []Frame
 	for ; more; frame, more = frames.Next() {
-		if strings.HasPrefix(frame.File, root) {
-			path := strings.TrimPrefix(frame.File, root)
-			dir := filepath.Base(filepath.Dir(path))
-			if dir == "lib" {
-				// found a hit; generate a synthetic frame
-				if pos := strings.LastIndex(frame.Function, "/lib."); pos >= 0 {
-					frame.Function = frame.Function[pos+1:]
-				}
-				newFrames = append(newFrames, Frame{
-					Scope: ast.ExternalScope,
-					Native: &NativeFrame{
-						File: frame.File,
-						Line: frame.Line - 1, // go uses 1-based numbering
-						Func: frame.Function,
-					},
-				})
-			}
+		if !isLibFile(frame.File) {
+			continue
 		}
+		newFrames = append(newFrames, Frame{
+			Scope: ast.ExternalScope,
+			Native: &NativeFrame{
+				File: frame.File,
+				Line: frame.Line - 1, // go uses 1-based numbering
+				Func: strings.TrimPrefix(frame.Function, GoMod+"/"),
+			},
+		})
 	}
 	// add the frames in reverse order
 	slices.Reverse(newFrames)
@@ -148,11 +134,17 @@ func (p *Execution) GetStackTrace(filename string) string {
 	p.GetStackFrames(func(fr *Frame, _ int, inst Inst, _ int) {
 		if fr.Native != nil {
 			n := fr.Native
-			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", n.File, n.Line, n.Func)
+			if GitSha == "" {
+				_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", n.File, n.Line+1, n.Func)
+			} else {
+				// https://github.com/dragonsinth/gaddis/blob/9ed3533a1b2d025edb8a18fedc240072504038d8/asm/asmgen.go#L21
+				tail := strings.TrimPrefix(fr.Native.File, GoMod+"/")
+				_, _ = fmt.Fprintf(&sb, "https://%s/blob/%s/%s#L%d: in %s\n", GoMod, GitSha, tail, n.Line+1, n.Func)
+			}
 		} else {
-			line := inst.GetSourceInfo().Start.Line + 1
+			line := inst.GetSourceInfo().Start.Line
 			scope := FormatFrameScope(fr)
-			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line, scope)
+			_, _ = fmt.Fprintf(&sb, "%s:%d: in %s\n", filename, line+1, scope)
 		}
 	})
 	return sb.String()

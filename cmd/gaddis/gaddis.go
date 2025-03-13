@@ -4,8 +4,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/dragonsinth/gaddis/asm"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 var (
@@ -22,14 +24,21 @@ const help = `Usage: gaddis <command> [options] [arguments]
 
 Available commands:
 
-format: parse and format the input file
-check:  parse and error check the input file
-build:  parse, check, and build the input file
-run:    everything, including format
-test:   run in test mode
-help:   print this help message
-*.gad:  legacy: run the given file
+format:   parse and format the input file
+check:    parse and error check the input file
+build:    parse, check, and build the input file
+run:      everything, including format
+debug:    run a DAP debug server on stdio or the given port
+test:     run in test mode
+terminal: run a simple netcat-like termimanl (for DAP debug sessions)
+help:     print this help message
+version:  print version and exit
+*.gad:    legacy: run the given file
 `
+
+var (
+	version = "dev build unknown"
+)
 
 func main() {
 	flag.Parse()
@@ -60,14 +69,20 @@ func main() {
 		opts.stopAfterBuild = true
 		opts.leaveBuildOutputs = true
 		err = runCmd(args[1:], opts)
-	case "test":
-		err = test(args[1:], opts)
-	case "debug":
-		err = debugCmd(*fPort, *fVerbose)
 	case "run":
 		err = runCmd(args[1:], opts)
+	case "debug":
+		err = debugCmd(*fPort, *fVerbose)
+	case "test":
+		err = test(args[1:], opts)
 	case "terminal":
 		err = terminalCmd(*fPort)
+	case "version":
+		fmt.Printf("%s %s\n", filepath.Base(os.Args[0]), version)
+		fmt.Println(asm.GoMod)
+		if asm.GitSha != "" {
+			fmt.Println(asm.GitSha)
+		}
 	default:
 		if *fTest {
 			err = test(args, opts)

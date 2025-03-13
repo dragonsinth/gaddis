@@ -48,12 +48,13 @@ func (eh *eventHost) Panicked(err error, errFrames []debug.ErrFrame) {
 			Category: "stderr",
 			Output:   "\tin " + fr.Desc + "\n",
 		}
-		if fr.Pos != nil {
+		if fr.IsNative {
+			body.Source = &api.Source{Path: fr.File} // use full path here not abstract
+			body.Line = fr.Pos.Line + eh.lineOff
+		} else {
 			body.Source = eh.source
 			body.Line = fr.Pos.Line + eh.lineOff
 			body.Column = fr.Pos.Column + eh.colOff
-		} else {
-			body.Source = libSource(fr.File)
 		}
 		eh.send(&api.OutputEvent{
 			Event: *newEvent("output"),

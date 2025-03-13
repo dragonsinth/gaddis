@@ -1,5 +1,10 @@
 dev_build_version=$(shell git describe --tags --always --dirty)
 short_version := $(subst v,,$(word 1,$(subst -, ,$(dev_build_version))))
+git_sha := $(shell git rev-parse HEAD)
+go_mod := $(shell go list .)
+LDFLAGS := '-X "main.version=dev build $(dev_build_version)" -X "$(go_mod)/asm.GitSha=$(git_sha)" -X "$(go_mod)/asm.GoMod=$(go_mod)"'
+GOFLAGS := -ldflags $(LDFLAGS) -trimpath
+export GOWORK=off
 
 # Disable CGO for improved compatibility across distros
 export CGO_ENABLED=0
@@ -23,8 +28,8 @@ updatedeps:
 	go mod tidy
 
 .PHONY: install
-install: plugin
-	go install -ldflags '-X "main.version=dev build $(dev_build_version)"' ./...
+install:
+	go install $(GOFLAGS) ./...
 	@code --uninstall-extension dragonsinth.gaddis-vscode > /dev/null 2>&1 && echo "uninstalled previous extension" || echo "no problem"
 	@code --install-extension vscode-gaddis/gaddis-vscode.vsix || echo "warning: failed to install into vscode"
 
@@ -32,6 +37,11 @@ install: plugin
 release:
 	@go install github.com/goreleaser/goreleaser@v1.21.0
 	goreleaser release --clean
+
+.PHONY: snapshot
+snapshot:
+	@go install github.com/goreleaser/goreleaser@v1.21.0
+	goreleaser build --snapshot --clean
 
 .PHONY: checkgofmt
 checkgofmt:
@@ -82,11 +92,11 @@ plugin:
 	cd vscode-gaddis && npm install
 	cd vscode-gaddis && npm run compile
 	mkdir -p vscode-gaddis/bin
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-darwin-arm64 ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-darwin-amd64 ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-linux-arm64 ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-linux-amd64 ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o vscode-gaddis/bin/gaddis-windows-arm64.exe ./cmd/gaddis
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o vscode-gaddis/bin/gaddis-windows-amd64.exe ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build $(GOFLAGS) -o vscode-gaddis/bin/gaddis-darwin-arm64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(GOFLAGS) -o vscode-gaddis/bin/gaddis-darwin-amd64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build $(GOFLAGS) -o vscode-gaddis/bin/gaddis-linux-arm64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o vscode-gaddis/bin/gaddis-linux-amd64 ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build $(GOFLAGS) -o vscode-gaddis/bin/gaddis-windows-arm64.exe ./cmd/gaddis
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -o vscode-gaddis/bin/gaddis-windows-amd64.exe ./cmd/gaddis
 	@rm -f vscode-gaddis/gaddis-vscode-*.vsix
 	cd vscode-gaddis && npx vsce package -o gaddis-vscode.vsix $(short_version)

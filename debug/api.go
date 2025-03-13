@@ -17,9 +17,10 @@ type EventHost interface {
 }
 
 type ErrFrame struct {
-	File string
-	Desc string
-	Pos  *ast.Position
+	File     string
+	Desc     string
+	Pos      ast.Position
+	IsNative bool
 }
 
 type Opts struct {

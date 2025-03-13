@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dragonsinth/gaddis/asm"
+	"github.com/dragonsinth/gaddis/ast"
 	"log"
 )
 
@@ -49,14 +50,15 @@ func (ds *Session) play() {
 					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst, _ int) {
 						if fr.Native != nil {
 							frames = append(frames, ErrFrame{
-								File: fr.Native.File,
-								Desc: fr.Native.Func,
+								File:     fr.Native.File,
+								Desc:     fr.Native.Func,
+								Pos:      ast.Position{Line: fr.Native.Line},
+								IsNative: true,
 							})
 						} else {
-							pos := inst.GetSourceInfo().Start
 							frames = append(frames, ErrFrame{
 								Desc: asm.FormatFrameScope(fr),
-								Pos:  &pos,
+								Pos:  inst.GetSourceInfo().Start,
 							})
 						}
 					})

@@ -14,8 +14,14 @@ builds:
         goarch: 386
       - goos: windows
         goarch: arm64
+    flags:
+      - -trimpath
     ldflags:
-      - -s -w -X main.version=v{{.Version}}
+      - -s
+      - -w
+      - -X 'main.version=v{{.Version}}'
+      - -X '{{.ModulePath}}/asm.GitSha={{.Commit}}'
+      - -X '{{.ModulePath}}/asm.GoMod={{.ModulePath}}'
 
 archives:
   - format: tar.gz
