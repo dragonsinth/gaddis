@@ -9,8 +9,7 @@ import (
 )
 
 func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
-	if h.sess == nil {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
 		return
 	}
 	targetVarId := request.Arguments.VariablesReference

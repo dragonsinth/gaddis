@@ -6,8 +6,11 @@ import (
 )
 
 func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
-	if h.sess == nil || request.Arguments.ThreadId != h.runId {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
+	if request.Arguments.ThreadId != h.runId {
+		h.send(newErrorResponse(request.Seq, request.Command, "unknown threadId"))
 		return
 	}
 	response := &api.StackTraceResponse{}
@@ -41,8 +44,7 @@ func (h *Session) onStackTraceRequest(request *api.StackTraceRequest) {
 }
 
 func (h *Session) onScopesRequest(request *api.ScopesRequest) {
-	if h.sess == nil {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
 		return
 	}
 	response := &api.ScopesResponse{}

@@ -7,8 +7,11 @@ import (
 )
 
 func (h *Session) onContinueRequest(request *api.ContinueRequest) {
-	if h.sess == nil || request.Arguments.ThreadId != h.runId {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
+	if request.Arguments.ThreadId != h.runId {
+		h.send(newErrorResponse(request.Seq, request.Command, "unknown threadId"))
 		return
 	}
 	response := &api.ContinueResponse{}
@@ -19,8 +22,12 @@ func (h *Session) onContinueRequest(request *api.ContinueRequest) {
 }
 
 func (h *Session) onPauseRequest(request *api.PauseRequest) {
-	if h.sess == nil || request.Arguments.ThreadId != h.runId {
+	if h.sess == nil {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+		return
+	}
+	if request.Arguments.ThreadId != h.runId {
+		h.send(newErrorResponse(request.Seq, request.Command, "unknown threadId"))
 		return
 	}
 	h.sess.Pause()
@@ -30,8 +37,11 @@ func (h *Session) onPauseRequest(request *api.PauseRequest) {
 }
 
 func (h *Session) onNextRequest(request *api.NextRequest) {
-	if h.sess == nil || request.Arguments.ThreadId != h.runId {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
+	if request.Arguments.ThreadId != h.runId {
+		h.send(newErrorResponse(request.Seq, request.Command, "unknown threadId"))
 		return
 	}
 	response := &api.NextResponse{}
@@ -44,8 +54,11 @@ func (h *Session) onNextRequest(request *api.NextRequest) {
 }
 
 func (h *Session) onStepInRequest(request *api.StepInRequest) {
-	if h.sess == nil || request.Arguments.ThreadId != h.runId {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
+	if request.Arguments.ThreadId != h.runId {
+		h.send(newErrorResponse(request.Seq, request.Command, "unknown threadId"))
 		return
 	}
 	response := &api.StepBackResponse{}
@@ -59,8 +72,11 @@ func (h *Session) onStepInRequest(request *api.StepInRequest) {
 }
 
 func (h *Session) onStepOutRequest(request *api.StepOutRequest) {
-	if h.sess == nil || request.Arguments.ThreadId != h.runId {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
+		return
+	}
+	if request.Arguments.ThreadId != h.runId {
+		h.send(newErrorResponse(request.Seq, request.Command, "unknown threadId"))
 		return
 	}
 	response := &api.StepOutResponse{}
@@ -73,8 +89,7 @@ func (h *Session) onStepOutRequest(request *api.StepOutRequest) {
 }
 
 func (h *Session) onRestartFrameRequest(request *api.RestartFrameRequest) {
-	if h.sess == nil {
-		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
+	if h.pausedSessionRequiredError(request) {
 		return
 	}
 

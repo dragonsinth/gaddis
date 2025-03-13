@@ -161,3 +161,14 @@ func (h *Session) stdout(line string) {
 		},
 	})
 }
+
+func (h *Session) pausedSessionRequiredError(request api.RequestMessage) bool {
+	if h.sess == nil {
+		h.send(newErrorResponse(request.GetSeq(), request.GetRequest().Command, "no session found"))
+		return true
+	} else if h.sess.IsRunning() {
+		h.send(newErrorResponse(request.GetSeq(), request.GetRequest().Command, "cannot perform action while running"))
+		return true
+	}
+	return false
+}

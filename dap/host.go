@@ -46,7 +46,7 @@ func (eh *eventHost) Panicked(err error, errFrames []debug.ErrFrame) {
 	for _, fr := range errFrames {
 		body := api.OutputEventBody{
 			Category: "stderr",
-			Output:   "\tin " + fr.Desc + "\n",
+			Output:   "in " + fr.Desc + "\n",
 		}
 		if fr.IsNative {
 			body.Source = &api.Source{Path: fr.File} // use full path here not abstract

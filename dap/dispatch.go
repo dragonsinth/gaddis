@@ -13,6 +13,7 @@ func (h *Session) dispatchResponse(rsp api.ResponseMessage) {
 	case *api.StartDebuggingResponse:
 		h.onStartDebuggingResponse(response)
 	default:
+		// nothing to do here but log
 		log.Printf("Unknown response type: %T", response)
 	}
 }
@@ -101,6 +102,6 @@ func (h *Session) dispatchRequest(req api.RequestMessage) {
 	case *api.BreakpointLocationsRequest:
 		h.onBreakpointLocationsRequest(request)
 	default:
-		h.unhandled(req.GetRequest())
+		h.unhandled(req)
 	}
 }

@@ -61,6 +61,10 @@ func (ds *Session) Play() {
 	ds.play()
 }
 
+func (ds *Session) IsRunning() bool {
+	return ds.running.Load()
+}
+
 // Wait for the interpreter to stop running.
 func (ds *Session) Wait() {
 	for ds.running.Load() {

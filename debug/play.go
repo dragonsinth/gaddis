@@ -45,6 +45,9 @@ func (ds *Session) play() {
 
 				log.Println("panicking:", err)
 				if ds.noDebug {
+					// push the original trace to stdout
+					ds.Opts.Stdout(ds.Exec.GetStackTrace(ds.Source.Path))
+
 					// execute the panic; send trace to stderr
 					var frames []ErrFrame
 					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst, _ int) {
