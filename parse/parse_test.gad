@@ -11,6 +11,7 @@ Display "Total:", Tab, subtotal + subtotal * TAX_RATE
 Display
 
 
+Module Booleans()
 Declare Boolean flag
 Set flag = price == quantity OR price != quantity
 Set flag = price <= quantity AND price < quantity
@@ -55,7 +56,9 @@ Select flag
    Case False:
       Display "false"
 End Select
+End Module
 
+Module Loops()
 Declare Integer count = 1
 Select count
    Case 0:
@@ -91,6 +94,7 @@ For count = 0 To 100 Step 10
 End For
 
 Display -count// explicit no new line
+End Module
 
 Module getCups(Real Ref cups)
     Display "Enter the number of cups."

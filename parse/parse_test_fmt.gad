@@ -10,83 +10,87 @@ Display "Subtotal:", Tab, subtotal
 Display "Total:", Tab, subtotal + subtotal * TAX_RATE
 Display
 
-Declare Boolean flag
-Set flag = price == quantity OR price != quantity
-Set flag = price <= quantity AND price < quantity
-Set flag = price > quantity AND price > quantity
-Set flag = flag AND flag
-Set flag = flag OR flag
-Set flag = NOT flag
-Input flag
-If flag Then
-	Display True
-Else
-	Display False
-End If
+Module Booleans()
+	Declare Boolean flag
+	Set flag = price == quantity OR price != quantity
+	Set flag = price <= quantity AND price < quantity
+	Set flag = price > quantity AND price > quantity
+	Set flag = flag AND flag
+	Set flag = flag OR flag
+	Set flag = NOT flag
+	Input flag
+	If flag Then
+		Display True
+	Else
+		Display False
+	End If
 
-// Comment 1
-// Comment 2
+	// Comment 1
+	// Comment 2
 
-// Comment 3
-// Comment 4
-If flag Then
-	// Comment
-	Display True
-Else If flag Then
-	// Comment
-	Display False
-End If
+	// Comment 3
+	// Comment 4
+	If flag Then
+		// Comment
+		Display True
+	Else If flag Then
+		// Comment
+		Display False
+	End If
 
-If flag Then
-	Display True
-Else If flag Then
-	Display False
-Else
-	Display False
-End If
+	If flag Then
+		Display True
+	Else If flag Then
+		Display False
+	Else
+		Display False
+	End If
 
-Select flag
-	Case True:
-		Display "true"
-	Case False:
-		Display "false"
-End Select
+	Select flag
+		Case True:
+			Display "true"
+		Case False:
+			Display "false"
+	End Select
+End Module
 
-Declare Integer count = 1
-Select count
-	Case 0:
-		Display "zero"
-	Case 1:
-		Display "one"
-	Default:
-		Display "many"
-End Select
+Module Loops()
+	Declare Integer count = 1
+	Select count
+		Case 0:
+			Display "zero"
+		Case 1:
+			Display "one"
+		Default:
+			Display "many"
+	End Select
 
-While False
-	Display "wrong"
-End While
+	While False
+		Display "wrong"
+	End While
 
-Do
-	Display "once"
-While False
+	Do
+		Display "once"
+	While False
 
-Do
-	Display "once"
-Until True
+	Do
+		Display "once"
+	Until True
 
-For count = 1 To 10
-	Display count
-End For
+	For count = 1 To 10
+		Display count
+	End For
 
-For count = 10 To 1 Step -1
-	Display count
-End For
+	For count = 10 To 1 Step -1
+		Display count
+	End For
 
-For count = 0 To 100 Step 10
-	Display count
-End For
+	For count = 0 To 100 Step 10
+		Display count
+	End For
 
-Display -count // explicit no new line
+	Display -count // explicit no new line
+End Module
 
 Module getCups(Real Ref cups)
 	Display "Enter the number of cups."

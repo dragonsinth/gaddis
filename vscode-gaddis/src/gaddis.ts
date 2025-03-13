@@ -60,7 +60,7 @@ function makeTask(cmd: string, fileUri: vscode.Uri): vscode.Task {
     const fileName = path.basename(filePath);
 
     const task = new vscode.Task(
-        { type: `gaddis.${cmd}` },
+        { type: `extension.gaddis.${cmd}` },
         vscode.TaskScope.Workspace,
         `${cmd} ${fileName}`,
         'gaddis',

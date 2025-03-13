@@ -144,6 +144,7 @@ func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	for i, cb := range is.Cases {
 		if cb.Expr != nil {
 			if i > 0 {
+				v.bol(cb.Start)
 				v.output("Else ")
 			}
 			v.output("If ")

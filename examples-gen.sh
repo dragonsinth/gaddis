@@ -6,7 +6,7 @@ ANYERROR=0
 
 for gadFile in $(find examples -name '*.gad'); do
   echo "== Running $gadFile"
-  if go run ./cmd/gaddis -t "$gadFile"; then
+  if go run ./cmd/gaddis test "$gadFile"; then
     echo "== ok"
   else
     echo "== ERROR: $gadFile"
