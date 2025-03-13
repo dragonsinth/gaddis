@@ -6,22 +6,23 @@ import (
 	"github.com/dragonsinth/gaddis/base"
 )
 
-// ControlFlow analyzes functions to determine
+// ControlFlow analyzes unreachable code, no return statement, read-before-write on locals.
 func ControlFlow(prog *ast.Program) []ast.Error {
-	ff := &FunctionFinder{}
-	prog.Block.Visit(ff)
-
-	var errors []ast.Error
-	for _, f := range ff.functions {
-		v := &Visitor{}
-		f.Visit(v)
-		v.pop(f)
-		if len(v.stack) != 0 {
-			panic(len(v.stack))
-		}
-		errors = append(errors, v.Errors...)
+	cv := &Visitor{}
+	prog.Block.Visit(cv)
+	cv.pop(prog.Block)
+	if len(cv.stack) != 0 {
+		panic("here")
 	}
-	return errors
+
+	av := &AssignmentVisitor{
+		// Explicitly don't analyze global variables.
+		// read-before-write on globals too difficult.
+		currScope: nil,
+	}
+	prog.Block.Visit(av)
+
+	return append(cv.Errors, av.Errors...)
 }
 
 type Flow int

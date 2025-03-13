@@ -194,18 +194,18 @@ type ForStmt struct {
 	Block     *Block
 }
 
-func (ws *ForStmt) Visit(v Visitor) {
-	if !v.PreVisitForStmt(ws) {
+func (fs *ForStmt) Visit(v Visitor) {
+	if !v.PreVisitForStmt(fs) {
 		return
 	}
-	ws.Ref.Visit(v)
-	ws.StartExpr.Visit(v)
-	ws.StopExpr.Visit(v)
-	if ws.StepExpr != nil {
-		ws.StepExpr.Visit(v)
+	fs.Ref.Visit(v)
+	fs.StartExpr.Visit(v)
+	fs.StopExpr.Visit(v)
+	if fs.StepExpr != nil {
+		fs.StepExpr.Visit(v)
 	}
-	ws.Block.Visit(v)
-	v.PostVisitForStmt(ws)
+	fs.Block.Visit(v)
+	v.PostVisitForStmt(fs)
 }
 
 func (*ForStmt) isStatement() {
