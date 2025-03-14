@@ -20,14 +20,14 @@ type ExecutionContext struct {
 	lib.IoContext
 }
 
-func (a *Assembly) NewExecution(ec *ExecutionContext) *Execution {
+func (as *Assembly) NewExecution(ec *ExecutionContext) *Execution {
 	extlib := lib.CreateLibrary(ec.IoContext, lib.RandContext{Rng: ec.Rng})
 
 	p := &Execution{
 		PC:   0,
-		Code: a.Code,
+		Code: as.Code,
 		Stack: []Frame{{
-			Scope:  a.GlobalScope,
+			Scope:  as.GlobalScope,
 			Start:  0,
 			Return: 0,
 			Params: nil,

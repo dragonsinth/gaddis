@@ -6,6 +6,7 @@ type Assembly struct {
 	GlobalScope *ast.Scope
 	Code        []Inst
 	Labels      map[string]*Label
+	Strings     []string
 }
 
 type Inst interface {

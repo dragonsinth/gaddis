@@ -70,17 +70,24 @@ func Assemble(prog *ast.Program) *Assembly {
 		}
 	}
 
+	strings := make([]string, len(v.strings))
+	for s, i := range v.strings {
+		strings[i] = s
+	}
+
 	return &Assembly{
 		GlobalScope: prog.Scope,
 		Code:        v.code,
 		Labels:      v.labels,
+		Strings:     strings,
 	}
 }
 
 type Visitor struct {
 	base.Visitor
-	code   []Inst
-	labels map[string]*Label
+	code    []Inst
+	labels  map[string]*Label
+	strings map[string]int
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -346,10 +353,25 @@ func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
 }
 
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {
+	var id int
+	if l.Type == ast.String && !l.IsTabLiteral {
+		val := l.Val.(string)
+		if existing, ok := v.strings[val]; ok {
+			id = existing
+		} else {
+			if v.strings == nil {
+				v.strings = map[string]int{}
+			}
+			id = len(v.strings)
+			v.strings[val] = id
+		}
+	}
+
 	v.code = append(v.code, Literal{
 		baseInst: baseInst{l.SourceInfo},
 		Typ:      l.Type,
 		Val:      l.Val,
+		Id:       id,
 	})
 }
 

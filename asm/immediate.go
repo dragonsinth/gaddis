@@ -11,6 +11,7 @@ type Literal struct {
 	baseInst
 	Typ ast.PrimitiveType
 	Val any
+	Id  int // only for strings
 }
 
 func (i Literal) Exec(p *Execution) {
@@ -33,7 +34,7 @@ func (i Literal) String() string {
 		if i.Val == lib.TabDisplay {
 			str = "tab"
 		} else {
-			str = fmt.Sprintf("[%d]", len(i.Val.(string)))
+			str = fmt.Sprintf("[%d]", i.Id)
 		}
 	case ast.Character:
 		str = strconv.QuoteRune(rune(i.Val.(byte)))
@@ -67,7 +68,7 @@ func (i GlobalRef) Exec(p *Execution) {
 }
 
 func (i GlobalRef) String() string {
-	return fmt.Sprintf("&global(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("&global[%d] #%s", i.Index, i.Name)
 }
 
 func (i GlobalRef) Sym() string {
@@ -89,7 +90,7 @@ func (i GlobalVal) Exec(p *Execution) {
 }
 
 func (i GlobalVal) String() string {
-	return fmt.Sprintf("global(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("global[%d] #%s", i.Index, i.Name)
 }
 
 func (i GlobalVal) Sym() string {
@@ -107,7 +108,7 @@ func (i ParamRef) Exec(p *Execution) {
 }
 
 func (i ParamRef) String() string {
-	return fmt.Sprintf("&param(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("&param[%d] #%s", i.Index, i.Name)
 }
 
 func (i ParamRef) Sym() string {
@@ -131,7 +132,7 @@ func (i ParamVal) Exec(p *Execution) {
 }
 
 func (i ParamVal) String() string {
-	return fmt.Sprintf("param(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("param[%d] #%s", i.Index, i.Name)
 }
 
 func (i ParamVal) Sym() string {
@@ -160,7 +161,7 @@ func (i ParamPtr) Exec(p *Execution) {
 }
 
 func (i ParamPtr) String() string {
-	return fmt.Sprintf("*param(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("*param[%d] #%s", i.Index, i.Name)
 }
 
 func (i ParamPtr) Sym() string {
@@ -178,7 +179,7 @@ func (i LocalRef) Exec(p *Execution) {
 }
 
 func (i LocalRef) String() string {
-	return fmt.Sprintf("&local(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("&local[%d] #%s", i.Index, i.Name)
 }
 
 func (i LocalRef) Sym() string {
@@ -200,7 +201,7 @@ func (i LocalVal) Exec(p *Execution) {
 }
 
 func (i LocalVal) String() string {
-	return fmt.Sprintf("local(%d) #%s", i.Index, i.Name)
+	return fmt.Sprintf("local[%d] #%s", i.Index, i.Name)
 }
 
 func (i LocalVal) Sym() string {

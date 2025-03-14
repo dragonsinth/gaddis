@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-func AsmDump(source string, code []Inst) string {
+func (as *Assembly) Dump(source string) string {
+	code := as.Code
 	lines := strings.Split(source, "\n")
 	lastLine := -1
 	var sb bytes.Buffer
@@ -20,6 +21,7 @@ func AsmDump(source string, code []Inst) string {
 		_, _ = fmt.Fprintf(&sb, "%s\t\t\t%s\n", PcRef(i), inst)
 	}
 	// Now dump all symbol tables.
+	sb.WriteString("; -- functions\n")
 	var endPcs []int
 	for pc, inst := range code {
 		if _, ok := inst.(End); ok {
@@ -56,6 +58,12 @@ func AsmDump(source string, code []Inst) string {
 			}
 			sb.WriteRune('\n')
 		}
+	}
+
+	// Dump the string table
+	sb.WriteString("; -- strings\n")
+	for i, str := range as.Strings {
+		_, _ = fmt.Fprintf(&sb, ";[%d] %q\n", i, str)
 	}
 	return sb.String()
 }
