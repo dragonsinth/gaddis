@@ -1,10 +1,11 @@
 package dap
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -36,43 +37,64 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		return false
 	}
 
-	if h.terminal == nil && h.canTerminal {
-		title := "Gaddis Debug " + args.Name
-		if args.NoDebug {
-			title = "Gaddis Run " + title
-		}
-
-		if term, err := StartTerminal(); err != nil {
-			log.Println("error: failed to start terminal conn:", err)
-		} else {
-			h.terminal = term
-			terminalArgs := []string{os.Args[0], "-port", strconv.Itoa(term.Port), "terminal"}
-			h.send(&api.RunInTerminalRequest{
-				Request: *newRequest("runInTerminal"),
-				Arguments: api.RunInTerminalRequestArguments{
-					Kind:  "integrated",
-					Title: title,
-					Cwd:   "",
-					Args:  terminalArgs,
-					Env:   nil,
-				},
-			})
-		}
+	host := eventHost{
+		sendFunc: h.send,
+		source:   h.source,
+		lineOff:  h.lineOff,
+		colOff:   h.colOff,
 	}
 
-	var stdin io.Reader
+	stdin := bufio.NewScanner(bytes.NewReader(nil))
 	stdout := h.stdout
-
-	if h.terminal != nil {
-		stdin = h.terminal
-		stdout = func(line string) {
-			h.stdout(line)
-			h.terminal.Output(line)
+	if args.TestMode {
+		outfile := args.Program + ".out"
+		expectOutput, err := os.ReadFile(outfile)
+		if err != nil {
+			h.send(newErrorResponse(request.Seq, request.Command, "testing requires and output file; please create "+outfile))
 		}
-		banner := strings.Repeat("-", len(args.Name))
-		h.terminal.Output(fmt.Sprintf("\x1b[H\x1b[J/%s\\\n|%s|\n\\%s/\n", banner, args.Name, banner))
+
+		host.isTest = true
+		host.wantOutput = string(expectOutput)
+		testInput := tryReadInput(args.Program)
+		host.remainingInput = bufio.NewScanner(bytes.NewReader(testInput))
+		stdin = host.remainingInput
+		stdout = func(line string) {
+			host.capturedOutput.WriteString(line)
+			h.stdout(line)
+		}
 	} else {
-		stdin = tryReadInput(args.Program)
+		if h.terminal == nil && h.canTerminal {
+			title := "Gaddis Debug " + args.Name
+			if args.NoDebug {
+				title = "Gaddis Run " + title
+			}
+
+			if term, err := StartTerminal(); err != nil {
+				log.Println("error: failed to start terminal conn:", err)
+			} else {
+				h.terminal = term
+				terminalArgs := []string{os.Args[0], "-port", strconv.Itoa(term.Port), "terminal"}
+				h.send(&api.RunInTerminalRequest{
+					Request: *newRequest("runInTerminal"),
+					Arguments: api.RunInTerminalRequestArguments{
+						Kind:  "integrated",
+						Title: title,
+						Cwd:   "",
+						Args:  terminalArgs,
+						Env:   nil,
+					},
+				})
+			}
+		}
+		if h.terminal != nil {
+			stdin = bufio.NewScanner(h.terminal)
+			stdout = func(line string) {
+				h.stdout(line)
+				h.terminal.Output(line)
+			}
+			banner := strings.Repeat("-", len(args.Name))
+			h.terminal.Output(fmt.Sprintf("\x1b[H\x1b[J/%s\\\n|%s|\n\\%s/\n", banner, args.Name, banner))
+		}
 	}
 
 	source.Name = filepath.Base(source.Path)
@@ -86,13 +108,6 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		Stdout:  stdout,
 		WorkDir: args.WorkDir,
 	}
-	host := eventHost{
-		sendFunc: h.send,
-		source:   h.source,
-		lineOff:  h.lineOff,
-		colOff:   h.colOff,
-	}
-
 	h.sess = debug.New(*source, &host, opts)
 	h.runId++
 	return true

@@ -12,6 +12,7 @@ type launchArgs struct {
 	Name        string `json:"name"`
 	Program     string `json:"program"`
 	WorkDir     string `json:"workDir"`
+	TestMode    bool   `json:"testMode"`
 	StopOnEntry bool   `json:"stopOnEntry"`
 	NoDebug     bool   `json:"noDebug"`
 }
@@ -57,9 +58,9 @@ func newErrorResponse(requestSeq int, command string, message string) *api.Error
 	return er
 }
 
-func tryReadInput(program string) *bytes.Reader {
+func tryReadInput(program string) []byte {
 	buf, _ := os.ReadFile(program + ".in")
-	return bytes.NewReader(buf)
+	return buf
 }
 
 func fromJson(buf json.RawMessage, obj any) error {

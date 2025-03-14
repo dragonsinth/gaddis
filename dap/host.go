@@ -1,8 +1,11 @@
 package dap
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
+	"strings"
 	"sync/atomic"
 )
 
@@ -10,6 +13,12 @@ import (
 type eventHost struct {
 	// send function is concurrency safe
 	sendFunc func(api.Message)
+
+	// for test mode
+	remainingInput *bufio.Scanner
+	capturedOutput strings.Builder
+	wantOutput     string
+	isTest         bool
 
 	// copy variables from session to avoid memory races
 	source  *api.Source
@@ -64,7 +73,57 @@ func (eh *eventHost) Panicked(err error, errFrames []debug.ErrFrame) {
 	eh.Exited(1)
 }
 
+const failFmt = `
+=== FAILED ===
+
+-- WANT
+%s--
+++ GOT
+%s++
+
+=== FAILED ===
+`
+
+const inputUnreadFmt = `
+=== FAILED ===
+
+ERROR: %s
+
+-- REMAINING INPUT
+%s
+=== FAILED ===
+`
+
 func (eh *eventHost) Exited(code int) {
+	if eh.isTest && code == 0 {
+		// check the output!
+		gotOutput := eh.capturedOutput.String()
+		if eh.wantOutput != gotOutput {
+			code = 1
+			msg := fmt.Sprintf(failFmt, eh.wantOutput, gotOutput)
+			eh.send(&api.OutputEvent{
+				Event: *newEvent("output"),
+				Body:  api.OutputEventBody{Category: "stderr", Output: msg, Source: eh.source},
+			})
+		} else if rem, err := eh.drainStdin(); rem != "" || err != nil {
+			code = 2
+			failLine := "not all input was read"
+			if err != nil {
+				failLine = err.Error()
+			}
+			msg := fmt.Sprintf(inputUnreadFmt, failLine, rem)
+			eh.send(&api.OutputEvent{
+				Event: *newEvent("output"),
+				Body:  api.OutputEventBody{Category: "stderr", Output: msg, Source: eh.source},
+			})
+		} else {
+			eh.send(&api.OutputEvent{
+				Event: *newEvent("output"),
+				Body:  api.OutputEventBody{Category: "stdout", Output: "\n=== PASSED ===\n", Source: eh.source},
+			})
+		}
+	}
+
 	eh.send(&api.ExitedEvent{
 		Event: *newEvent("exited"),
 		Body:  api.ExitedEventBody{ExitCode: code},
@@ -86,6 +145,15 @@ func (eh *eventHost) send(m api.Message) {
 	if atomic.LoadInt32(&eh.suppressed) == 0 {
 		eh.sendFunc(m)
 	}
+}
+
+func (eh *eventHost) drainStdin() (string, error) {
+	var sb strings.Builder
+	for eh.remainingInput.Scan() {
+		sb.WriteString(eh.remainingInput.Text())
+		sb.WriteRune('\n')
+	}
+	return sb.String(), eh.remainingInput.Err()
 }
 
 var _ debug.EventHost = &eventHost{}

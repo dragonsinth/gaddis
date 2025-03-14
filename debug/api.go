@@ -1,10 +1,10 @@
 package debug
 
 import (
+	"bufio"
 	"errors"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
-	"io"
 )
 
 // EventHost is how the VM pushes out debug events.
@@ -26,7 +26,7 @@ type ErrFrame struct {
 
 type Opts struct {
 	IsTest  bool
-	Stdin   io.Reader
+	Stdin   *bufio.Scanner
 	Stdout  func(string)
 	WorkDir string
 }

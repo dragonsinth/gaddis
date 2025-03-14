@@ -61,8 +61,10 @@
         "icon": "$(play)"
       },
       {
-        "command": "extension.gaddis.testTask",
+        "command": "extension.gaddis.testEditorContents",
         "title": "Test File",
+        "category": "Debug",
+        "enablement": "!inDebugMode",
         "icon": "$(beaker)"
       }
     ],
@@ -79,7 +81,7 @@
           "group": "navigation@2"
         },
         {
-          "command": "extension.gaddis.testTask",
+          "command": "extension.gaddis.testEditorContents",
           "when": "editorLangId == gaddis",
           "group": "navigation@3"
         }
@@ -98,17 +100,12 @@
       ],
       "editor/title": [
         {
-          "command": "extension.gaddis.testTask",
+          "command": "extension.gaddis.testEditorContents",
           "when": "resourceLangId == gaddis",
           "group": "navigation@3"
         }
       ]
     },
-    "taskDefinitions": [
-      {
-        "type": "extension.gaddis.test"
-      }
-    ],
     "languages": [
       {
         "id": "gaddis",
@@ -183,6 +180,11 @@
                 "description": "Program working directory.",
                 "default": "${workspaceFolder}"
               },
+              "testMode": {
+                "type": "boolean",
+                "description": "Run in test mode.",
+                "default": false
+              },
               "stopOnEntry": {
                 "type": "boolean",
                 "description": "Automatically stop after launch.",
@@ -207,7 +209,19 @@
         ],
         "configurationSnippets": [
           {
-            "label": "Gaddis Debug: Launch",
+            "label": "Gaddis Run",
+            "description": "A new configuration for running a Gaddis file.",
+            "body": {
+              "type": "gaddis",
+              "request": "launch",
+              "name": "main.gad",
+              "program": "^\"\\${workspaceFolder}/main.gad\"",
+              "noDebug": true,
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "Gaddis Debug",
             "description": "A new configuration for debugging a Gaddis file.",
             "body": {
               "type": "gaddis",
@@ -215,6 +229,31 @@
               "name": "main.gad",
               "program": "^\"\\${workspaceFolder}/main.gad\"",
               "stopOnEntry": false
+            }
+          },
+          {
+            "label": "Gaddis Run Test",
+            "description": "A new configuration for running a Gaddis file in test mode.",
+            "body": {
+              "type": "gaddis",
+              "request": "launch",
+              "name": "main.gad",
+              "program": "^\"\\${workspaceFolder}/main.gad\"",
+              "noDebug": true,
+              "stopOnEntry": false,
+              "testMode": true
+            }
+          },
+          {
+            "label": "Gaddis Debug Test",
+            "description": "A new configuration for debugging a Gaddis file in test mode.",
+            "body": {
+              "type": "gaddis",
+              "request": "launch",
+              "name": "main.gad",
+              "program": "^\"\\${workspaceFolder}/main.gad\"",
+              "stopOnEntry": false,
+              "testMode": true
             }
           }
         ]

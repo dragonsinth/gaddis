@@ -98,6 +98,7 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 	// early out erroring if the loop var is jacked
 	refType := fs.Ref.GetType()
 	if !fs.Ref.CanReference() {
+		// TODO: disallow arrayref/fieldref also?
 		v.Errorf(fs.Ref, "loop variable must be a reference")
 		return
 	}

@@ -236,19 +236,22 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.maybeCast(refType, fs.StartExpr)
 	v.maybeCast(refType, fs.StopExpr)
 	v.stepExpr(fs)
+
+	// attribute all the for/step/jumps to top line of the for loop
+	si := fs.SourceInfo
+
 	switch refType {
 	case ast.Integer:
-		v.code = append(v.code, ForInt{baseInst: baseInst{fs.SourceInfo}})
+		v.code = append(v.code, ForInt{baseInst: baseInst{si}})
 	case ast.Real:
-		v.code = append(v.code, ForReal{baseInst: baseInst{fs.SourceInfo}})
+		v.code = append(v.code, ForReal{baseInst: baseInst{si}})
 	default:
 		panic(refType)
 	}
-	v.code = append(v.code, JumpFalse{baseInst: baseInst{fs.SourceInfo}, Label: endLabel})
+	v.code = append(v.code, JumpFalse{baseInst: baseInst{si}, Label: endLabel})
 
 	startLabel := &Label{Name: "for", PC: len(v.code)}
 	fs.Block.Visit(v)
-	si := ast.SourceInfo{Start: fs.Block.End, End: fs.End}
 
 	// end of loop re-test / increment
 	v.varRef(fs.Ref, true)
@@ -256,9 +259,9 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.stepExpr(fs)
 	switch refType {
 	case ast.Integer:
-		v.code = append(v.code, StepInt{baseInst: baseInst{fs.SourceInfo}})
+		v.code = append(v.code, StepInt{baseInst: baseInst{si}})
 	case ast.Real:
-		v.code = append(v.code, StepReal{baseInst: baseInst{fs.SourceInfo}})
+		v.code = append(v.code, StepReal{baseInst: baseInst{si}})
 	default:
 		panic(refType)
 	}
