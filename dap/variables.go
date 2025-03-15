@@ -1,6 +1,7 @@
 package dap
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
@@ -47,6 +48,12 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 			for i := range fr.Locals {
 				addVar(fr.Locals[i], fr.Scope.Locals[i], i)
 			}
+			for i := range fr.Eval {
+				response.Body.Variables = append(response.Body.Variables, api.Variable{
+					Name:  fmt.Sprintf("[%d]", i),
+					Value: asm.DebugStringVal(fr.Eval[i]),
+				})
+			}
 		case ids.paramId:
 			for i := range fr.Params {
 				addVar(fr.Params[i], fr.Scope.Params[i], i)
@@ -82,9 +89,17 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 		if frameId != targetFrameId {
 			return
 		}
+		ids := getScopeIds(frameId)
+
+		// check for trying to set eval stack
+		if targetScopeId == ids.localId {
+			if n, _ := fmt.Sscanf(name, "[%d]", new(int)); n > 0 {
+				err = errors.New("eval stack may not be reassigned")
+				return
+			}
+		}
 
 		decl, ref := func() (*ast.VarDecl, *any) {
-			ids := getScopeIds(frameId)
 			switch targetScopeId {
 			case ids.localId:
 				for i, vd := range fr.Scope.Locals {
@@ -126,7 +141,7 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 				val = []byte(str)
 			}
 		} else {
-			err = fmt.Errorf("failed to parse value %q of type %s", value, decl.Type)
+			err = fmt.Errorf("cannot parse <%s> into type %s", value, decl.Type)
 			return
 		}
 
@@ -144,7 +159,7 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 	response.Body = api.SetVariableResponseBody{
 		Value:              valStr,
 		Type:               typStr,
-		VariablesReference: request.Arguments.VariablesReference,
+		VariablesReference: 0,
 		NamedVariables:     0,
 		IndexedVariables:   0,
 	}
