@@ -104,6 +104,10 @@ func (l *Lexer) Lex() Result {
 			return Result{l.advance(), LPAREN, "(", nil}
 		case ')':
 			return Result{l.advance(), RPAREN, ")", nil}
+		case '[':
+			return Result{l.advance(), LBRACKET, "[", nil}
+		case ']':
+			return Result{l.advance(), RBRACKET, "]", nil}
 		case ':':
 			return Result{l.advance(), COLON, ":", nil}
 		case '"':

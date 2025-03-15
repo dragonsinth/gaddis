@@ -38,6 +38,8 @@ const (
 	COMMA
 	LPAREN
 	RPAREN
+	LBRACKET
+	RBRACKET
 	COLON
 
 	CONSTANT
@@ -109,11 +111,13 @@ var tokens = []string{
 	OR:  "OR",
 	NOT: "NOT",
 
-	ASSIGN: "=",
-	COMMA:  ",",
-	LPAREN: "(",
-	RPAREN: ")",
-	COLON:  ":",
+	ASSIGN:   "=",
+	COMMA:    ",",
+	LPAREN:   "(",
+	RPAREN:   ")",
+	LBRACKET: "(",
+	RBRACKET: ")",
+	COLON:    ":",
 
 	CONSTANT: "CONSTANT",
 	DECLARE:  "DECLARE",

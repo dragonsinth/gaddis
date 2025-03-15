@@ -199,3 +199,28 @@ func (ce *CallExpr) Visit(v Visitor) {
 func (ce *CallExpr) GetType() Type {
 	return ce.Type
 }
+
+type ArrayRef struct {
+	SourceInfo
+	baseExpression
+	RefExpr   Expression
+	IndexExpr Expression
+	Type      Type
+}
+
+func (ar *ArrayRef) Visit(v Visitor) {
+	if !v.PreVisitArrayRef(ar) {
+		return
+	}
+	ar.RefExpr.Visit(v)
+	ar.IndexExpr.Visit(v)
+	v.PostVisitArrayRef(ar)
+}
+
+func (ar *ArrayRef) CanReference() bool {
+	return true
+}
+
+func (ar *ArrayRef) GetType() Type {
+	return ar.Type
+}

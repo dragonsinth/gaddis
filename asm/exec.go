@@ -69,7 +69,11 @@ type NativeFrame struct {
 func (p *Execution) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(fmt.Sprint(r))
+			if isErr, ok := r.(error); ok {
+				err = isErr
+			} else {
+				err = errors.New(fmt.Sprint(r))
+			}
 			p.AddPanicFrames()
 		}
 	}()

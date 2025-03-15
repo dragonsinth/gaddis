@@ -39,12 +39,10 @@ func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 }
 
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
-	// TODO: variable is non-primitive?
-	if !is.Ref.CanReference() {
+	ref := is.Ref
+	if !ref.CanReference() {
 		v.Errorf(is, "input variable must be a reference")
-		return
-	}
-	if !is.Ref.GetType().IsPrimitive() {
+	} else if !ref.GetType().IsPrimitive() {
 		v.Errorf(is, "input variable must be a primitive type")
 	}
 }
@@ -97,13 +95,12 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 	// early out erroring if the loop var is jacked
 	refType := fs.Ref.GetType()
-	if !fs.Ref.CanReference() {
-		// TODO: disallow arrayref/fieldref also?
-		v.Errorf(fs.Ref, "loop variable must be a reference")
+	if _, ok := fs.Ref.(*ast.VariableExpr); !ok {
+		v.Errorf(fs.Ref, "loop counter must be a plain variable")
 		return
 	}
 	if !refType.IsNumeric() {
-		v.Errorf(fs.Ref, "loop variable must be a number, got %s", refType)
+		v.Errorf(fs.Ref, "loop counter must be a number, got %s", refType)
 		return
 	}
 	// check start/stop/step
@@ -216,6 +213,22 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 	v.checkArgumentList(ce, ce.Args, ce.Ref.Params)
 }
 
+func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {
+	if indexTyp := ar.IndexExpr.GetType(); indexTyp != ast.UnresolvedType && indexTyp != ast.Integer {
+		v.Errorf(ar.IndexExpr, "index expression must be of type Integer")
+	}
+
+	if refType := ar.RefExpr.GetType(); refType == ast.UnresolvedType {
+		// reduce error spam
+	} else if refType == ast.String {
+		ar.Type = ast.Character
+	} else if refType.IsArrayType() {
+		ar.Type = refType.AsArrayType().ElementType
+	} else {
+		v.Errorf(ar.RefExpr, "array reference expression must be a String or Array type")
+	}
+}
+
 func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression, params []*ast.VarDecl) {
 	for i, c := 0, min(len(args), len(params)); i < c; i++ {
 		arg, param := args[i], params[i]
@@ -224,7 +237,11 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 		}
 		if param.IsRef {
 			// must be an exact type match for reference
-			if !arg.CanReference() {
+			if ar, ok := arg.(*ast.ArrayRef); ok {
+				if ar.RefExpr.GetType() == ast.String {
+					v.Errorf(arg, "argument %d: expression may not be a string index", i+1)
+				}
+			} else if !arg.CanReference() {
 				v.Errorf(arg, "argument %d: expression must be a reference", i+1)
 			} else if arg.GetType() != param.Type {
 				v.Errorf(arg, "argument %d: %s not assignable to %s", i+1, arg.GetType(), param.Type)

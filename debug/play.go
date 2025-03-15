@@ -40,7 +40,12 @@ func (ds *Session) play() {
 			ds.stepType = STEP_NONE
 
 			if r := recover(); r != nil {
-				err := errors.New(fmt.Sprint(r))
+				var err error
+				if isErr, ok := r.(error); ok {
+					err = isErr
+				} else {
+					err = errors.New(fmt.Sprint(r))
+				}
 				p.AddPanicFrames()
 
 				log.Println("panicking:", err)

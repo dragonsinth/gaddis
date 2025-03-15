@@ -429,7 +429,7 @@ func (p *Parser) parseExpression() ast.Expression {
 
 func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 	if level < 0 {
-		return p.parseTerminal()
+		return p.parseTrailingArrayRefs()
 	}
 	ops := binaryPrecedence[level]
 	ret := p.parseBinaryOperations(level - 1)
@@ -445,6 +445,17 @@ func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 			return ret
 		}
 	}
+}
+
+func (p *Parser) parseTrailingArrayRefs() ast.Expression {
+	expr := p.parseTerminal()
+	for p.hasTok(lex.LBRACKET) {
+		r := p.parseTok(lex.LBRACKET)
+		indexExpr := p.parseExpression()
+		rEnd := p.parseTok(lex.RBRACKET)
+		expr = &ast.ArrayRef{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, RefExpr: expr, IndexExpr: indexExpr}
+	}
+	return expr
 }
 
 func (p *Parser) parseTerminal() ast.Expression {

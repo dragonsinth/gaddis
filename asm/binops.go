@@ -19,6 +19,20 @@ func (i Store) String() string {
 	return "store"
 }
 
+type StoreChar struct {
+	baseInst
+}
+
+func (i StoreChar) Exec(p *Execution) {
+	ref := p.Pop().(*byte)
+	val := p.Pop().(byte)
+	*ref = val
+}
+
+func (i StoreChar) String() string {
+	return "store char"
+}
+
 type BinOpInt struct {
 	baseInst
 	Op ast.Operator

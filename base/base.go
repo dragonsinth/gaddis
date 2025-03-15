@@ -152,6 +152,12 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 
 func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}
 
+func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
+
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.Errors = append(v.Errors, ast.Error{
 		SourceInfo: si.GetSourceInfo(),

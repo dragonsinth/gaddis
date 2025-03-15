@@ -138,6 +138,12 @@ func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 		NArg:     0,
 	})
 	v.varRef(i.Ref, true)
+	if ar, ok := i.Ref.(*ast.ArrayRef); ok {
+		if ar.RefExpr.GetType() == ast.String {
+			v.code = append(v.code, StoreChar{baseInst{i.SourceInfo}})
+			return false
+		}
+	}
 	v.store(i)
 	return false
 }
@@ -145,6 +151,12 @@ func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 func (v *Visitor) PreVisitSetStmt(i *ast.SetStmt) bool {
 	v.maybeCast(i.Ref.GetType(), i.Expr)
 	v.varRef(i.Ref, true)
+	if ar, ok := i.Ref.(*ast.ArrayRef); ok {
+		if ar.RefExpr.GetType() == ast.String {
+			v.code = append(v.code, StoreChar{baseInst{i.SourceInfo}})
+			return false
+		}
+	}
 	v.store(i)
 	return false
 }
@@ -419,6 +431,22 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	return false
 }
 
+func (v *Visitor) PreVisitArrayRef(arr *ast.ArrayRef) bool {
+	arr.RefExpr.Visit(v)
+	arr.IndexExpr.Visit(v)
+	typ := OffsetTypeArray
+	if arr.RefExpr.GetType() == ast.String {
+		typ = OffsetTypeString
+	}
+
+	// if we get here we need a value
+	v.code = append(v.code, OffsetVal{
+		baseInst:   baseInst{arr.GetSourceInfo()},
+		OffsetType: typ,
+	})
+	return false
+}
+
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	exp.Visit(v)
 	if dstType == ast.Real && exp.GetType() == ast.Integer {
@@ -429,9 +457,27 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 }
 
 func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
-	switch ve := expr.(type) {
+	switch exp := expr.(type) {
 	case *ast.VariableExpr:
-		v.varRefDecl(expr, ve.Ref, needRef)
+		v.varRefDecl(expr, exp.Ref, needRef)
+	case *ast.ArrayRef:
+		typ := OffsetTypeArray
+		if exp.RefExpr.GetType() == ast.String {
+			typ = OffsetTypeString
+		}
+		exp.RefExpr.Visit(v)
+		exp.IndexExpr.Visit(v)
+		if needRef {
+			v.code = append(v.code, OffsetRef{
+				baseInst:   baseInst{exp.GetSourceInfo()},
+				OffsetType: typ,
+			})
+		} else {
+			v.code = append(v.code, OffsetVal{
+				baseInst:   baseInst{exp.GetSourceInfo()},
+				OffsetType: typ,
+			})
+		}
 	default:
 		panic("implement me")
 	}

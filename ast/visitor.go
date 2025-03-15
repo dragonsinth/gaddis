@@ -67,4 +67,7 @@ type Visitor interface {
 
 	PreVisitCallExpr(ce *CallExpr) bool
 	PostVisitCallExpr(ce *CallExpr)
+
+	PreVisitArrayRef(ar *ArrayRef) bool
+	PostVisitArrayRef(ar *ArrayRef)
 }

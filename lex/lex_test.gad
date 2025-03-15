@@ -68,3 +68,10 @@ Function Real discount(Real price)
 End Function
 
 Display discount(1.0)
+
+Declare String str = "yes"
+Display str[2]
+Set str[2] = "p"
+Display str
+Set "yes"[2] = "p"
+Display "yes"

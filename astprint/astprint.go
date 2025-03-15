@@ -449,6 +449,16 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 }
 
+func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
+	ar.RefExpr.Visit(v)
+	v.output("[")
+	ar.IndexExpr.Visit(v)
+	v.output("]")
+	return false
+}
+
+func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
+
 func (v *Visitor) output(s string) {
 	if strings.ContainsFunc(s, func(r rune) bool {
 		return r == '\n'

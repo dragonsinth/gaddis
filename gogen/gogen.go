@@ -563,6 +563,17 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 
 func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}
 
+func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
+	// TODO: this won't be sufficient for passing in as a reference param
+	ar.RefExpr.Visit(v)
+	v.output("[")
+	ar.IndexExpr.Visit(v)
+	v.output("]")
+	return false
+}
+
+func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
+
 func (v *Visitor) indent() {
 	v.output(v.ind)
 }
@@ -620,6 +631,11 @@ func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 	switch ve := expr.(type) {
 	case *ast.VariableExpr:
 		v.varRefDecl(ve.Ref, needRef)
+	case *ast.ArrayRef:
+		if needRef {
+			v.output("&")
+		}
+		expr.Visit(v)
 	default:
 		panic("implement me")
 	}
@@ -656,7 +672,7 @@ func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
 			v.output("&")
 			v.ident(decl)
 		} else {
-			// Take the value (it's a reference) then derefence it.
+			// Take the value (it's a reference) then dereference it.
 			v.output("*")
 			v.ident(decl)
 		}
