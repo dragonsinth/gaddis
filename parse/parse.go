@@ -232,7 +232,12 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		expr := p.parseExpression()
 		p.parseEol()
 
-		// TODO: does the default block have to be last?
+		// Special case: select is the only block-like construct that does not actually parse a block.
+		// So we need to manually consume any lines before the first case statement. After that, any
+		// empty lines will be consumed by the last select/case.
+		for p.hasTok(lex.EOL) {
+			p.parseTok(lex.EOL)
+		}
 
 		var cases []*ast.CaseBlock
 		for p.hasTok(lex.CASE) {
