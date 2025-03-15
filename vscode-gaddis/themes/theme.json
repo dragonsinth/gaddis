@@ -12,6 +12,13 @@
             }
         },
         {
+            "name": "TODOs",
+            "scope": "keyword.other.todo.gaddis",
+            "settings": {
+                "foreground": "#40d040"
+            }
+        },
+        {
             "name": "Operators",
             "scope": "keyword.operator.gaddis",
             "settings": {

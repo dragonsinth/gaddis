@@ -35,6 +35,18 @@
 			"patterns": [
 				{
 					"name": "comment.line.double-slash.gaddis",
+					"match": "(//)\\s*((TODO|FIXME|NOTE|XXX|todo|fixme|note|xxx).*)$\n?",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.comment.gaddis"
+						},
+						"2": {
+							"name": "keyword.other.todo.gaddis"
+						}
+					}
+				},
+				{
+					"name": "comment.line.double-slash.gaddis",
 					"match": "(//).*$\n?",
 					"captures": {
 						"1": {
@@ -65,7 +77,7 @@
 							"name": "constant.character.escape.gaddis",
 							"match": "\\\\."
 						}
-					]		
+					]
 				},
 				{
 					"name": "string.quoted.single.gaddis",
@@ -86,7 +98,7 @@
 							"name": "constant.character.escape.gaddis",
 							"match": "\\\\."
 						}
-					]		
+					]
 				}
 			]
 		},
