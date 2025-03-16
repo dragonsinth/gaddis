@@ -34,7 +34,7 @@ var operators = [...]string{
 	LT:  "<",
 	LTE: "<=",
 	GT:  ">",
-	GTE: ">",
+	GTE: ">=",
 	AND: "AND",
 	OR:  "OR",
 	NOT: "NOT",
