@@ -476,10 +476,11 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 	lastPos := ai.SourceInfo.Start
 	nextPos := ai.Args[0].GetSourceInfo().Start
 
-	indent := lastPos.Line < nextPos.Line
-	if indent {
+	indent := false
+	if lastPos.Line < nextPos.Line {
 		v.eol(lastPos)
 		v.ind = v.ind + "\t"
+		indent = true
 		v.bol(nextPos)
 	} else {
 		v.output(" ")
@@ -491,6 +492,10 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 			if lastPos.Line < nextPos.Line {
 				v.output(",")
 				v.eol(lastPos)
+				if !indent {
+					v.ind = v.ind + "\t"
+					indent = true
+				}
 				v.bol(nextPos)
 			} else {
 				v.output(", ")

@@ -179,7 +179,7 @@ func FormatFrameScope(fr *Frame) string {
 			if i > 0 {
 				sb.WriteRune(',')
 			}
-			sb.WriteString(DebugStringVal(arg))
+			sb.WriteString(DebugStringVal(ast.UnresolvedType, arg))
 		}
 		sb.WriteRune(')')
 	}
@@ -207,7 +207,7 @@ func (p *Execution) PopN(n int) []any {
 	return ret
 }
 
-func DebugStringVal(arg any) string {
+func DebugStringVal(typ ast.Type, arg any) string {
 	if arg == nil {
 		return "<nil>"
 	}
@@ -232,6 +232,14 @@ func DebugStringVal(arg any) string {
 		_, _ = fmt.Fprintf(&sb, "%#v", string(typedArg))
 	case byte:
 		_, _ = fmt.Fprintf(&sb, "%#v", rune(typedArg))
+	case []any:
+		if typ == ast.UnresolvedType {
+			return "<unknown>"
+		} else if typ.IsArrayType() {
+			return "<array>"
+		} else {
+			return "<object>"
+		}
 	default:
 		_, _ = fmt.Fprint(&sb, arg)
 	}

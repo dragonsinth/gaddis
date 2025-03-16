@@ -24,7 +24,7 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 	addVar := func(val any, vd *ast.VarDecl, id int) {
 		response.Body.Variables = append(response.Body.Variables, api.Variable{
 			Name:               vd.Name,
-			Value:              asm.DebugStringVal(val),
+			Value:              asm.DebugStringVal(vd.Type, val),
 			Type:               vd.Type.String(),
 			PresentationHint:   nil,
 			EvaluateName:       vd.Name,
@@ -48,10 +48,11 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 			for i := range fr.Locals {
 				addVar(fr.Locals[i], fr.Scope.Locals[i], i)
 			}
+			// TODO: consider how to get type information for eval stack.
 			for i := range fr.Eval {
 				response.Body.Variables = append(response.Body.Variables, api.Variable{
 					Name:  fmt.Sprintf("[%d]", i),
-					Value: asm.DebugStringVal(fr.Eval[i]),
+					Value: asm.DebugStringVal(ast.UnresolvedType, fr.Eval[i]),
 				})
 			}
 		case ids.paramId:
@@ -147,7 +148,7 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 
 		*ref = val
 		typStr = decl.Type.String()
-		valStr = asm.DebugStringVal(val)
+		valStr = asm.DebugStringVal(decl.Type, val)
 	})
 	if err != nil {
 		h.send(newErrorResponse(request.Seq, request.Command, err.Error()))
@@ -179,7 +180,7 @@ func (h *Session) onEvaluateRequest(request *api.EvaluateRequest) {
 
 	response := &api.EvaluateResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
-	response.Body.Result = asm.DebugStringVal(val)
+	response.Body.Result = asm.DebugStringVal(typ, val)
 	response.Body.Type = typ.String()
 	h.send(response)
 }

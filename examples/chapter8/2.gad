@@ -12,7 +12,9 @@ Module arrayDecls(Integer array[], Integer Ref array2[])
 	Display stringToString(strings, SIZE)
 
 	Declare Integer table[3][4]
-	Declare Integer table2[3][4] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 // TODO: line break
+	Declare Integer table2[3][4] = 1, 2, 3, 4,
+		5, 6, 7, 8,
+		9, 10, 11, 12 // TODO: line break
 	Set table[0][0] = table2[1][1]
 	Display intsToString2(table, 3, 4)
 	Display intsToString2(table2, 3, 4)
