@@ -717,12 +717,16 @@ func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
 			// if we have a ref and need a ref, or we have a val and need a val, we good
 			v.ident(decl)
 		} else if needRef {
+			v.output("(")
 			v.output("&")
 			v.ident(decl)
+			v.output(")")
 		} else {
 			// Take the value (it's a reference) then dereference it.
+			v.output("(")
 			v.output("*")
 			v.ident(decl)
+			v.output(")")
 		}
 	}
 }
@@ -736,6 +740,11 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 		param := params[i]
 		if param.IsRef {
 			v.varRef(arg, true)
+		} else if param.Type.IsArrayType() {
+			// deep clone the array
+			v.output("Clone(")
+			arg.Visit(v)
+			v.output(")")
 		} else {
 			v.maybeCast(param.Type, arg)
 		}

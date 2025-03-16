@@ -2,6 +2,7 @@ package builtins
 
 import (
 	"math"
+	"reflect"
 )
 
 // Easier codegen.
@@ -80,4 +81,30 @@ func StepReal(ref *Real, stop, step Real) Boolean {
 	} else {
 		return *ref <= stop
 	}
+}
+
+func Clone[T any](slice []T) []T {
+	ret := make([]T, len(slice))
+	elemType := reflect.TypeOf(slice).Elem()
+	if elemType.Kind() == reflect.Slice {
+		for i := range slice {
+			ret[i] = reflectClone(reflect.ValueOf(slice[i])).Interface().(T)
+		}
+	} else {
+		copy(ret, slice)
+	}
+	return ret
+}
+
+func reflectClone(slice reflect.Value) reflect.Value {
+	ret := reflect.MakeSlice(slice.Type(), slice.Len(), slice.Cap())
+	elemType := reflect.TypeOf(slice).Elem()
+	if elemType.Kind() == reflect.Slice {
+		for i := 0; i < slice.Len(); i++ {
+			ret.Index(i).Set(reflectClone(slice.Index(i)))
+		}
+	} else {
+		reflect.Copy(ret, slice)
+	}
+	return ret
 }

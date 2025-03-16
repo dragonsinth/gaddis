@@ -1,0 +1,49 @@
+Constant Integer SIZE = 5
+
+Module main()
+	Declare Integer numbers1[SIZE]
+	Declare Integer numbers2[SIZE] = 1, 2, 3, 4, 5
+
+	Display intsToString(numbers1, SIZE)
+	Display intsRefToString(numbers2, SIZE)
+
+	Call dontModifyInts(numbers1)
+	Call modifyInts(numbers2)
+
+	Display intsToString(numbers1, SIZE)
+	Display intsRefToString(numbers2, SIZE)
+End Module
+
+Module dontModifyInts(Integer vals[])
+	Set vals[0] = vals[0] + 1
+End Module
+
+Module modifyInts(Integer Ref vals[])
+	Set vals[0] = vals[0] + 1
+End Module
+
+Function String intsRefToString(Integer Ref vals[], Integer sz)
+	Declare String out = "["
+	Declare Integer i
+	For i = 0 To sz - 1
+		If i > 0 Then
+			Set out = append(out, ", ")
+		End If
+		Set out = append(out, integerFormat(vals[i]))
+	End For
+	Set out = append(out, "]")
+	Return out
+End Function
+
+Function String intsToString(Integer vals[], Integer sz)
+	Declare String out = "["
+	Declare Integer i
+	For i = 0 To sz - 1
+		If i > 0 Then
+			Set out = append(out, ", ")
+		End If
+		Set out = append(out, integerFormat(vals[i]))
+	End For
+	Set out = append(out, "]")
+	Return out
+End Function

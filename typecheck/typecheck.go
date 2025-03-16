@@ -250,7 +250,7 @@ func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {
 	}
 }
 
-func (v *Visitor) PostVisitArrayInitializer(ar *ast.ArrayInitializer) {
+func (v *Visitor) PostArrayInitializer(ar *ast.ArrayInitializer) {
 	typ := ar.Type.BaseType()
 	for i, arg := range ar.Args {
 		if !ast.CanCoerce(typ, arg.GetType()) {

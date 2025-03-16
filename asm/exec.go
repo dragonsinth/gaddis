@@ -237,7 +237,7 @@ func DebugStringVal(typ ast.Type, arg any) string {
 			return "<array>"
 		} else if typ.IsArrayType() {
 			at := typ.AsArrayType()
-			return at.Base.String() + arrayTypeTail(at.NDims, len(typedArg))
+			return at.Base.String() + arrayTypeSized(at.NDims, len(typedArg))
 		} else {
 			return "<object>"
 		}

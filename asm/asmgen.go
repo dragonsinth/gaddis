@@ -51,7 +51,7 @@ func Assemble(prog *ast.Program) *Assembly {
 			Label:    v.refLabel("main"),
 			NArgs:    len(scope.Params),
 		})
-		finalReturnSi = ref.ModuleStmt.SourceInfo.Tail()
+		finalReturnSi = ref.ModuleStmt.SourceInfo.Head()
 	}
 
 	// terminate the program cleanly
@@ -477,7 +477,7 @@ func (v *Visitor) outputArrayInitializer(newLitSi ast.SourceInfo, t *ast.ArrayTy
 			exprs = v.outputArrayInitializer(newLitSi, t.ElementType.AsArrayType(), dims[1:], exprs)
 		}
 	}
-	v.code = append(v.code, &NewArray{
+	v.code = append(v.code, &ArrayNew{
 		baseInst: baseInst{newLitSi},
 		Typ:      t,
 		Size:     dims[0],
@@ -607,6 +607,14 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 		param := params[i]
 		if param.IsRef {
 			v.varRef(arg, true)
+		} else if param.Type.IsArrayType() {
+			arg.Visit(v)
+			at := param.Type.AsArrayType()
+			v.code = append(v.code, ArrayClone{
+				baseInst: baseInst{arg.GetSourceInfo()},
+				Typ:      at,
+				NDims:    at.NDims,
+			})
 		} else {
 			v.maybeCast(param.Type, arg)
 		}
