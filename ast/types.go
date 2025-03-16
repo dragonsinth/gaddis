@@ -10,6 +10,7 @@ type Type interface {
 	AsPrimitive() PrimitiveType
 	IsArrayType() bool
 	AsArrayType() *ArrayType
+	BaseType() Type
 
 	isType()
 }
@@ -43,6 +44,8 @@ func (t PrimitiveType) IsArrayType() bool { return false }
 
 func (t PrimitiveType) AsArrayType() *ArrayType { return nil }
 
+func (t PrimitiveType) BaseType() Type { return t }
+
 func (t PrimitiveType) isType() {
 }
 
@@ -67,6 +70,8 @@ func (t *ArrayType) IsNumeric() bool { return false }
 func (t *ArrayType) IsArrayType() bool { return true }
 
 func (t *ArrayType) AsArrayType() *ArrayType { return t }
+
+func (t *ArrayType) BaseType() Type { return t.ElementType.BaseType() }
 
 func (t *ArrayType) isType() {
 }

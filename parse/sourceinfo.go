@@ -17,11 +17,9 @@ func spanAst(start lex.Result, end ast.HasSourceInfo) ast.SourceInfo {
 }
 
 func spanResult(start lex.Result, end lex.Result) ast.SourceInfo {
-	a := toPos(start.Pos)
-	b := toSourceInfo(end)
 	return ast.SourceInfo{
-		Start: a,
-		End:   b.End,
+		Start: toPos(start.Pos),
+		End:   toSourceInfo(end).End,
 	}
 }
 

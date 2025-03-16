@@ -158,6 +158,12 @@ func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
 
 func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
 
+func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
+	return true
+}
+
+func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.Errors = append(v.Errors, ast.Error{
 		SourceInfo: si.GetSourceInfo(),

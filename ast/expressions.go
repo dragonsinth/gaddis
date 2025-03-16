@@ -224,3 +224,24 @@ func (ar *ArrayRef) CanReference() bool {
 func (ar *ArrayRef) GetType() Type {
 	return ar.Type
 }
+
+type ArrayInitializer struct {
+	SourceInfo
+	baseExpression
+	Exprs []Expression
+	Type  Type
+}
+
+func (ai *ArrayInitializer) Visit(v Visitor) {
+	if !v.PreVisitArrayInitializer(ai) {
+		return
+	}
+	for _, expr := range ai.Exprs {
+		expr.Visit(v)
+	}
+	v.PostArrayInitializer(ai)
+}
+
+func (ai *ArrayInitializer) GetType() Type {
+	return ai.Type
+}

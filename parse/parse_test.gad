@@ -114,12 +114,31 @@ End Function
 
 Display discount(1.0)
 
-Declare String str = "yes"
-Display str[2]
-Set str[2] = "p"
-Display str
-Set "yes"[2] = "p"
-Display "yes"
+Module stringSlice()
+	Declare String str = "yes"
+	Display str[2]
+	Set str[2] = 'p'
+	Display str
+	Input str[0]
+	Display str
+	Set "yes"[2] = 'p'
+	Display "yes"
+End Module
+
+Module arrayDecls(Integer array[], Integer Ref array2[])
+	Constant Integer SIZE = 5
+	Declare Integer numbers[SIZE]
+	Declare Integer numbers2[SIZE] = 1, 2, 3, 4, 5
+
+	Declare String strings[SIZE] = "one", "two", "three", "four", "five"
+	Set strings[0] = strings[1]
+	Display strings[0]
+	Input strings[0]
+
+	Declare Integer table[3][4]
+	Declare Integer table2[3][4] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 // TODO: line break
+	Set table[0][0] = table2[1][1]
+End Module
 
 
 // comment 1 at end of file

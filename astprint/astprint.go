@@ -51,18 +51,26 @@ func (v *Visitor) PostVisitBlock(bl *ast.Block) {
 
 func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	if vd.IsParam {
-		v.output(vd.Type.String())
+		v.output(vd.Type.BaseType().String())
 		if vd.IsRef {
 			v.output(" Ref")
 		}
 		v.output(" ")
 		v.output(vd.Name)
+		for typ := vd.Type; typ.IsArrayType(); typ = typ.AsArrayType().ElementType {
+			v.output("[]")
+		}
 	} else {
 		v.output(vd.Name)
-		if vd.Expr != nil {
-			v.output(" = ")
-			vd.Expr.Visit(v)
+		for _, dim := range vd.DimExprs {
+			v.output("[")
+			dim.Visit(v)
+			v.output("]")
 		}
+	}
+	if vd.Expr != nil {
+		v.output(" = ")
+		vd.Expr.Visit(v)
 	}
 	return false
 }
@@ -74,12 +82,12 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 	v.bol(ds.Start)
 	defer v.eol(ds.End)
 
-	if ds.Decls[0].IsConst {
+	if ds.IsConst {
 		v.output("Constant ")
 	} else {
 		v.output("Declare ")
 	}
-	v.output(ds.Decls[0].Type.String())
+	v.output(ds.Type.String())
 	v.output(" ")
 	for i, decl := range ds.Decls {
 		if i > 0 {
@@ -458,6 +466,18 @@ func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
 }
 
 func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
+
+func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
+	for i, expr := range ai.Exprs {
+		if i > 0 {
+			v.output(", ")
+		}
+		expr.Visit(v)
+	}
+	return false
+}
+
+func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
 
 func (v *Visitor) output(s string) {
 	if strings.ContainsFunc(s, func(r rune) bool {

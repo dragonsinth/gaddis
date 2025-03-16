@@ -7,7 +7,9 @@ type Statement interface {
 
 type DeclareStmt struct {
 	SourceInfo
-	Decls []*VarDecl
+	Type    Type
+	IsConst bool
+	Decls   []*VarDecl
 }
 
 func (ds *DeclareStmt) Visit(v Visitor) {

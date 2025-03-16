@@ -239,6 +239,7 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 			// must be an exact type match for reference
 			if ar, ok := arg.(*ast.ArrayRef); ok {
 				if ar.RefExpr.GetType() == ast.String {
+					// TODO(scottb): could allow this with an auto temp var?
 					v.Errorf(arg, "argument %d: expression may not be a string index", i+1)
 				}
 			} else if !arg.CanReference() {
