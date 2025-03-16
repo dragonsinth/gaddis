@@ -1,5 +1,11 @@
 package asm
 
+import (
+	"github.com/dragonsinth/gaddis/ast"
+	"strconv"
+	"strings"
+)
+
 type OffsetType int
 
 const (
@@ -72,4 +78,32 @@ func (i OffsetVal) String() string {
 	default:
 		panic(i.OffsetType)
 	}
+}
+
+type NewArray struct {
+	baseInst
+	Typ  *ast.ArrayType
+	Size int
+}
+
+func (n NewArray) Exec(p *Execution) {
+	arr := p.PopN(n.Size)
+	// make a copy
+	val := append([]any{}, arr...)
+	p.Push(val)
+}
+
+func (n NewArray) String() string {
+	return "new array " + litTypes[n.Typ.Base.AsPrimitive()] + arrayTypeTail(n.Typ.NDims, n.Size)
+}
+
+func arrayTypeTail(dims int, sz int) string {
+	var sb strings.Builder
+	sb.WriteRune('[')
+	sb.WriteString(strconv.Itoa(sz))
+	sb.WriteRune(']')
+	for i := 1; i < dims; i++ {
+		sb.WriteString("[]")
+	}
+	return sb.String()
 }

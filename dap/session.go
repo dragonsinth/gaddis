@@ -51,6 +51,9 @@ type Session struct {
 	canTerminal bool
 	terminal    *Terminal
 	terminalPid int
+
+	variablesByPtr map[*any]variable
+	variablesById  map[int]variable
 }
 
 // Run runs the session for as long as it last.
@@ -171,4 +174,10 @@ func (h *Session) pausedSessionRequiredError(request api.RequestMessage) bool {
 		return true
 	}
 	return false
+}
+
+func (h *Session) Resume() {
+	h.variablesById = nil
+	h.variablesByPtr = nil
+	h.sess.Play()
 }

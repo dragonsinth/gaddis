@@ -36,6 +36,27 @@ func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 			vd.Expr = &ast.Literal{SourceInfo: vd.Expr.GetSourceInfo(), Type: vd.Type.AsPrimitive(), Val: val}
 		}
 	}
+
+	for _, d := range vd.DimExprs {
+		val := d.ConstEval()
+		if val == nil || d.GetType() != ast.Integer {
+			v.Visitor.Errorf(d, "dim expression must be constant integer")
+		} else {
+			vd.Dims = append(vd.Dims, int(val.(int64)))
+		}
+	}
+	if vd.Expr != nil && len(vd.Dims) > 0 {
+		ai := vd.Expr.(*ast.ArrayInitializer)
+		ai.Dims = vd.Dims
+	}
+}
+
+func (v *Visitor) PostVisitDisplayStmt(ds *ast.DisplayStmt) {
+	for _, expr := range ds.Exprs {
+		if !expr.GetType().IsPrimitive() {
+			v.Errorf(expr, "display value must be a primitive type")
+		}
+	}
 }
 
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
@@ -52,10 +73,10 @@ func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 	refType := ss.Ref.GetType()
 	if !ss.Ref.CanReference() {
 		v.Errorf(ss.Ref, "set variable must be a reference")
-		return
-	}
-	if !ast.CanCoerce(refType, exprType) {
+	} else if !ast.CanCoerce(refType, exprType) {
 		v.Errorf(ss.Expr, "%s not assignable to %s", exprType, refType)
+	} else if refType.IsArrayType() {
+		v.Errorf(ss.Expr, "arrays cannot be assigned to")
 	}
 }
 
@@ -229,6 +250,15 @@ func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {
 	}
 }
 
+func (v *Visitor) PostVisitArrayInitializer(ar *ast.ArrayInitializer) {
+	typ := ar.Type.BaseType()
+	for i, arg := range ar.Args {
+		if !ast.CanCoerce(typ, arg.GetType()) {
+			v.Errorf(arg, "initializer %d: %s is not assignable to %s", i+1, arg.GetType(), typ)
+		}
+	}
+}
+
 func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression, params []*ast.VarDecl) {
 	for i, c := 0, min(len(args), len(params)); i < c; i++ {
 		arg, param := args[i], params[i]
@@ -239,6 +269,7 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 			// must be an exact type match for reference
 			if ar, ok := arg.(*ast.ArrayRef); ok {
 				if ar.RefExpr.GetType() == ast.String {
+					// TODO(scottb): could allow this with an auto temp var?
 					v.Errorf(arg, "argument %d: expression may not be a string index", i+1)
 				}
 			} else if !arg.CanReference() {

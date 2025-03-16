@@ -6,20 +6,25 @@ type HasName interface {
 
 type VarDecl struct {
 	SourceInfo
-	Name    string
-	Type    Type
-	Expr    Expression
-	IsConst bool
-	IsParam bool
-	IsRef   bool // TODO: should this be part of the type?
+	Name     string
+	Type     Type
+	DimExprs []Expression
+	Expr     Expression
+	IsConst  bool
+	IsParam  bool
+	IsRef    bool // TODO: should this be part of the type?
 
 	Scope *Scope // collect
 	Id    int
+	Dims  []int // typecheck
 }
 
 func (vd *VarDecl) Visit(v Visitor) {
 	if !v.PreVisitVarDecl(vd) {
 		return
+	}
+	for _, d := range vd.DimExprs {
+		d.Visit(v)
 	}
 	if vd.Expr != nil {
 		vd.Expr.Visit(v)

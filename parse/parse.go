@@ -44,6 +44,8 @@ type Parser struct {
 
 	comments []ast.Comment
 	errors   []ast.Error
+
+	types map[ast.TypeKey]ast.Type
 }
 
 func (p *Parser) Peek() lex.Result {
@@ -167,7 +169,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			lastDecl = p.parseVarDecl(typ, true)
 			decls = append(decls, lastDecl)
 		}
-		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Decls: decls}
+		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: true, Decls: decls}
 	case lex.DECLARE:
 		typ := p.parseType()
 		var decls []*ast.VarDecl
@@ -178,7 +180,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			lastDecl = p.parseVarDecl(typ, false)
 			decls = append(decls, lastDecl)
 		}
-		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Decls: decls}
+		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: false, Decls: decls}
 	case lex.DISPLAY:
 		var exprs []ast.Expression
 		si := toSourceInfo(r)
@@ -370,11 +372,28 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 
 func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 	r := p.parseTok(lex.IDENT)
-	si := toSourceInfo(r)
+	rEnd := r
+
+	var dims []ast.Expression
+	if !isConst {
+		baseType := typ
+		for p.hasTok(lex.LBRACKET) {
+			p.parseTok(lex.LBRACKET)
+			dims = append(dims, p.parseExpression())
+			rEnd = p.parseTok(lex.RBRACKET)
+			typ = p.makeArrayType(baseType, len(dims), typ)
+		}
+	}
+
+	si := spanResult(r, rEnd)
 	var expr ast.Expression
 	if p.hasTok(lex.ASSIGN) {
-		p.parseTok(lex.ASSIGN)
-		expr = p.parseExpression()
+		rAssign := p.parseTok(lex.ASSIGN)
+		if len(dims) > 0 {
+			expr = p.parseArrayInitializer(rAssign, typ.(*ast.ArrayType))
+		} else {
+			expr = p.parseExpression()
+		}
 		si = spanAst(r, expr)
 	} else if !isConst {
 		expr = nil
@@ -382,7 +401,7 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 		r := p.Peek()
 		panic(p.Errorf(r, "expected constant initializer, got %s %q", r.Token, r.Text))
 	}
-	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, Expr: expr, IsConst: isConst}
+	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, DimExprs: dims, Expr: expr, IsConst: isConst}
 }
 
 func (p *Parser) parseParamDecl() *ast.VarDecl {
@@ -394,7 +413,18 @@ func (p *Parser) parseParamDecl() *ast.VarDecl {
 		isRef = true
 	}
 	r := p.parseTok(lex.IDENT)
-	return &ast.VarDecl{SourceInfo: spanResult(rStart, r), Name: r.Text, Type: typ, IsParam: true, IsRef: isRef}
+	name := r.Text
+
+	baseType := typ
+	nDims := 0
+	for p.hasTok(lex.LBRACKET) {
+		p.parseTok(lex.LBRACKET)
+		r = p.parseTok(lex.RBRACKET)
+		nDims++
+		typ = p.makeArrayType(baseType, nDims, typ)
+	}
+
+	return &ast.VarDecl{SourceInfo: spanResult(rStart, r), Name: name, Type: typ, IsParam: true, IsRef: isRef}
 }
 
 func (p *Parser) parseIfCondBlock(start lex.Position) *ast.CondBlock {
@@ -514,6 +544,22 @@ func (p *Parser) parseLiteral(r lex.Result, typ ast.PrimitiveType) *ast.Literal 
 	return lit
 }
 
+func (p *Parser) parseArrayInitializer(r lex.Result, typ *ast.ArrayType) ast.Expression {
+	for p.hasTok(lex.EOL) {
+		p.parseTok(lex.EOL)
+	}
+	args := []ast.Expression{p.parseExpression()}
+	for p.hasTok(lex.COMMA) {
+		p.parseTok(lex.COMMA)
+		for p.hasTok(lex.EOL) {
+			p.parseTok(lex.EOL)
+		}
+		args = append(args, p.parseExpression())
+	}
+	si := spanAst(r, args[len(args)-1])
+	return &ast.ArrayInitializer{SourceInfo: si, Args: args, Type: typ}
+}
+
 func (p *Parser) parseEol() {
 	if !p.hasTok(lex.EOF) {
 		p.parseTok(lex.EOL)
@@ -538,6 +584,24 @@ func (p *Parser) errCheck(r lex.Result) lex.Result {
 		panic(p.Errorf(r, "illegal token %q; %s", r.Text, r.Error.Error()))
 	}
 	return r
+}
+
+func (p *Parser) makeArrayType(baseType ast.Type, nDims int, elementType ast.Type) ast.Type {
+	key := elementType.Key() + "[]"
+	typ := &ast.ArrayType{
+		Base:        baseType,
+		NDims:       nDims,
+		ElementType: elementType,
+		TypeKey:     key,
+	}
+	if existing, ok := p.types[key]; ok {
+		return existing
+	}
+	if p.types == nil {
+		p.types = map[ast.TypeKey]ast.Type{}
+	}
+	p.types[key] = typ
+	return typ
 }
 
 func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) ast.Error {

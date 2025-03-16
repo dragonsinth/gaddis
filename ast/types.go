@@ -10,6 +10,7 @@ type Type interface {
 	AsPrimitive() PrimitiveType
 	IsArrayType() bool
 	AsArrayType() *ArrayType
+	BaseType() Type
 
 	isType()
 }
@@ -43,19 +44,24 @@ func (t PrimitiveType) IsArrayType() bool { return false }
 
 func (t PrimitiveType) AsArrayType() *ArrayType { return nil }
 
+func (t PrimitiveType) BaseType() Type { return t }
+
 func (t PrimitiveType) isType() {
 }
 
 type ArrayType struct {
+	Base        Type
+	NDims       int
 	ElementType Type
+	TypeKey     TypeKey
 }
 
 func (t *ArrayType) Key() TypeKey {
-	return TypeKey(t.ElementType.String() + "[]")
+	return t.TypeKey
 }
 
 func (t *ArrayType) String() string {
-	return t.ElementType.String() + "[]"
+	return string(t.TypeKey)
 }
 
 func (t *ArrayType) IsPrimitive() bool { return false }
@@ -67,6 +73,8 @@ func (t *ArrayType) IsNumeric() bool { return false }
 func (t *ArrayType) IsArrayType() bool { return true }
 
 func (t *ArrayType) AsArrayType() *ArrayType { return t }
+
+func (t *ArrayType) BaseType() Type { return t.Base }
 
 func (t *ArrayType) isType() {
 }

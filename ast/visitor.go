@@ -70,4 +70,7 @@ type Visitor interface {
 
 	PreVisitArrayRef(ar *ArrayRef) bool
 	PostVisitArrayRef(ar *ArrayRef)
+
+	PreVisitArrayInitializer(ai *ArrayInitializer) bool
+	PostArrayInitializer(ai *ArrayInitializer)
 }

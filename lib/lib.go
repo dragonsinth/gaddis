@@ -34,6 +34,16 @@ func toReal(x int64) float64 {
 	return float64(x)
 }
 
+// not specced
+func integerFormat(x int64) []byte {
+	return []byte(strconv.FormatInt(x, 10))
+}
+
+// not specced
+func realFormat(x float64) []byte {
+	return []byte(strconv.FormatFloat(x, 'f', -1, 64))
+}
+
 func currencyFormat(amount float64) []byte {
 	var sb bytes.Buffer
 	cents := int64(math.Round(amount * 100))
