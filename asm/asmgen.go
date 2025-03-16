@@ -97,8 +97,12 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 		return false
 	}
 	// emit an assignment
-	if vd.Expr != nil {
-		v.maybeCast(vd.Type, vd.Expr)
+	if vd.Expr != nil || len(vd.Dims) > 0 {
+		if vd.Expr != nil {
+			v.maybeCast(vd.Type, vd.Expr)
+		} else {
+			v.outputArrayInitializer(vd.SourceInfo, vd.Type.AsArrayType(), vd.Dims, nil)
+		}
 		v.varRefDecl(vd, vd, true)
 		v.store(vd)
 	}
@@ -448,7 +452,37 @@ func (v *Visitor) PreVisitArrayRef(arr *ast.ArrayRef) bool {
 }
 
 func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
-	panic("here")
+	si := ai.SourceInfo
+	if len(ai.Args) > 0 {
+		si = ai.Args[len(ai.Args)-1].GetSourceInfo()
+	}
+	v.outputArrayInitializer(si, ai.Type, ai.Dims, ai.Args)
+	return false
+}
+
+func (v *Visitor) outputArrayInitializer(newLitSi ast.SourceInfo, t *ast.ArrayType, dims []int, exprs []ast.Expression) []ast.Expression {
+	if len(dims) == 1 {
+		typ := t.BaseType()
+		for i := 0; i < dims[0]; i++ {
+			if len(exprs) > 0 {
+				expr := exprs[0]
+				v.maybeCast(typ, expr)
+				exprs = exprs[1:]
+			} else {
+				v.zero(newLitSi, typ.AsPrimitive())
+			}
+		}
+	} else {
+		for i := 0; i < dims[0]; i++ {
+			exprs = v.outputArrayInitializer(newLitSi, t.ElementType.AsArrayType(), dims[1:], exprs)
+		}
+	}
+	v.code = append(v.code, &NewArray{
+		baseInst: baseInst{newLitSi},
+		Typ:      t,
+		Size:     dims[0],
+	})
+	return exprs
 }
 
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
@@ -596,6 +630,15 @@ func (v *Visitor) refLabel(name string) *Label {
 		panic(name)
 	}
 	return v.labels[name]
+}
+
+func (v *Visitor) zero(si ast.SourceInfo, typ ast.PrimitiveType) {
+	v.code = append(v.code, Literal{
+		baseInst: baseInst{si},
+		Typ:      typ,
+		Val:      zeroValue(typ),
+		Id:       0,
+	})
 }
 
 func makeBinaryOp(t ast.PrimitiveType, hs ast.HasSourceInfo, op ast.Operator) Inst {

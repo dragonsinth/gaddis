@@ -254,5 +254,3 @@ func zeroValue(typ ast.Type) any {
 		panic(typ)
 	}
 }
-
-var _ = zeroValue
