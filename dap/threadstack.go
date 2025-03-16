@@ -156,7 +156,3 @@ func getFrameId(scopeId int) int {
 func getScopeId(varId int) int {
 	return (varId >> 14) << 14
 }
-
-func getVarIndex(varId int) int {
-	return varId & 0x3FFF
-}

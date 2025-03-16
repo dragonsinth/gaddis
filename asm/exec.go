@@ -234,9 +234,10 @@ func DebugStringVal(typ ast.Type, arg any) string {
 		_, _ = fmt.Fprintf(&sb, "%#v", rune(typedArg))
 	case []any:
 		if typ == ast.UnresolvedType {
-			return "<unknown>"
-		} else if typ.IsArrayType() {
 			return "<array>"
+		} else if typ.IsArrayType() {
+			at := typ.AsArrayType()
+			return at.Base.String() + arrayTypeTail(at.NDims, len(typedArg))
 		} else {
 			return "<object>"
 		}

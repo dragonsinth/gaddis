@@ -18,7 +18,7 @@ func (h *Session) onContinueRequest(request *api.ContinueRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	h.sess.Play()
+	h.Resume()
 }
 
 func (h *Session) onPauseRequest(request *api.PauseRequest) {
@@ -50,7 +50,7 @@ func (h *Session) onNextRequest(request *api.NextRequest) {
 
 	gran := request.Arguments.Granularity == "instruction"
 	h.sess.Step(debug.STEP_NEXT, debug.StepGran(gran))
-	h.sess.Play()
+	h.Resume()
 }
 
 func (h *Session) onStepInRequest(request *api.StepInRequest) {
@@ -68,7 +68,7 @@ func (h *Session) onStepInRequest(request *api.StepInRequest) {
 	// TODO: step granularity!
 	gran := request.Arguments.Granularity == "instruction"
 	h.sess.Step(debug.STEP_IN, debug.StepGran(gran))
-	h.sess.Play()
+	h.Resume()
 }
 
 func (h *Session) onStepOutRequest(request *api.StepOutRequest) {
@@ -85,7 +85,7 @@ func (h *Session) onStepOutRequest(request *api.StepOutRequest) {
 
 	gran := request.Arguments.Granularity == "instruction"
 	h.sess.Step(debug.STEP_OUT, debug.StepGran(gran))
-	h.sess.Play()
+	h.Resume()
 }
 
 func (h *Session) onRestartFrameRequest(request *api.RestartFrameRequest) {

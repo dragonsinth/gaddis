@@ -94,13 +94,15 @@ func (n NewArray) Exec(p *Execution) {
 }
 
 func (n NewArray) String() string {
+	return "new array " + litTypes[n.Typ.Base.AsPrimitive()] + arrayTypeTail(n.Typ.NDims, n.Size)
+}
+
+func arrayTypeTail(dims int, sz int) string {
 	var sb strings.Builder
-	sb.WriteString("new_array ")
-	sb.WriteString(litTypes[n.Typ.BaseType().AsPrimitive()])
 	sb.WriteRune('[')
-	sb.WriteString(strconv.Itoa(n.Size))
+	sb.WriteString(strconv.Itoa(sz))
 	sb.WriteRune(']')
-	for i := 0; i < n.Typ.NDims; i++ {
+	for i := 1; i < dims; i++ {
 		sb.WriteString("[]")
 	}
 	return sb.String()
