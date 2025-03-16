@@ -1,0 +1,62 @@
+Constant Integer SIZE = 5
+
+Module arrayDecls(Integer array[], Integer Ref array2[])
+	Display intsToString(array, SIZE)
+	Display intsToString(array2, SIZE)
+
+	Declare String strings[SIZE] = "one", "two", "three", "four"
+	Display stringToString(strings, SIZE)
+	Set strings[0] = strings[1]
+	Display stringToString(strings, SIZE)
+	Input strings[4]
+	Display stringToString(strings, SIZE)
+
+	Declare Integer table[3][4]
+	Declare Integer table2[3][4] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 // TODO: line break
+	Set table[0][0] = table2[1][1]
+	Display intsToString2(table, 3, 4)
+	Display intsToString2(table2, 3, 4)
+End Module
+
+Function String intsToString(Integer vals[], Integer sz)
+	Declare String out = "["
+	Declare Integer i
+	For i = 0 To sz - 1
+		If i > 0 Then
+			Set out = append(out, ", ")
+		End If
+		Set out = append(out, integerFormat(vals[i]))
+	End For
+	Set out = append(out, "]")
+	Return out
+End Function
+
+Function String intsToString2(Integer vals[][], Integer sz, Integer szNext)
+	Declare String out = "["
+	Declare Integer i
+	For i = 0 To sz - 1
+		If i > 0 Then
+			Set out = append(out, ", ")
+		End If
+		Set out = append(out, intsToString(vals[i], szNext))
+	End For
+	Set out = append(out, "]")
+	Return out
+End Function
+
+Function String stringToString(String vals[], Integer sz)
+	Declare String out = "["
+	Declare Integer i
+	For i = 0 To sz - 1
+		If i > 0 Then
+			Set out = append(out, ", ")
+		End If
+		Set out = append(out, vals[i])
+	End For
+	Set out = append(out, "]")
+	Return out
+End Function
+
+Declare Integer numbers[SIZE]
+Declare Integer numbers2[SIZE] = 1, 2, 3, 4, 5
+Call arrayDecls(numbers, numbers2)

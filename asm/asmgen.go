@@ -447,6 +447,10 @@ func (v *Visitor) PreVisitArrayRef(arr *ast.ArrayRef) bool {
 	return false
 }
 
+func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
+	panic("here")
+}
+
 func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 	exp.Visit(v)
 	if dstType == ast.Real && exp.GetType() == ast.Integer {

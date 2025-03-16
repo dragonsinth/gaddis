@@ -69,7 +69,12 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 		}
 	}
 	if vd.Expr != nil {
-		v.output(" = ")
+		// special format handling for array initializers
+		if len(vd.DimExprs) > 0 {
+			v.output(" =")
+		} else {
+			v.output(" = ")
+		}
 		vd.Expr.Visit(v)
 	}
 	return false
@@ -468,11 +473,35 @@ func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
 func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
 
 func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
-	for i, expr := range ai.Exprs {
+	lastPos := ai.SourceInfo.Start
+	nextPos := ai.Args[0].GetSourceInfo().Start
+
+	indent := lastPos.Line < nextPos.Line
+	if indent {
+		v.eol(lastPos)
+		v.ind = v.ind + "\t"
+		v.bol(nextPos)
+	} else {
+		v.output(" ")
+	}
+
+	for i, arg := range ai.Args {
+		nextPos = arg.GetSourceInfo().Start
 		if i > 0 {
-			v.output(", ")
+			if lastPos.Line < nextPos.Line {
+				v.output(",")
+				v.eol(lastPos)
+				v.bol(nextPos)
+			} else {
+				v.output(", ")
+			}
 		}
-		expr.Visit(v)
+		arg.Visit(v)
+		lastPos = nextPos
+	}
+
+	if indent {
+		v.ind = v.ind[:len(v.ind)-1]
 	}
 	return false
 }

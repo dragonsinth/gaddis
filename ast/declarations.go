@@ -23,6 +23,9 @@ func (vd *VarDecl) Visit(v Visitor) {
 	if !v.PreVisitVarDecl(vd) {
 		return
 	}
+	for _, d := range vd.DimExprs {
+		d.Visit(v)
+	}
 	if vd.Expr != nil {
 		vd.Expr.Visit(v)
 	}

@@ -83,6 +83,8 @@ func getEntries() []entry {
 		{"toInteger", toInteger},
 		{"toReal", toReal},
 
+		{"integerFormat", integerFormat},
+		{"realFormat", realFormat},
 		{"currencyFormat", currencyFormat},
 
 		{"length", length},

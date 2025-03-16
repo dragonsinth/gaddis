@@ -71,14 +71,22 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 		case *ast.DeclareStmt:
 			// emit either an assignment or a dummy assignment
 			for _, decl := range stmt.Decls {
-				if decl.IsConst || decl.Expr == nil {
+				if decl.IsConst {
 					continue
 				}
-				v.indent()
-				v.ident(decl)
-				v.output(" = ")
-				v.maybeCast(decl.Type, decl.Expr)
-				v.output("\n")
+				if decl.Expr != nil {
+					v.indent()
+					v.ident(decl)
+					v.output(" = ")
+					v.maybeCast(decl.Type, decl.Expr)
+					v.output("\n")
+				} else if len(decl.Dims) > 0 {
+					v.indent()
+					v.ident(decl)
+					v.output(" = ")
+					v.outputArrayInitializer(decl.Type.AsArrayType(), decl.Dims, nil)
+					v.output("\n")
+				}
 			}
 		case *ast.ModuleStmt, *ast.FunctionStmt:
 			// nothing
@@ -141,6 +149,9 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	if vd.Expr != nil {
 		v.output(" = ")
 		v.maybeCast(vd.Type, vd.Expr)
+	} else if len(vd.Dims) > 0 {
+		v.output(" = ")
+		v.outputArrayInitializer(vd.Type.AsArrayType(), vd.Dims, []ast.Expression{})
 	}
 	v.output("\n")
 
@@ -574,6 +585,43 @@ func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
 
 func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {}
 
+func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
+	v.outputArrayInitializer(ai.Type, ai.Dims, ai.Args)
+	return false
+}
+
+func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
+func (v *Visitor) outputArrayInitializer(t *ast.ArrayType, dims []int, exprs []ast.Expression) []ast.Expression {
+	v.typeName(t)
+	v.output("{")
+	if len(dims) == 1 {
+		// []Integer{1, 2, 3, 4, 5}
+		typ := t.BaseType()
+		for i := 0; i < dims[0]; i++ {
+			if i > 0 {
+				v.output(", ")
+			}
+			if len(exprs) > 0 {
+				v.maybeCast(typ, exprs[0])
+				exprs = exprs[1:]
+			} else {
+				v.zero(typ)
+			}
+		}
+	} else {
+		// [][]Integer{[]Integer{}}
+		for i := 0; i < dims[0]; i++ {
+			if i > 0 {
+				v.output(", ")
+			}
+			exprs = v.outputArrayInitializer(t.ElementType.AsArrayType(), dims[1:], exprs)
+		}
+	}
+	v.output("}")
+	return exprs
+}
+
 func (v *Visitor) indent() {
 	v.output(v.ind)
 }
@@ -696,10 +744,26 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 }
 
 func (v *Visitor) typeName(t ast.Type) {
+	if t.IsArrayType() {
+		v.output("[]")
+		v.typeName(t.AsArrayType().ElementType)
+		return
+	}
 	if !t.IsPrimitive() {
-		panic("TODO: implement non-primitive types")
+		panic("here")
 	}
 	v.output(t.String())
+}
+
+func (v *Visitor) zero(typ ast.Type) {
+	switch typ {
+	case ast.Integer, ast.Real, ast.Character:
+		v.output("0")
+	case ast.Boolean:
+		v.output("false")
+	default:
+		v.output("nil")
+	}
 }
 
 var goBinaryOperators = [...]string{

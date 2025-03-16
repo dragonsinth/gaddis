@@ -16,8 +16,11 @@ type AssignmentVisitor struct {
 var _ ast.Visitor = &AssignmentVisitor{}
 
 func (v *AssignmentVisitor) PostVisitVarDecl(vd *ast.VarDecl) {
-	if vd.Expr != nil && v.isLocal(vd) {
-		v.written[vd.Id] = true
+	if v.isLocal(vd) {
+		// arrays are always initialized
+		if vd.Expr != nil || len(vd.DimExprs) > 0 {
+			v.written[vd.Id] = true
+		}
 	}
 }
 

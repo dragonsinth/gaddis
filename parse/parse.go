@@ -376,20 +376,21 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 
 	var dims []ast.Expression
 	if !isConst {
+		baseType := typ
 		for p.hasTok(lex.LBRACKET) {
 			p.parseTok(lex.LBRACKET)
 			dims = append(dims, p.parseExpression())
 			rEnd = p.parseTok(lex.RBRACKET)
-			typ = p.makeArrayType(typ)
+			typ = p.makeArrayType(baseType, len(dims), typ)
 		}
 	}
 
 	si := spanResult(r, rEnd)
 	var expr ast.Expression
 	if p.hasTok(lex.ASSIGN) {
-		p.parseTok(lex.ASSIGN)
+		rAssign := p.parseTok(lex.ASSIGN)
 		if len(dims) > 0 {
-			expr = p.parseArrayInitializer(typ)
+			expr = p.parseArrayInitializer(rAssign, typ.(*ast.ArrayType))
 		} else {
 			expr = p.parseExpression()
 		}
@@ -414,10 +415,13 @@ func (p *Parser) parseParamDecl() *ast.VarDecl {
 	r := p.parseTok(lex.IDENT)
 	name := r.Text
 
+	baseType := typ
+	nDims := 0
 	for p.hasTok(lex.LBRACKET) {
 		p.parseTok(lex.LBRACKET)
 		r = p.parseTok(lex.RBRACKET)
-		typ = p.makeArrayType(typ)
+		nDims++
+		typ = p.makeArrayType(baseType, nDims, typ)
 	}
 
 	return &ast.VarDecl{SourceInfo: spanResult(rStart, r), Name: name, Type: typ, IsParam: true, IsRef: isRef}
@@ -540,15 +544,20 @@ func (p *Parser) parseLiteral(r lex.Result, typ ast.PrimitiveType) *ast.Literal 
 	return lit
 }
 
-func (p *Parser) parseArrayInitializer(typ ast.Type) ast.Expression {
-	exprs := []ast.Expression{p.parseExpression()}
+func (p *Parser) parseArrayInitializer(r lex.Result, typ *ast.ArrayType) ast.Expression {
+	for p.hasTok(lex.EOL) {
+		p.parseTok(lex.EOL)
+	}
+	args := []ast.Expression{p.parseExpression()}
 	for p.hasTok(lex.COMMA) {
 		p.parseTok(lex.COMMA)
-		// TODO: swallow newlines / whitespace.
-		exprs = append(exprs, p.parseExpression())
+		for p.hasTok(lex.EOL) {
+			p.parseTok(lex.EOL)
+		}
+		args = append(args, p.parseExpression())
 	}
-	si := mergeSourceInfo(exprs[0], exprs[len(exprs)-1])
-	return &ast.ArrayInitializer{SourceInfo: si, Exprs: exprs, Type: typ}
+	si := spanAst(r, args[len(args)-1])
+	return &ast.ArrayInitializer{SourceInfo: si, Args: args, Type: typ}
 }
 
 func (p *Parser) parseEol() {
@@ -577,15 +586,21 @@ func (p *Parser) errCheck(r lex.Result) lex.Result {
 	return r
 }
 
-func (p *Parser) makeArrayType(elementType ast.Type) ast.Type {
-	typ := &ast.ArrayType{ElementType: elementType}
-	if existing, ok := p.types[typ.Key()]; ok {
+func (p *Parser) makeArrayType(baseType ast.Type, nDims int, elementType ast.Type) ast.Type {
+	key := elementType.Key() + "[]"
+	typ := &ast.ArrayType{
+		Base:        baseType,
+		NDims:       nDims,
+		ElementType: elementType,
+		TypeKey:     key,
+	}
+	if existing, ok := p.types[key]; ok {
 		return existing
 	}
 	if p.types == nil {
 		p.types = map[ast.TypeKey]ast.Type{}
 	}
-	p.types[typ.Key()] = typ
+	p.types[key] = typ
 	return typ
 }
 

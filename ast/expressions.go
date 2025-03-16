@@ -160,6 +160,9 @@ func (ve *VariableExpr) GetType() Type {
 }
 
 func (ve *VariableExpr) ConstEval() any {
+	if ve.Ref == nil {
+		return nil
+	}
 	if ve.Ref.IsConst {
 		ret := ve.Ref.Expr.ConstEval()
 		if ve.Ref.Type == Real && ve.Ref.Expr.GetType() == Integer {
@@ -228,15 +231,16 @@ func (ar *ArrayRef) GetType() Type {
 type ArrayInitializer struct {
 	SourceInfo
 	baseExpression
-	Exprs []Expression
-	Type  Type
+	Args []Expression
+	Type *ArrayType
+	Dims []int
 }
 
 func (ai *ArrayInitializer) Visit(v Visitor) {
 	if !v.PreVisitArrayInitializer(ai) {
 		return
 	}
-	for _, expr := range ai.Exprs {
+	for _, expr := range ai.Args {
 		expr.Visit(v)
 	}
 	v.PostArrayInitializer(ai)
