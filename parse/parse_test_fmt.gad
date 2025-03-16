@@ -127,9 +127,9 @@ Module arrayDecls(Integer array[], Integer Ref array2[])
 	Declare Integer numbers2[SIZE] = 1, 2, 3, 4, 5
 
 	Declare String strings[SIZE] = "one", // check
-	"two", "three", // interspersed
-	// comments
-	"four", "five"
+		"two", "three", // interspersed
+		// comments
+		"four", "five"
 	Set strings[0] = strings[1]
 	Display strings[0]
 	Input strings[0]
