@@ -98,7 +98,7 @@ func Clone[T any](slice []T) []T {
 
 func reflectClone(slice reflect.Value) reflect.Value {
 	ret := reflect.MakeSlice(slice.Type(), slice.Len(), slice.Cap())
-	elemType := reflect.TypeOf(slice).Elem()
+	elemType := slice.Type().Elem()
 	if elemType.Kind() == reflect.Slice {
 		for i := 0; i < slice.Len(); i++ {
 			ret.Index(i).Set(reflectClone(slice.Index(i)))

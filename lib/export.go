@@ -83,8 +83,6 @@ func getEntries() []entry {
 		{"toInteger", toInteger},
 		{"toReal", toReal},
 
-		{"integerFormat", integerFormat},
-		{"realFormat", realFormat},
 		{"currencyFormat", currencyFormat},
 
 		{"length", length},
@@ -98,6 +96,10 @@ func getEntries() []entry {
 		{"stringToReal", stringToReal},
 		{"isInteger", isInteger},
 		{"isReal", isReal},
+
+		// NB: these two are NOT part of Gaddis book, but seem like glaring omissions.
+		{"integerToString", integerToString},
+		{"realToString", realToString},
 	}
 }
 

@@ -35,12 +35,12 @@ func toReal(x int64) float64 {
 }
 
 // not specced
-func integerFormat(x int64) []byte {
+func integerToString(x int64) []byte {
 	return []byte(strconv.FormatInt(x, 10))
 }
 
 // not specced
-func realFormat(x float64) []byte {
+func realToString(x float64) []byte {
 	return []byte(strconv.FormatFloat(x, 'f', -1, 64))
 }
 

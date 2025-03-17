@@ -14,7 +14,7 @@ Module Booleans()
 	Declare Boolean flag
 	Set flag = price == quantity OR price != quantity
 	Set flag = price <= quantity AND price < quantity
-	Set flag = price > quantity AND price > quantity
+	Set flag = price >= quantity AND price > quantity
 	Set flag = flag AND flag
 	Set flag = flag OR flag
 	Set flag = NOT flag

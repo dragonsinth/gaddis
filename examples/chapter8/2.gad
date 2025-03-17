@@ -27,7 +27,7 @@ Function String intsToString(Integer vals[], Integer sz)
 		If i > 0 Then
 			Set out = append(out, ", ")
 		End If
-		Set out = append(out, integerFormat(vals[i]))
+		Set out = append(out, integerToString(vals[i]))
 	End For
 	Set out = append(out, "]")
 	Return out
