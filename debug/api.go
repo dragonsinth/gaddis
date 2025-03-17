@@ -25,8 +25,12 @@ type ErrFrame struct {
 }
 
 type Opts struct {
-	IsTest     bool
-	IoProvider gaddis.IoProvider
+	IsTest      bool
+	IoProvider  gaddis.IoProvider
+	NoDebug     bool
+	StopOnEntry bool
+	LineBreaks  []int
+	InstBreaks  []int
 }
 
 type RunState int
@@ -127,6 +131,11 @@ func (ds *Session) RestartFrame(id int) {
 		p.Frame.Params = nil
 		p.Frame.Locals = nil
 		p.Frame.Eval = nil
+
+		// clear the exception state
+		ds.exception = nil
+		ds.exceptionTrace = ""
+		ds.exceptionFrames = nil
 	})
 }
 
@@ -155,59 +164,21 @@ func (ds *Session) GetCurrentException() (string, error) {
 	return trace, exception
 }
 
-func (ds *Session) SetNoDebug() {
-	ds.withOuterLock(func() {
-		ds.noDebug = true
-		ds.stopOnEntry = false
-		ds.stepType = STEP_NONE
-		clear(ds.instBreaks)
-		clear(ds.instBreaks)
-	})
-}
-
-func (ds *Session) StopOnEntry() {
+func (ds *Session) UpdateLineBreakpoints(bps []int) {
 	ds.withOuterLock(func() {
 		if ds.noDebug {
 			return
 		}
-		ds.stopOnEntry = true
+		ds.lineBreaks = ds.Source.Breakpoints.ComputeLineBreaks(bps)
 	})
 }
 
-func (ds *Session) SetLineBreakpoints(bps []int) {
+func (ds *Session) UpdateInstBreakpoints(pcs []int) {
 	ds.withOuterLock(func() {
 		if ds.noDebug {
 			return
 		}
-		clear(ds.lineBreaks)
-		for _, bp := range bps {
-			pc := ds.Source.Breakpoints.InstFromSource(bp)
-			if pc < 0 {
-				continue
-			}
-			ds.lineBreaks[pc] = 1
-			if pc == 0 {
-				ds.stopOnEntry = true // only way to actually break on inst 0
-			}
-		}
-	})
-}
-
-func (ds *Session) SetInstBreakpoints(pcs []int) {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
-		clear(ds.instBreaks)
-		for _, pc := range pcs {
-			if pc < 0 || pc >= ds.Source.Breakpoints.NInst {
-				continue
-			}
-			ds.instBreaks[pc] = 1
-			if pc == 0 {
-				ds.stopOnEntry = true // only way to actually break on inst 0
-			}
-		}
+		ds.instBreaks = ds.Source.Breakpoints.ComputeInstBreaks(pcs)
 	})
 }
 

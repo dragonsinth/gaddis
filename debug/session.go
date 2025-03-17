@@ -24,13 +24,14 @@ type Session struct {
 	isDone   bool // terminated/exit/exception
 	noDebug  bool
 
-	exception      error
-	exceptionTrace string
+	exception       error
+	exceptionTrace  string
+	exceptionFrames []ErrFrame
 
 	lineBreaks []byte // pcs to break for lines
 	instBreaks []byte // pcs to break for inst
 
-	stopOnEntry bool
+	stopOnEntry bool // remove this field in favor of "break before line" once debugger is single-execution
 	stepType    StepType
 	stepGran    StepGran
 	stepInst    int
@@ -55,6 +56,13 @@ func New(
 
 	exec := source.Assembled.NewExecution(ec)
 
+	lineBreaks := source.Breakpoints.ComputeLineBreaks(opts.LineBreaks)
+	instBreaks := source.Breakpoints.ComputeInstBreaks(opts.InstBreaks)
+
+	stopOnEntry := opts.StopOnEntry ||
+		(len(lineBreaks) > 0 && lineBreaks[0] != 0) ||
+		(len(instBreaks) > 0 && instBreaks[0] != 0)
+
 	return &Session{
 		Opts:           opts,
 		Host:           host,
@@ -68,9 +76,9 @@ func New(
 		noDebug:        false,
 		exception:      nil,
 		exceptionTrace: "",
-		lineBreaks:     make([]byte, source.Breakpoints.NInst),
-		instBreaks:     make([]byte, source.Breakpoints.NInst),
-		stopOnEntry:    false,
+		lineBreaks:     lineBreaks,
+		instBreaks:     instBreaks,
+		stopOnEntry:    stopOnEntry,
 		stepType:       STEP_NONE,
 		stepGran:       LineGran,
 		stepInst:       0,

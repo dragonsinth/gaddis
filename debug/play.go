@@ -24,10 +24,13 @@ func (ds *Session) play() {
 		return
 	}
 
-	// clear state on a fresh run
+	// Touching a cockatrice corpse is a fatal mistake...
+	if ds.exception != nil {
+		ds.executePanic()
+		return
+	}
+
 	ds.runState = RUN
-	ds.exception = nil
-	ds.exceptionTrace = ""
 
 	go func() {
 		defer ds.running.Store(false)
@@ -49,35 +52,30 @@ func (ds *Session) play() {
 				p.AddPanicFrames()
 
 				log.Println("panicking:", err)
-				if ds.noDebug {
-					// push the original trace to stdout
-					ds.Opts.IoProvider.Output(fmt.Sprintf("error: %s\n", err))
-					ds.Opts.IoProvider.Output(ds.Exec.GetStackTrace(ds.Source.Path))
+				ds.exception = err
+				ds.exceptionTrace = ds.Exec.GetStackTrace(ds.Source.Path)
+				ds.exceptionFrames = nil
+				ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst, _ int) {
+					if fr.Native != nil {
+						ds.exceptionFrames = append(ds.exceptionFrames, ErrFrame{
+							File:     fr.Native.File,
+							Desc:     fr.Native.Func,
+							Pos:      ast.Position{Line: fr.Native.Line},
+							IsNative: true,
+						})
+					} else {
+						ds.exceptionFrames = append(ds.exceptionFrames, ErrFrame{
+							Desc: asm.FormatFrameScope(fr),
+							Pos:  inst.GetSourceInfo().Start,
+						})
+					}
+				})
 
-					// execute the panic; send trace to stderr
-					var frames []ErrFrame
-					ds.Exec.GetStackFrames(func(fr *asm.Frame, _ int, inst asm.Inst, _ int) {
-						if fr.Native != nil {
-							frames = append(frames, ErrFrame{
-								File:     fr.Native.File,
-								Desc:     fr.Native.Func,
-								Pos:      ast.Position{Line: fr.Native.Line},
-								IsNative: true,
-							})
-						} else {
-							frames = append(frames, ErrFrame{
-								Desc: asm.FormatFrameScope(fr),
-								Pos:  inst.GetSourceInfo().Start,
-							})
-						}
-					})
-					ds.Host.Panicked(err, frames)
-					ds.isDone = true
+				if ds.noDebug {
+					ds.executePanic()
 				} else {
 					// stop on exception
 					ds.runState = PAUSE
-					ds.exception = err
-					ds.exceptionTrace = ds.Exec.GetStackTrace(ds.Source.Path)
 					ds.Host.Exception(err)
 				}
 			}
@@ -175,4 +173,12 @@ func (ds *Session) play() {
 		ds.isDone = true
 		ds.Host.Exited(0)
 	}()
+}
+
+func (ds *Session) executePanic() {
+	ds.runState = TERMINATE
+	ds.Opts.IoProvider.Output(fmt.Sprintf("error: %s\n", ds.exception))
+	ds.Opts.IoProvider.Output(ds.exceptionTrace)
+	ds.Host.Panicked(ds.exception, ds.exceptionFrames)
+	ds.isDone = true
 }

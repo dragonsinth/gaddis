@@ -61,7 +61,7 @@ func (h *Session) onSetBreakpointsRequest(request *api.SetBreakpointsRequest) {
 
 	h.bpsBySum[source.Sum] = bps
 	if h.sess != nil && source.Sum == h.sess.Source.Sum {
-		h.sess.SetLineBreakpoints(bps)
+		h.sess.UpdateLineBreakpoints(bps)
 	}
 	h.send(response)
 }
@@ -103,7 +103,7 @@ func (h *Session) onSetInstructionBreakpointsRequest(request *api.SetInstruction
 
 	}
 	h.instBps = pcs
-	h.sess.SetInstBreakpoints(pcs)
+	h.sess.UpdateInstBreakpoints(pcs)
 	h.send(response)
 }
 

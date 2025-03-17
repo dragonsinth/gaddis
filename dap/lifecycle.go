@@ -94,7 +94,6 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 
 	if args.NoDebug {
 		// launch immediately, otherwise wait for configuration done.
-		h.sess.SetNoDebug()
 		h.Resume()
 	}
 }
@@ -137,13 +136,6 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 	response := &api.RestartResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
-
-	if args.NoDebug {
-		h.sess.SetNoDebug()
-	} else {
-		h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
-		h.sess.SetInstBreakpoints(h.instBps)
-	}
 	h.Resume()
 }
 
@@ -161,8 +153,8 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	h.sess.SetLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
-	h.sess.SetInstBreakpoints(h.instBps)
+	h.sess.UpdateLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
+	h.sess.UpdateInstBreakpoints(h.instBps)
 	h.Resume()
 }
 

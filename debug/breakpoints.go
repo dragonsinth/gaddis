@@ -52,3 +52,26 @@ func (b Breakpoints) ValidSrcLine(srcLine int) bool {
 	}
 	return b.sourceToInst[srcLine] >= 0
 }
+
+func (b Breakpoints) ComputeLineBreaks(bps []int) []byte {
+	lineBreaks := make([]byte, b.NInst)
+	for _, bp := range bps {
+		pc := b.InstFromSource(bp)
+		if pc < 0 {
+			continue
+		}
+		lineBreaks[pc] = 1
+	}
+	return lineBreaks
+}
+
+func (b Breakpoints) ComputeInstBreaks(pcs []int) []byte {
+	instBreaks := make([]byte, b.NInst)
+	for _, pc := range pcs {
+		if pc < 0 || pc >= b.NInst {
+			continue
+		}
+		instBreaks[pc] = 1
+	}
+	return instBreaks
+}

@@ -65,7 +65,6 @@ func (h *Session) onStepInRequest(request *api.StepInRequest) {
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
 
-	// TODO: step granularity!
 	gran := request.Arguments.Granularity == "instruction"
 	h.sess.Step(debug.STEP_IN, debug.StepGran(gran))
 	h.Resume()

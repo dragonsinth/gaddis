@@ -108,7 +108,13 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 	h.source = dapSource(*source)
 	h.launchArgs = args
 
-	opts := debug.Opts{IoProvider: ioProvider}
+	opts := debug.Opts{
+		IoProvider:  ioProvider,
+		NoDebug:     args.NoDebug,
+		StopOnEntry: args.StopOnEntry,
+		LineBreaks:  h.bpsBySum[source.Sum],
+		InstBreaks:  h.instBps,
+	}
 	h.sess = debug.New(*source, &host, opts)
 	h.runId++
 	return true

@@ -72,7 +72,7 @@ func PcRef(pc int) string {
 	pc = pc * 4
 	pc += 0x1000 // start program here
 	if pc < 0 {
-		return "0x0000"
+		return ""
 	}
 	if pc > 0xffff {
 		return "0xFFFF"
