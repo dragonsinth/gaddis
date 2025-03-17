@@ -1,103 +1,94 @@
-package lib_test
+package lib
 
 import (
-	"bufio"
 	"bytes"
-	"github.com/dragonsinth/gaddis"
-	"github.com/dragonsinth/gaddis/lib"
+	"io"
 	"strings"
 	"testing"
 )
 
-func TestDisplay(t *testing.T) {
-	inbuf := strings.NewReader("")
-	var outbuf bytes.Buffer
-	ctx := lib.IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
+func makeIoContext(in string) (ioContext, *testProvider) {
+	split := strings.Split(in, "\n")
+	if split[len(split)-1] == "" {
+		split = split[:len(split)-1]
 	}
+	tp := testProvider{input: split}
+	return ioContext{provider: &tp}, &tp
+}
+
+type testProvider struct {
+	outbuf bytes.Buffer
+	input  []string
+}
+
+func (tp *testProvider) Output(s string) {
+	tp.outbuf.WriteString(s)
+}
+
+func (tp *testProvider) Input() (string, error) {
+	if len(tp.input) >= 0 {
+		in := tp.input[0]
+		tp.input = tp.input[1:]
+		return in, nil
+	}
+	return "", io.EOF
+}
+
+func (tp *testProvider) String() string {
+	return tp.outbuf.String()
+}
+
+func (tp *testProvider) assertEmpty(t *testing.T) {
+	t.Helper()
+	if len(tp.input) > 0 {
+		t.Errorf("reamining input: %v", tp.input)
+	}
+}
+
+func TestDisplay(t *testing.T) {
+	ctx, tp := makeIoContext("")
 	ctx.Display([]byte("the score is "), 17, []byte(" to "), 21.5, []byte(" is "), false)
-	assertEqual(t, "the score is 17 to 21.5 is False\n", outbuf.String())
+	assertEqual(t, "the score is 17 to 21.5 is False\n", tp.String())
 }
 
 func TestInputInteger(t *testing.T) {
-	inbuf := strings.NewReader("not a number\n123\n")
-	var outbuf bytes.Buffer
-	ctx := lib.IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
+	ctx, tp := makeIoContext("not a number\n123\n")
 	got := ctx.InputInteger()
 	assertEqual(t, int64(123), got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "integer> error, invalid integer, try again\ninteger> ", outbuf.String())
+	tp.assertEmpty(t)
+	assertEqual(t, "integer> error, invalid integer, try again\ninteger> ", tp.String())
 }
 
 func TestInputReal(t *testing.T) {
-	inbuf := strings.NewReader("not a number\n123.456\n")
-	var outbuf bytes.Buffer
-	ctx := lib.IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
+	ctx, tp := makeIoContext("not a number\n123.456\n")
 	got := ctx.InputReal()
 	assertEqual(t, float64(123.456), got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "real> error, invalid real, try again\nreal> ", outbuf.String())
+	tp.assertEmpty(t)
+	assertEqual(t, "real> error, invalid real, try again\nreal> ", tp.String())
 }
 
 func TestInputString(t *testing.T) {
-	inbuf := strings.NewReader("David\n")
-	var outbuf bytes.Buffer
-	ctx := lib.IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
+	ctx, tp := makeIoContext("David\n")
 	got := ctx.InputString()
 	assertEqual(t, "David", string(got))
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "string> ", outbuf.String())
+	tp.assertEmpty(t)
+	assertEqual(t, "string> ", tp.String())
 }
 
 func TestInputCharacter(t *testing.T) {
-	inbuf := strings.NewReader("\ntrue\nc")
-	var outbuf bytes.Buffer
-	ctx := lib.IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
+	ctx, tp := makeIoContext("\ntrue\nc")
 	got := ctx.InputCharacter()
 	assertEqual(t, 'c', got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "character> error, input exactly 1 character, try again\ncharacter> error, input exactly 1 character, try again\ncharacter> ", outbuf.String())
+	tp.assertEmpty(t)
+	assertEqual(t, "character> error, input exactly 1 character, try again\ncharacter> error, input exactly 1 character, try again\ncharacter> ", tp.String())
 }
 
 func TestInputBoolean(t *testing.T) {
-	inbuf := strings.NewReader("not a boolean\ntrue\n")
-	var outbuf bytes.Buffer
-	ctx := lib.IoContext{
-		Stdin:  bufio.NewScanner(inbuf),
-		Stdout: gaddis.NoopSyncWriter(&outbuf),
-	}
-
+	ctx, tp := makeIoContext("not a boolean\ntrue\n")
 	got := ctx.InputBoolean()
 	assertEqual(t, true, got)
-	if ctx.Stdin.Scan() {
-		t.Error("extra input:", ctx.Stdin.Text())
-	}
-	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", outbuf.String())
+	tp.assertEmpty(t)
+	assertEqual(t, "boolean> error, invalid boolean, try again\nboolean> ", tp.String())
 }
 
 func assertEqual[T comparable](t *testing.T, want T, got T) {

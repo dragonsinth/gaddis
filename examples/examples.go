@@ -1,7 +1,6 @@
 package examples
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
-	"github.com/dragonsinth/gaddis/lib"
 	"io"
 	"math/rand"
 	"os"
@@ -119,9 +117,9 @@ func RunTestInterp(t *testing.T, filename string) error {
 
 	p := cp.NewExecution(&asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(0)),
-		IoContext: lib.IoContext{
-			Stdin:   bufio.NewScanner(&input),
-			Stdout:  gaddis.NoopSyncWriter(&output),
+		IoProvider: gaddis.IoAdapter{
+			In:      gaddis.StreamInput(&input),
+			Out:     gaddis.StreamOutput(&output),
 			WorkDir: ".",
 		},
 	})

@@ -17,11 +17,11 @@ const MaxStack = 1024
 
 type ExecutionContext struct {
 	Rng *rand.Rand
-	lib.IoContext
+	lib.IoProvider
 }
 
 func (as *Assembly) NewExecution(ec *ExecutionContext) *Execution {
-	extlib := lib.CreateLibrary(ec.IoContext, lib.RandContext{Rng: ec.Rng})
+	extlib := lib.CreateLibrary(ec.IoProvider, lib.RandContext{Rng: ec.Rng})
 
 	p := &Execution{
 		PC:   0,

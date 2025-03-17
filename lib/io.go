@@ -9,18 +9,16 @@ import (
 	"strconv"
 )
 
-type SyncWriter interface {
-	io.Writer
-	Sync() error
+type IoProvider interface {
+	Input() (string, error)
+	Output(string)
 }
 
-type IoContext struct {
-	Stdin   *bufio.Scanner
-	Stdout  SyncWriter
-	WorkDir string
+type ioContext struct {
+	provider IoProvider
 }
 
-func (ctx IoContext) Display(args ...any) {
+func (ctx ioContext) Display(args ...any) {
 	var sb bytes.Buffer
 	tabCount := 0
 	for _, arg := range args {
@@ -47,75 +45,69 @@ func (ctx IoContext) Display(args ...any) {
 			_, _ = fmt.Fprint(&sb, arg)
 		}
 	}
-	sb.WriteByte('\n')
-	_, _ = ctx.Stdout.Write(sb.Bytes())
-	_ = ctx.Stdout.Sync()
+	sb.WriteRune('\n')
+	ctx.provider.Output(sb.String())
 }
 
-func (ctx IoContext) InputInteger() int64 {
+func (ctx ioContext) InputInteger() int64 {
 	for {
-		_, _ = fmt.Fprint(ctx.Stdout, "integer> ")
+		ctx.provider.Output("integer> ")
 		input := ctx.readLine()
 		v, err := strconv.ParseInt(string(input), 10, 64)
 		if err == nil {
 			return v
 		}
-		_, _ = fmt.Fprintln(ctx.Stdout, "error, invalid integer, try again")
+		ctx.provider.Output("error, invalid integer, try again\n")
 	}
 }
 
-func (ctx IoContext) InputReal() float64 {
+func (ctx ioContext) InputReal() float64 {
 	for {
-		_, _ = fmt.Fprint(ctx.Stdout, "real> ")
+		ctx.provider.Output("real> ")
 		input := ctx.readLine()
 		v, err := strconv.ParseFloat(string(input), 64)
 		if err == nil {
 			return v
 		}
-		_, _ = fmt.Fprintln(ctx.Stdout, "error, invalid real, try again")
+		ctx.provider.Output("error, invalid real, try again\n")
 	}
 }
 
-func (ctx IoContext) InputString() []byte {
-	_, _ = fmt.Fprint(ctx.Stdout, "string> ")
+func (ctx ioContext) InputString() []byte {
+	ctx.provider.Output("string> ")
 	input := ctx.readLine()
 	return input
 }
 
-func (ctx IoContext) InputCharacter() byte {
+func (ctx ioContext) InputCharacter() byte {
 	for {
-		_, _ = fmt.Fprint(ctx.Stdout, "character> ")
+		ctx.provider.Output("character> ")
 		input := ctx.readLine()
 		if len(input) == 1 {
 			return input[0]
 		}
-		_, _ = fmt.Fprintln(ctx.Stdout, "error, input exactly 1 character, try again")
+		ctx.provider.Output("error, input exactly 1 character, try again\n")
 	}
 }
 
-func (ctx IoContext) InputBoolean() bool {
+func (ctx ioContext) InputBoolean() bool {
 	for {
-		_, _ = fmt.Fprint(ctx.Stdout, "boolean> ")
+		ctx.provider.Output("boolean> ")
 		input := ctx.readLine()
 		v, err := strconv.ParseBool(string(input))
 		if err == nil {
 			return v
 		}
-		_, _ = fmt.Fprintln(ctx.Stdout, "error, invalid boolean, try again")
+		ctx.provider.Output("error, invalid boolean, try again\n")
 	}
 }
 
-func (ctx IoContext) readLine() []byte {
-	_ = ctx.Stdout.Sync() // ensure any prompts are flushed
-	if !ctx.Stdin.Scan() {
-		panic(io.EOF)
-	}
-	input, err := ctx.Stdin.Bytes(), ctx.Stdin.Err()
+func (ctx ioContext) readLine() []byte {
+	in, err := ctx.provider.Input()
 	if err != nil {
 		panic(err)
 	}
-	_ = ctx.Stdout.Sync() // ensure user's newline is flushed to the terminal
-	return input
+	return []byte(in)
 }
 
 type tabDisplay struct{}
@@ -125,12 +117,28 @@ var TabDisplay = tabDisplay{}
 
 // BELOW: Used only by the gogen runtime.
 
-var (
-	ioCtx = IoContext{
-		Stdin:   bufio.NewScanner(os.Stdin),
-		Stdout:  os.Stdout,
-		WorkDir: ".",
+type defaultIo struct {
+	in *bufio.Scanner
+}
+
+func (dio defaultIo) Input() (string, error) {
+	if !dio.in.Scan() {
+		return "", io.EOF
 	}
+	input, err := dio.in.Text(), dio.in.Err()
+	if err != nil {
+		return "", err
+	}
+	return input, nil
+}
+
+func (dio defaultIo) Output(text string) {
+	_, _ = os.Stdout.Write([]byte(text))
+	_ = os.Stdout.Sync()
+}
+
+var (
+	ioCtx = ioContext{provider: defaultIo{in: bufio.NewScanner(os.Stdin)}}
 
 	Display        = ioCtx.Display
 	InputInteger   = ioCtx.InputInteger

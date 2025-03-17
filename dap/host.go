@@ -1,10 +1,10 @@
 package dap
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
+	"io"
 	"strings"
 	"sync/atomic"
 )
@@ -15,7 +15,7 @@ type eventHost struct {
 	sendFunc func(api.Message)
 
 	// for test mode
-	remainingInput *bufio.Scanner
+	remainingInput func() (string, error)
 	capturedOutput strings.Builder
 	wantOutput     string
 	isTest         bool
@@ -149,11 +149,16 @@ func (eh *eventHost) send(m api.Message) {
 
 func (eh *eventHost) drainStdin() (string, error) {
 	var sb strings.Builder
-	for eh.remainingInput.Scan() {
-		sb.WriteString(eh.remainingInput.Text())
+	for {
+		in, err := eh.remainingInput()
+		if err == io.EOF {
+			return sb.String(), nil
+		} else if err != nil {
+			return sb.String(), err
+		}
+		sb.WriteString(in)
 		sb.WriteRune('\n')
 	}
-	return sb.String(), eh.remainingInput.Err()
 }
 
 var _ debug.EventHost = &eventHost{}

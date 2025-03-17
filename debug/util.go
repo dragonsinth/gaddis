@@ -1,7 +1,6 @@
 package debug
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -51,32 +50,6 @@ func LoadSource(filename string) (*Source, error) {
 	}
 
 	return ret, nil
-}
-
-type bufferedSyncWriter struct {
-	out    func(string)
-	buffer bytes.Buffer
-}
-
-func (b *bufferedSyncWriter) Write(p []byte) (int, error) {
-	n := len(p)
-	for pos := bytes.Index(p, []byte{'\n'}); pos >= 0; pos = bytes.Index(p, []byte{'\n'}) {
-		first, rest := p[:pos+1], p[pos+1:]
-		b.buffer.Write(first)
-		_ = b.Sync()
-		p = rest
-	}
-	b.buffer.Write(p)
-	return n, nil
-}
-
-func (b *bufferedSyncWriter) Sync() error {
-	if b.buffer.Len() > 0 {
-		output := b.buffer.String()
-		b.buffer.Reset()
-		b.out(output)
-	}
-	return nil
 }
 
 func (ds *Session) withOuterLock(f func()) {

@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
-	"github.com/dragonsinth/gaddis/lib"
 	"math/rand"
 	"os"
 	"time"
@@ -32,9 +31,9 @@ func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, pro
 
 	ec := &asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
-		IoContext: lib.IoContext{
-			Stdin:   bufio.NewScanner(streams.Stdin),
-			Stdout:  streams.Stdout,
+		IoProvider: gaddis.IoAdapter{
+			In:      gaddis.StreamInput(streams.Stdin),
+			Out:     gaddis.StreamOutput(streams.Stdout),
 			WorkDir: ".",
 		},
 	}

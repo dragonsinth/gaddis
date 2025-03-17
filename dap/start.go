@@ -1,11 +1,11 @@
 package dap
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
+	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -44,8 +44,12 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		colOff:   h.colOff,
 	}
 
-	stdin := bufio.NewScanner(bytes.NewReader(nil))
-	stdout := h.stdout
+	ioProvider := gaddis.IoAdapter{
+		In: func() (string, error) {
+			return "", io.EOF
+		},
+		Out: h.stdout,
+	}
 	if args.TestMode {
 		outfile := args.Program + ".out"
 		expectOutput, err := os.ReadFile(outfile)
@@ -56,9 +60,9 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		host.isTest = true
 		host.wantOutput = string(expectOutput)
 		testInput := tryReadInput(args.Program)
-		host.remainingInput = bufio.NewScanner(bytes.NewReader(testInput))
-		stdin = host.remainingInput
-		stdout = func(line string) {
+		host.remainingInput = gaddis.SplitInput(string(testInput))
+		ioProvider.In = host.remainingInput
+		ioProvider.Out = func(line string) {
 			host.capturedOutput.WriteString(line)
 			h.stdout(line)
 		}
@@ -87,8 +91,9 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 			}
 		}
 		if h.terminal != nil {
-			stdin = bufio.NewScanner(h.terminal)
-			stdout = func(line string) {
+			// TODO: actually implement io/wait signaling.
+			ioProvider.In = gaddis.StreamInput(h.terminal)
+			ioProvider.Out = func(line string) {
 				h.stdout(line)
 				h.terminal.Output(line)
 			}
@@ -103,11 +108,7 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 	h.source = dapSource(*source)
 	h.launchArgs = args
 
-	opts := debug.Opts{
-		Stdin:   stdin,
-		Stdout:  stdout,
-		WorkDir: args.WorkDir,
-	}
+	opts := debug.Opts{IoProvider: ioProvider}
 	h.sess = debug.New(*source, &host, opts)
 	h.runId++
 	return true

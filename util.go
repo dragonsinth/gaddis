@@ -1,41 +1,61 @@
 package gaddis
 
 import (
+	"bufio"
 	"io"
+	"strings"
 )
 
-type Syncer interface {
-	Sync() error
+type IoProvider interface {
+	Input() (string, error)
+	Output(string)
 }
 
-type SyncWriter interface {
-	io.Writer
-	Syncer
+type IoAdapter struct {
+	In      func() (string, error)
+	Out     func(string)
+	WorkDir string
 }
 
-func NoopSyncWriter(w io.Writer) SyncWriter {
-	if sw, ok := w.(SyncWriter); ok {
-		return sw
-	}
-	return noopSyncWriter{w}
+func (i IoAdapter) Input() (string, error) {
+	return i.In()
 }
 
-type noopSyncWriter struct {
-	io.Writer
+func (i IoAdapter) Output(s string) {
+	i.Out(s)
 }
 
-func (noopSyncWriter) Sync() error {
-	return nil
-}
-
-func WriteSync(w io.Writer, sync Syncer) SyncWriter {
-	return writeSync{
-		Writer: w,
-		Syncer: sync,
+func StreamOutput(w io.Writer) func(string) {
+	return func(s string) {
+		_, _ = w.Write([]byte(s))
 	}
 }
 
-type writeSync struct {
-	io.Writer
-	Syncer
+func StreamInput(r io.Reader) func() (string, error) {
+	in := bufio.NewScanner(r)
+	return func() (string, error) {
+		if !in.Scan() {
+			return "", io.EOF
+		}
+		input, err := in.Text(), in.Err()
+		if err != nil {
+			return "", err
+		}
+		return input, nil
+	}
+}
+
+func SplitInput(in string) func() (string, error) {
+	input := strings.Split(in, "\n")
+	if input[len(input)-1] == "" {
+		input = input[:len(input)-1]
+	}
+	return func() (string, error) {
+		if len(input) >= 0 {
+			line := input[0]
+			input = input[1:]
+			return line, nil
+		}
+		return "", io.EOF
+	}
 }

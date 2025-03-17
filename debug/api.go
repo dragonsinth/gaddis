@@ -1,8 +1,8 @@
 package debug
 
 import (
-	"bufio"
 	"errors"
+	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 )
@@ -25,10 +25,8 @@ type ErrFrame struct {
 }
 
 type Opts struct {
-	IsTest  bool
-	Stdin   *bufio.Scanner
-	Stdout  func(string)
-	WorkDir string
+	IsTest     bool
+	IoProvider gaddis.IoProvider
 }
 
 type RunState int

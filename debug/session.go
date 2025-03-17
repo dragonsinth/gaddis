@@ -2,7 +2,6 @@ package debug
 
 import (
 	"github.com/dragonsinth/gaddis/asm"
-	"github.com/dragonsinth/gaddis/lib"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -50,12 +49,8 @@ func New(
 	}
 
 	ec := &asm.ExecutionContext{
-		Rng: rand.New(rand.NewSource(seed)),
-		IoContext: lib.IoContext{
-			Stdin:   opts.Stdin,
-			Stdout:  &bufferedSyncWriter{out: opts.Stdout},
-			WorkDir: opts.WorkDir,
-		},
+		Rng:        rand.New(rand.NewSource(seed)),
+		IoProvider: opts.IoProvider,
 	}
 
 	exec := source.Assembled.NewExecution(ec)

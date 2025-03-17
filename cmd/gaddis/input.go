@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
-	"github.com/dragonsinth/gaddis"
 	"io"
 	"os"
 )
 
 type procStreams struct {
 	Stdin  io.Reader
-	Stdout gaddis.SyncWriter
+	Stdout io.Writer
 
 	Input  bytes.Buffer // either prefilled with data, or captures all input
 	Output bytes.Buffer // captured output
@@ -20,7 +19,7 @@ type procStreams struct {
 func runStreams(src *source) *procStreams {
 	ret := procStreams{
 		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
+		Stdout: stdoutSyncWriter{},
 	}
 
 	if src.isStdin {
@@ -34,7 +33,7 @@ func runStreams(src *source) *procStreams {
 func testStreams(src *source) *procStreams {
 	var ret procStreams
 	ret.Stdin = &ret.Input
-	ret.Stdout = gaddis.NoopSyncWriter(&ret.Output)
+	ret.Stdout = &ret.Output
 	ret.Silent = true
 	if inBytes, err := os.ReadFile(src.filename + ".in"); err == nil {
 		// use input file as input
@@ -52,6 +51,16 @@ func captureStreams(src *source) *procStreams {
 		// capture input from terminal
 		ret.Stdin = io.TeeReader(os.Stdin, &ret.Input)
 	}
-	ret.Stdout = gaddis.WriteSync(io.MultiWriter(os.Stdout, &ret.Output), os.Stdout)
+	ret.Stdout = io.MultiWriter(stdoutSyncWriter{}, &ret.Output)
 	return &ret
+}
+
+type stdoutSyncWriter struct{}
+
+func (stdoutSyncWriter) Write(p []byte) (n int, err error) {
+	n, err = os.Stdout.Write(p)
+	if err != nil {
+		err = os.Stdout.Sync()
+	}
+	return
 }

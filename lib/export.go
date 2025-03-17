@@ -11,15 +11,17 @@ type Func struct {
 	FuncPtr reflect.Value
 }
 
-func CreateLibrary(io IoContext, rng RandContext) []Func {
+func CreateLibrary(iop IoProvider, rng RandContext) []Func {
+	ctx := ioContext{provider: iop}
+
 	entries := getEntries()
 	for i, v := range []any{
-		io.Display,
-		io.InputInteger,
-		io.InputReal,
-		io.InputString,
-		io.InputCharacter,
-		io.InputBoolean,
+		ctx.Display,
+		ctx.InputInteger,
+		ctx.InputReal,
+		ctx.InputString,
+		ctx.InputCharacter,
+		ctx.InputBoolean,
 		rng.random,
 	} {
 		entries[i].funcPtr = v
