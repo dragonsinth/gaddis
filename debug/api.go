@@ -25,8 +25,8 @@ type ErrFrame struct {
 }
 
 type Opts struct {
-	IsTest      bool
 	IoProvider  gaddis.IoProvider
+	IsTest      bool
 	NoDebug     bool
 	StopOnEntry bool
 	LineBreaks  []int

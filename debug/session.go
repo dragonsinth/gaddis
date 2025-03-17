@@ -73,7 +73,7 @@ func New(
 		runMu:          sync.Mutex{},
 		runState:       PAUSE,
 		isDone:         false,
-		noDebug:        false,
+		noDebug:        opts.NoDebug,
 		exception:      nil,
 		exceptionTrace: "",
 		lineBreaks:     lineBreaks,

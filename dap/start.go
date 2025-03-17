@@ -110,6 +110,7 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 
 	opts := debug.Opts{
 		IoProvider:  ioProvider,
+		IsTest:      args.TestMode,
 		NoDebug:     args.NoDebug,
 		StopOnEntry: args.StopOnEntry,
 		LineBreaks:  h.bpsBySum[source.Sum],
