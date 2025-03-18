@@ -2,9 +2,9 @@ package debug
 
 import (
 	"errors"
-	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
+	"sync/atomic"
 )
 
 // EventHost is how the VM pushes out debug events.
@@ -25,7 +25,8 @@ type ErrFrame struct {
 }
 
 type Opts struct {
-	IoProvider  gaddis.IoProvider
+	Input       <-chan string
+	Output      func(string)
 	IsTest      bool
 	NoDebug     bool
 	StopOnEntry bool
@@ -33,15 +34,13 @@ type Opts struct {
 	InstBreaks  []int
 }
 
-type RunState int
+type runState = int32
 
 const (
-	// keep running
-	RUN RunState = iota
-	// halt with a pause event
-	PAUSE
-	// halt with a terminate event
-	TERMINATE
+	UNSTARTED  = runState(iota)
+	RUN        // keep running
+	PAUSE      // halt with a pause event
+	TERMINATED // command channel is closed
 )
 
 type StepType int
@@ -60,52 +59,61 @@ const (
 	InstGran StepGran = true
 )
 
-func (ds *Session) Play() {
-	ds.play()
+func (ds *Session) IsStarted() bool {
+	return atomic.LoadInt32(&ds.runState) != UNSTARTED
 }
 
-func (ds *Session) IsRunning() bool {
-	return ds.running.Load()
+func (ds *Session) Play() {
+	state := atomic.LoadInt32(&ds.runState)
+	if state != UNSTARTED || !atomic.CompareAndSwapInt32(&ds.runState, state, RUN) {
+		panic(state)
+	}
+	go ds.play()
 }
 
 // Wait for the interpreter to stop running.
 func (ds *Session) Wait() {
-	for ds.running.Load() {
-		ds.withOuterLock(func() {})
+	<-ds.done
+}
+
+func (ds *Session) Continue() {
+	if ds.Opts.NoDebug {
+		return
 	}
+	ds.runInVm(func(_ bool) {
+		ds.runState = RUN
+	})
 }
 
 func (ds *Session) Pause() {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
+	if ds.Opts.NoDebug {
+		return
+	}
+	ds.runInVm(func(_ bool) {
+		ds.Host.Paused("pause")
 		ds.runState = PAUSE
 	})
 }
 
 // Halt terminates without sending any events.
 func (ds *Session) Halt() {
-	ds.withOuterLock(func() {
-		ds.runState = TERMINATE
-		ds.Host.SuppressAllEvents()
-	})
+	ds.Host.SuppressAllEvents()
+	ds.Terminate()
 }
 
 func (ds *Session) Terminate() {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
-		ds.runState = TERMINATE
-	})
+	ds.yield.Store(true)
+	state := atomic.LoadInt32(&ds.runState)
+	if state != TERMINATED && atomic.CompareAndSwapInt32(&ds.runState, state, TERMINATED) {
+		close(ds.commands)
+	}
 }
 
 func (ds *Session) Step(stepType StepType, stepGran StepGran) {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
+	if ds.Opts.NoDebug {
+		return
+	}
+	ds.runInVm(func(_ bool) {
 		p := ds.Exec
 		si := p.Code[p.PC].GetSourceInfo()
 		ds.stepType = stepType
@@ -116,17 +124,24 @@ func (ds *Session) Step(stepType StepType, stepGran StepGran) {
 	})
 }
 
-func (ds *Session) RestartFrame(id int) {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
+func (ds *Session) RestartFrame(id int) (err error) {
+	if ds.Opts.NoDebug {
+		return
+	}
+	ds.runInVm(func(fromIoWait bool) {
 		p := ds.Exec
 		if id < 1 || id > len(p.Stack) {
+			err = errors.New("invalid frame id")
 			return // client error
 		}
+		fr := &p.Stack[id-1]
+		if fr.Native != nil {
+			err = errors.New("cannot restart native frame")
+			return
+		}
+
 		p.Stack = p.Stack[:id]
-		p.Frame = &p.Stack[id-1]
+		p.Frame = fr
 		p.PC = p.Frame.Start
 		p.Frame.Params = nil
 		p.Frame.Locals = nil
@@ -134,55 +149,72 @@ func (ds *Session) RestartFrame(id int) {
 
 		// clear the exception state
 		ds.exception = nil
-		ds.exceptionTrace = ""
-		ds.exceptionFrames = nil
+
+		if fromIoWait {
+			// fix the real Go call stack back to the interpreter loop
+			panic(sentinelIoInterrupt{})
+		}
 	})
+	return
 }
 
 // StackFrameFunc receives successive stack frames, from newest to oldest.
 type StackFrameFunc func(frame *asm.Frame, frameId int, inst asm.Inst, pc int)
 
 func (ds *Session) GetStackFrames(f func(*asm.Frame, int, asm.Inst, int)) {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
+	if ds.Opts.NoDebug {
+		return
+	}
+	ds.runInVm(func(_ bool) {
 		ds.Exec.GetStackFrames(f)
 	})
 }
 
-func (ds *Session) GetCurrentException() (string, error) {
-	var trace string
-	var exception error
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
+func (ds *Session) GetCurrentException() (trace string, err error) {
+	if ds.Opts.NoDebug {
+		return
+	}
+	ds.runInVm(func(_ bool) {
+		if ds.exception != nil {
+			trace, err = ds.exception.trace, ds.exception.err
 		}
-		trace = ds.exceptionTrace
-		exception = ds.exception
 	})
-	return trace, exception
+	return
 }
 
 func (ds *Session) UpdateLineBreakpoints(bps []int) {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
+	if ds.Opts.NoDebug {
+		return
+	}
+	if atomic.CompareAndSwapInt32(&ds.runState, UNSTARTED, PAUSE) {
 		ds.lineBreaks = ds.Source.Breakpoints.ComputeLineBreaks(bps)
-	})
+		atomic.StoreInt32(&ds.runState, UNSTARTED)
+	} else {
+		ds.runInVm(func(_ bool) {
+			ds.lineBreaks = ds.Source.Breakpoints.ComputeLineBreaks(bps)
+		})
+	}
 }
 
 func (ds *Session) UpdateInstBreakpoints(pcs []int) {
-	ds.withOuterLock(func() {
-		if ds.noDebug {
-			return
-		}
+	if ds.Opts.NoDebug {
+		return
+	}
+	if atomic.CompareAndSwapInt32(&ds.runState, UNSTARTED, PAUSE) {
 		ds.instBreaks = ds.Source.Breakpoints.ComputeInstBreaks(pcs)
-	})
+		atomic.StoreInt32(&ds.runState, UNSTARTED)
+	} else {
+		ds.runInVm(func(_ bool) {
+			ds.instBreaks = ds.Source.Breakpoints.ComputeInstBreaks(pcs)
+		})
+	}
 }
 
 func (ds *Session) EvaluateExpressionInFrame(targetFrameId int, expr string) (val any, typ ast.Type, err error) {
+	if ds.Opts.NoDebug {
+		return nil, nil, errors.New("no debug")
+	}
+
 	found := false
 	ds.GetStackFrames(func(fr *asm.Frame, frameId int, inst asm.Inst, _ int) {
 		if fr.Native != nil {

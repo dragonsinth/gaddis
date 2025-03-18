@@ -94,7 +94,7 @@ func (h *Session) onLaunchRequest(request *api.LaunchRequest) {
 
 	if args.NoDebug {
 		// launch immediately, otherwise wait for configuration done.
-		h.Resume()
+		h.sess.Play()
 	}
 }
 
@@ -103,15 +103,8 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 		h.send(newErrorResponse(request.Seq, request.Command, "no session found"))
 		return
 	}
-	h.sess.Host.SuppressAllEvents()
-	if h.terminal != nil {
-		h.terminal.Interrupt()
-	}
 	h.sess.Halt()
 	h.sess.Wait()
-	if h.terminal != nil {
-		h.terminal.Continue()
-	}
 	h.sess = nil
 
 	// clear any lingering client state for the old session
@@ -136,7 +129,7 @@ func (h *Session) onRestartRequest(request *api.RestartRequest) {
 	response := &api.RestartResponse{}
 	response.Response = *newResponse(request.Seq, request.Command)
 	h.send(response)
-	h.Resume()
+	h.sess.Play()
 }
 
 func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneRequest) {
@@ -155,13 +148,10 @@ func (h *Session) onConfigurationDoneRequest(request *api.ConfigurationDoneReque
 
 	h.sess.UpdateLineBreakpoints(h.bpsBySum[h.sess.Source.Sum])
 	h.sess.UpdateInstBreakpoints(h.instBps)
-	h.Resume()
+	h.sess.Play()
 }
 
 func (h *Session) onDisconnectRequest(request *api.DisconnectRequest) {
-	if h.terminal != nil {
-		h.terminal.Interrupt()
-	}
 	if h.sess != nil {
 		h.sess.Terminate()
 	}
@@ -171,9 +161,6 @@ func (h *Session) onDisconnectRequest(request *api.DisconnectRequest) {
 }
 
 func (h *Session) onTerminateRequest(request *api.TerminateRequest) {
-	if h.terminal != nil {
-		h.terminal.Interrupt()
-	}
 	if h.sess != nil {
 		h.sess.Terminate()
 	}

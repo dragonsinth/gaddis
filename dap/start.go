@@ -2,10 +2,8 @@ package dap
 
 import (
 	"fmt"
-	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -37,19 +35,25 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		return false
 	}
 
+	h.runId++
+
 	host := eventHost{
 		sendFunc: h.send,
 		source:   h.source,
 		lineOff:  h.lineOff,
 		colOff:   h.colOff,
+		runId:    h.runId,
 	}
 
-	ioProvider := gaddis.IoAdapter{
-		In: func() (string, error) {
-			return "", io.EOF
-		},
-		Out: h.stdout,
+	// default input is a closed channel
+	var stdin <-chan string
+	{
+		ch := make(chan string)
+		close(ch)
+		stdin = ch
 	}
+	stdout := h.stdout
+
 	if args.TestMode {
 		outfile := args.Program + ".out"
 		expectOutput, err := os.ReadFile(outfile)
@@ -60,9 +64,9 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		host.isTest = true
 		host.wantOutput = string(expectOutput)
 		testInput := tryReadInput(args.Program)
-		host.remainingInput = gaddis.SplitInput(string(testInput))
-		ioProvider.In = host.remainingInput
-		ioProvider.Out = func(line string) {
+		stdin = splitInput(string(testInput))
+		host.remainingInput = stdin
+		stdout = func(line string) {
 			host.capturedOutput.WriteString(line)
 			h.stdout(line)
 		}
@@ -91,14 +95,13 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 			}
 		}
 		if h.terminal != nil {
-			// TODO: actually implement io/wait signaling.
-			ioProvider.In = gaddis.StreamInput(h.terminal)
-			ioProvider.Out = func(line string) {
+			stdin = h.terminal.Input
+			stdout = func(line string) {
 				h.stdout(line)
-				h.terminal.Output(line)
+				h.terminal.Write(line)
 			}
 			banner := strings.Repeat("-", len(args.Name))
-			h.terminal.Output(fmt.Sprintf("\x1b[H\x1b[J/%s\\\n|%s|\n\\%s/\n", banner, args.Name, banner))
+			h.terminal.Write(fmt.Sprintf("\x1b[H\x1b[J/%s\\\n|%s|\n\\%s/\n", banner, args.Name, banner))
 		}
 	}
 
@@ -109,7 +112,8 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 	h.launchArgs = args
 
 	opts := debug.Opts{
-		IoProvider:  ioProvider,
+		Input:       stdin,
+		Output:      stdout,
 		IsTest:      args.TestMode,
 		NoDebug:     args.NoDebug,
 		StopOnEntry: args.StopOnEntry,
@@ -117,6 +121,5 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 		InstBreaks:  h.instBps,
 	}
 	h.sess = debug.New(*source, &host, opts)
-	h.runId++
 	return true
 }

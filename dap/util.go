@@ -78,3 +78,16 @@ func toJson(obj any) string {
 	}
 	return buf.String()
 }
+
+func splitInput(in string) <-chan string {
+	input := strings.Split(in, "\n")
+	if input[len(input)-1] == "" {
+		input = input[:len(input)-1]
+	}
+	ret := make(chan string, len(input))
+	for _, line := range input {
+		ret <- line
+	}
+	close(ret)
+	return ret
+}

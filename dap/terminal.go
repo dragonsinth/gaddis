@@ -1,59 +1,34 @@
 package dap
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"runtime"
+	"sync"
 	"time"
 )
 
 type Terminal struct {
-	Port     int
 	Listener net.Listener
-	Ready    chan struct{}
-	Conn     *net.TCPConn // cannot read until ready is closed
-}
+	Port     int
 
-func (t *Terminal) Read(p []byte) (n int, err error) {
-	<-t.Ready
-	if t.Conn != nil {
-		return t.Conn.Read(p)
-	}
-	return 0, io.EOF
+	Input  <-chan string
+	Output chan<- string
+	Done   chan struct{}
 }
 
 func (t *Terminal) Close() {
 	_ = t.Listener.Close()
-	<-t.Ready
-	if t.Conn != nil {
-		// try to friendly drain and close the conn for the client
-		_ = t.Conn.CloseWrite()
-		_ = t.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		_, _ = io.Copy(io.Discard, t.Conn)
-		_ = t.Conn.Close()
-	}
+	close(t.Done)
 }
 
-func (t *Terminal) Output(line string) {
-	<-t.Ready
-	if t.Conn != nil {
-		_, _ = t.Conn.Write([]byte(line))
-	}
-}
-
-func (t *Terminal) Interrupt() {
-	<-t.Ready
-	if t.Conn != nil {
-		_ = t.Conn.SetReadDeadline(time.Now())
-	}
-}
-
-func (t *Terminal) Continue() {
-	<-t.Ready
-	if t.Conn != nil {
-		_ = t.Conn.SetReadDeadline(time.Time{})
+func (t *Terminal) Write(line string) {
+	select {
+	case t.Output <- line:
+	case <-t.Done:
 	}
 }
 
@@ -64,10 +39,15 @@ func StartTerminal() (*Terminal, error) {
 	}
 	log.Println("Started terminal connection at ", listener.Addr())
 
+	input := make(chan string)
+	output := make(chan string)
 	t := &Terminal{
 		Listener: listener,
 		Port:     listener.Addr().(*net.TCPAddr).Port,
-		Ready:    make(chan struct{}),
+
+		Input:  input,
+		Output: output,
+		Done:   make(chan struct{}),
 	}
 
 	go func() {
@@ -80,9 +60,6 @@ func StartTerminal() (*Terminal, error) {
 			}
 		}()
 		defer func() {
-			close(t.Ready)
-		}()
-		defer func() {
 			_ = listener.Close()
 		}()
 
@@ -91,11 +68,47 @@ func StartTerminal() (*Terminal, error) {
 			log.Println(fmt.Errorf("accepting terminal listener: %v", err))
 			return
 		}
+		_ = listener.Close() // only accept a single connection
+
 		conn := c.(*net.TCPConn)
+		_ = conn.SetKeepAlive(true)
 
 		log.Println("Accepted terminal connection from", conn.RemoteAddr())
-		t.Conn = conn
-		_ = t.Conn.SetKeepAlive(true)
+
+		// input loop
+		var wg sync.WaitGroup
+		defer wg.Wait()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer close(input)
+			scan := bufio.NewScanner(conn)
+			for scan.Scan() {
+				select {
+				case input <- scan.Text():
+				case <-t.Done:
+					// try to friendly drain and close the conn for the client
+					_ = conn.CloseWrite()
+					_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+					_, _ = io.Copy(io.Discard, conn)
+					_ = conn.Close()
+					return
+				}
+			}
+		}()
+
+		// output loop
+		for {
+			select {
+			case <-t.Done:
+				_ = conn.CloseWrite()
+			case line, ok := <-output:
+				if !ok {
+					return
+				}
+				_, _ = conn.Write([]byte(line))
+			}
+		}
 	}()
 
 	return t, nil

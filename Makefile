@@ -47,6 +47,7 @@ snapshot:
 
 .PHONY: checkgofmt
 checkgofmt:
+	@find . -name '*.gad.go' | xargs rm
 	@echo gofmt -s -l .
 	@if [ -n "$$(gofmt -s -l .)" ]; then \
 		gofmt -s -d .; \

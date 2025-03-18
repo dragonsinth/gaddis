@@ -74,7 +74,6 @@ func (h *Session) Run() error {
 
 	defer func() {
 		if h.sess != nil {
-			h.sess.Host.SuppressAllEvents()
 			h.sess.Halt()
 		}
 	}()
@@ -169,7 +168,7 @@ func (h *Session) pausedSessionRequiredError(request api.RequestMessage) bool {
 	if h.sess == nil {
 		h.send(newErrorResponse(request.GetSeq(), request.GetRequest().Command, "no session found"))
 		return true
-	} else if h.sess.IsRunning() {
+	} else if h.sess.Opts.NoDebug {
 		h.send(newErrorResponse(request.GetSeq(), request.GetRequest().Command, "cannot perform action while running"))
 		return true
 	}
@@ -179,5 +178,5 @@ func (h *Session) pausedSessionRequiredError(request api.RequestMessage) bool {
 func (h *Session) Resume() {
 	h.variablesById = nil
 	h.variablesByPtr = nil
-	h.sess.Play()
+	h.sess.Continue()
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dragonsinth/gaddis/debug"
 	api "github.com/google/go-dap"
-	"io"
 	"strings"
 	"sync/atomic"
 )
@@ -15,7 +14,7 @@ type eventHost struct {
 	sendFunc func(api.Message)
 
 	// for test mode
-	remainingInput func() (string, error)
+	remainingInput <-chan string
 	capturedOutput strings.Builder
 	wantOutput     string
 	isTest         bool
@@ -24,6 +23,7 @@ type eventHost struct {
 	source  *api.Source
 	lineOff int
 	colOff  int
+	runId   int
 
 	suppressed int32
 }
@@ -31,14 +31,14 @@ type eventHost struct {
 func (eh *eventHost) Paused(reason string) {
 	eh.send(&api.StoppedEvent{
 		Event: *newEvent("stopped"),
-		Body:  api.StoppedEventBody{Reason: reason, ThreadId: 1, AllThreadsStopped: true},
+		Body:  api.StoppedEventBody{Reason: reason, ThreadId: eh.runId, AllThreadsStopped: true},
 	})
 }
 
 func (eh *eventHost) Exception(err error) {
 	eh.send(&api.StoppedEvent{
 		Event: *newEvent("stopped"),
-		Body:  api.StoppedEventBody{Reason: "exception", Description: "exception", Text: err.Error(), ThreadId: 1, AllThreadsStopped: true},
+		Body:  api.StoppedEventBody{Reason: "exception", Description: "exception", Text: err.Error(), ThreadId: eh.runId, AllThreadsStopped: true},
 	})
 }
 
@@ -70,7 +70,6 @@ func (eh *eventHost) Panicked(err error, errFrames []debug.ErrFrame) {
 			Body:  body,
 		})
 	}
-	eh.Exited(1)
 }
 
 const failFmt = `
@@ -150,11 +149,9 @@ func (eh *eventHost) send(m api.Message) {
 func (eh *eventHost) drainStdin() (string, error) {
 	var sb strings.Builder
 	for {
-		in, err := eh.remainingInput()
-		if err == io.EOF {
+		in, ok := <-eh.remainingInput
+		if !ok {
 			return sb.String(), nil
-		} else if err != nil {
-			return sb.String(), err
 		}
 		sb.WriteString(in)
 		sb.WriteRune('\n')

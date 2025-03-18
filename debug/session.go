@@ -1,9 +1,10 @@
 package debug
 
 import (
+	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
+	"io"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -17,26 +18,27 @@ type Session struct {
 
 	// Private running state
 
+	runState runState
 	yield    atomic.Bool // ask the vm to yield so we can grab the mutex
-	running  atomic.Bool
-	runMu    sync.Mutex
-	runState RunState
-	isDone   bool // terminated/exit/exception
-	noDebug  bool
+	commands chan func(fromIoWait bool)
+	done     chan struct{}
 
-	exception       error
-	exceptionTrace  string
-	exceptionFrames []ErrFrame
+	exception *exceptionInfo
 
 	lineBreaks []byte // pcs to break for lines
 	instBreaks []byte // pcs to break for inst
 
-	stopOnEntry bool // remove this field in favor of "break before line" once debugger is single-execution
-	stepType    StepType
-	stepGran    StepGran
-	stepInst    int
-	stepLine    int
-	stepFrame   int
+	stepType  StepType
+	stepGran  StepGran
+	stepInst  int
+	stepLine  int
+	stepFrame int
+}
+
+type exceptionInfo struct {
+	err    error
+	trace  string
+	frames []ErrFrame
 }
 
 func New(
@@ -49,9 +51,32 @@ func New(
 		seed = time.Now().UnixNano()
 	}
 
+	commands := make(chan func(bool))
+
 	ec := &asm.ExecutionContext{
-		Rng:        rand.New(rand.NewSource(seed)),
-		IoProvider: opts.IoProvider,
+		Rng: rand.New(rand.NewSource(seed)),
+		IoProvider: gaddis.IoAdapter{
+			In: func() (string, error) {
+				// TODO: an initial select that includes a short time delay, pause and unpause.
+				for {
+					select {
+					case cmd, ok := <-commands:
+						if !ok {
+							// we're being asked to exit
+							panic(sentinelIoExit{})
+						}
+						cmd(true)
+					case in, ok := <-opts.Input:
+						if !ok {
+							return "", io.EOF
+						}
+						return in, nil
+					}
+				}
+			},
+			Out:     opts.Output, // TODO: should this also be a channel?
+			WorkDir: ".",
+		},
 	}
 
 	exec := source.Assembled.NewExecution(ec)
@@ -59,30 +84,26 @@ func New(
 	lineBreaks := source.Breakpoints.ComputeLineBreaks(opts.LineBreaks)
 	instBreaks := source.Breakpoints.ComputeInstBreaks(opts.InstBreaks)
 
-	stopOnEntry := opts.StopOnEntry ||
-		(len(lineBreaks) > 0 && lineBreaks[0] != 0) ||
-		(len(instBreaks) > 0 && instBreaks[0] != 0)
+	if opts.StopOnEntry && len(lineBreaks) > 0 {
+		lineBreaks[0] = 1
+	}
 
 	return &Session{
-		Opts:           opts,
-		Host:           host,
-		Source:         source,
-		Exec:           exec,
-		yield:          atomic.Bool{},
-		running:        atomic.Bool{},
-		runMu:          sync.Mutex{},
-		runState:       PAUSE,
-		isDone:         false,
-		noDebug:        opts.NoDebug,
-		exception:      nil,
-		exceptionTrace: "",
-		lineBreaks:     lineBreaks,
-		instBreaks:     instBreaks,
-		stopOnEntry:    stopOnEntry,
-		stepType:       STEP_NONE,
-		stepGran:       LineGran,
-		stepInst:       0,
-		stepLine:       0,
-		stepFrame:      0,
+		Opts:       opts,
+		Host:       host,
+		Source:     source,
+		Exec:       exec,
+		runState:   UNSTARTED,
+		yield:      atomic.Bool{},
+		commands:   commands,
+		done:       make(chan struct{}),
+		exception:  nil,
+		lineBreaks: lineBreaks,
+		instBreaks: instBreaks,
+		stepType:   STEP_NONE,
+		stepGran:   LineGran,
+		stepInst:   0,
+		stepLine:   0,
+		stepFrame:  0,
 	}
 }

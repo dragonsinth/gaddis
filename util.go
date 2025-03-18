@@ -3,7 +3,6 @@ package gaddis
 import (
 	"bufio"
 	"io"
-	"strings"
 )
 
 type IoProvider interface {
@@ -42,20 +41,5 @@ func StreamInput(r io.Reader) func() (string, error) {
 			return "", err
 		}
 		return input, nil
-	}
-}
-
-func SplitInput(in string) func() (string, error) {
-	input := strings.Split(in, "\n")
-	if input[len(input)-1] == "" {
-		input = input[:len(input)-1]
-	}
-	return func() (string, error) {
-		if len(input) >= 0 {
-			line := input[0]
-			input = input[1:]
-			return line, nil
-		}
-		return "", io.EOF
 	}
 }

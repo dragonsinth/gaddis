@@ -52,11 +52,28 @@ func LoadSource(filename string) (*Source, error) {
 	return ret, nil
 }
 
-func (ds *Session) withOuterLock(f func()) {
-	// force a yield, acquire the lock
+func (ds *Session) runInVm(f func(fromIoWait bool)) {
+	// force a yield, run the given command on the internal thread
 	ds.yield.Store(true)
-	ds.runMu.Lock()
-	defer ds.runMu.Unlock()
-	ds.yield.Store(false)
-	f()
+
+	done := make(chan struct{})
+	cmd := func(fromIoWait bool) {
+		defer close(done)
+		ds.yield.Store(false)
+		f(fromIoWait)
+	}
+
+	select {
+	case <-ds.done:
+	case ds.commands <- cmd:
+	}
+
+	select {
+	case <-ds.done:
+	case <-done:
+	}
 }
+
+type sentinelIoExit struct{}
+
+type sentinelIoInterrupt struct{}
