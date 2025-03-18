@@ -53,6 +53,10 @@ func LoadSource(filename string) (*Source, error) {
 }
 
 func (ds *Session) runInVm(f func(fromIoWait bool)) {
+	if ds.commandsClosed.Load() {
+		return
+	}
+
 	// force a yield, run the given command on the internal thread
 	ds.yield.Store(true)
 

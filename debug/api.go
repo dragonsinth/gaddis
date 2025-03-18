@@ -9,6 +9,7 @@ import (
 
 // EventHost is how the VM pushes out debug events.
 type EventHost interface {
+	Continued()
 	Paused(reason string)
 	Exception(err error)
 	Panicked(error, []ErrFrame)
@@ -103,8 +104,7 @@ func (ds *Session) Halt() {
 
 func (ds *Session) Terminate() {
 	ds.yield.Store(true)
-	state := atomic.LoadInt32(&ds.runState)
-	if state != TERMINATED && atomic.CompareAndSwapInt32(&ds.runState, state, TERMINATED) {
+	if ds.commandsClosed.CompareAndSwap(false, true) {
 		close(ds.commands)
 	}
 }

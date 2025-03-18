@@ -28,6 +28,13 @@ type eventHost struct {
 	suppressed int32
 }
 
+func (eh *eventHost) Continued() {
+	eh.send(&api.ContinuedEvent{
+		Event: *newEvent("stopped"),
+		Body:  api.ContinuedEventBody{ThreadId: eh.runId, AllThreadsContinued: true},
+	})
+}
+
 func (eh *eventHost) Paused(reason string) {
 	eh.send(&api.StoppedEvent{
 		Event: *newEvent("stopped"),

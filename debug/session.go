@@ -18,10 +18,11 @@ type Session struct {
 
 	// Private running state
 
-	runState runState
-	yield    atomic.Bool // ask the vm to yield so we can grab the mutex
-	commands chan func(fromIoWait bool)
-	done     chan struct{}
+	runState       runState
+	yield          atomic.Bool // ask the vm to yield so we can grab the mutex
+	commands       chan func(fromIoWait bool)
+	commandsClosed atomic.Bool
+	done           chan struct{}
 
 	exception *exceptionInfo
 
@@ -53,33 +54,17 @@ func New(
 
 	commands := make(chan func(bool))
 
-	ec := &asm.ExecutionContext{
+	var inputDelegate func() (string, error) // fill in below
+	exec := source.Assembled.NewExecution(&asm.ExecutionContext{
 		Rng: rand.New(rand.NewSource(seed)),
 		IoProvider: gaddis.IoAdapter{
 			In: func() (string, error) {
-				// TODO: an initial select that includes a short time delay, pause and unpause.
-				for {
-					select {
-					case cmd, ok := <-commands:
-						if !ok {
-							// we're being asked to exit
-							panic(sentinelIoExit{})
-						}
-						cmd(true)
-					case in, ok := <-opts.Input:
-						if !ok {
-							return "", io.EOF
-						}
-						return in, nil
-					}
-				}
+				return inputDelegate()
 			},
-			Out:     opts.Output, // TODO: should this also be a channel?
-			WorkDir: ".",
+			Out:     opts.Output,
+			WorkDir: ".", // TODO
 		},
-	}
-
-	exec := source.Assembled.NewExecution(ec)
+	})
 
 	lineBreaks := source.Breakpoints.ComputeLineBreaks(opts.LineBreaks)
 	instBreaks := source.Breakpoints.ComputeInstBreaks(opts.InstBreaks)
@@ -88,7 +73,7 @@ func New(
 		lineBreaks[0] = 1
 	}
 
-	return &Session{
+	ds := &Session{
 		Opts:       opts,
 		Host:       host,
 		Source:     source,
@@ -105,5 +90,34 @@ func New(
 		stepInst:   0,
 		stepLine:   0,
 		stepFrame:  0,
+	}
+
+	inputDelegate = ds.inputAdapter
+	return ds
+}
+
+func (ds *Session) inputAdapter() (string, error) {
+	timeout := time.After(100 * time.Millisecond)
+	for {
+
+		select {
+		case cmd, ok := <-ds.commands:
+			if !ok {
+				// we're being asked to exit
+				panic(sentinelIoExit{})
+			}
+			cmd(true)
+		case in, ok := <-ds.Opts.Input:
+			if !ok {
+				return "", io.EOF
+			}
+			if timeout == nil && ds.runState == RUN {
+				ds.Host.Continued()
+			}
+			return in, nil
+		case <-timeout:
+			timeout = nil // only timeout once
+			ds.Host.Paused("i/o wait")
+		}
 	}
 }
