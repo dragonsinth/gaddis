@@ -249,7 +249,7 @@ func (l *Lexer) parseCharacterLiteral() Result {
 	text := string(lit)
 	if v, err := strconv.Unquote(text); err != nil {
 		return Result{pos, ILLEGAL, text, fmt.Errorf("invalid character literal: %w", err)}
-	} else if len(v) < 0 {
+	} else if len(v) < 1 {
 		return Result{pos, ILLEGAL, text, ErrCharacterTooShort}
 	} else if len(v) > 1 {
 		return Result{pos, ILLEGAL, text, ErrCharacterTooLong}

@@ -93,6 +93,8 @@ func getEntries() []entry {
 		{"toLower", toLower},
 		{"substring", substring},
 		{"contains", contains},
+		{"insert", insert},
+		{"delete", deleteString},
 
 		{"stringToInteger", stringToInteger},
 		{"stringToReal", stringToReal},

@@ -1,0 +1,7 @@
+Declare String str = "New City"
+Call insert(str, 4, "York ")
+Display str
+
+Set str = "I ate 1000 blueberries!"
+Call delete(str, 8, 9)
+Display str

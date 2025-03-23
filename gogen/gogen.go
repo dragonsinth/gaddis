@@ -400,7 +400,15 @@ func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
-	v.ident(cs.Ref)
+	if cs.Ref.IsExternal {
+		if cs.Ref.Name == "delete" {
+			v.output("deleteString") // special case append vice builtin append
+		} else {
+			v.output(cs.Ref.Name)
+		}
+	} else {
+		v.ident(cs.Ref)
+	}
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	v.output("\n")
 	return false

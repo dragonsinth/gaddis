@@ -70,20 +70,20 @@ reading from stdin to create input and output files for subsequent test runs.
 
 ## Status
 
-Implemented up through Chapter 8; supports:
+Implemented up through Chapter 9; supports:
 
 - Basic statements, expressions, operations, variables, constants, control structures.
 - `Integer`, `Real`, `String`, `Character`, `Boolean`
+- `Input`, `Display`
 - `Module` and `Function` declarations
-- `Input`, `Display`, external function library
 - Arrays, `For Each`
 - Indexing `String` as `Character`
+- External function library
 
 Should cover the whole language by May 2025.
 
 ### Not yet supported
 
-- some string processing functions
 - file I/O
 - classes
 
@@ -140,5 +140,8 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - This is implied by the book but not explicitly stated.
   - Multidimensional sub-array elements, however, can be passed by value or reference
     as an argument to a parameter of the correct type and dimension.
+
+- Use `Call` to call the external library string modules `insert` and `delete`.
+  - The book omits the `Call` keyword, which makes the syntax incompatible with the rest of the book.
 
 - `Print` just outputs to stderr; there is no printer support.

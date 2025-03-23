@@ -45,3 +45,50 @@ func TestSubstring(t *testing.T) {
 		}
 	}
 }
+
+func TestInsert(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		add  string
+		pos  int64
+		want string
+	}{
+		{"", "!", 0, "!"},
+		{"a", "!", 0, "!a"},
+		{"ab", "!", 1, "a!b"},
+		{"abc", "!", 1, "a!bc"},
+		{"abcd", "!", 2, "ab!cd"},
+		{"abcd", "!!", 3, "abc!!d"},
+		{"abcd", "!!!", 4, "abcd!!!"},
+	} {
+		ref := []byte(tc.in)
+		insert(&ref, tc.pos, []byte(tc.add))
+		got := string(ref)
+		if got != tc.want {
+			t.Errorf("insert(%s) = %s, want %s", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestDelete(t *testing.T) {
+	for _, tc := range []struct {
+		in         string
+		start, end int64
+		want       string
+	}{
+		{"", 0, -1, ""},
+		{"a", 0, 0, ""},
+		{"ab", 0, 1, ""},
+		{"abc", 1, 1, "ac"},
+		{"abcd", 1, 2, "ad"},
+		{"abcd", 1, 3, "a"},
+		{"abcd", 2, 3, "ab"},
+	} {
+		ref := []byte(tc.in)
+		deleteString(&ref, tc.start, tc.end)
+		got := string(ref)
+		if got != tc.want {
+			t.Errorf("delete(%s) = %s, want %s", tc.in, got, tc.want)
+		}
+	}
+}

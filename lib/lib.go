@@ -102,6 +102,28 @@ func substring(s []byte, start int64, end int64) []byte {
 	return s[start : end+1]
 }
 
+func insert(s *[]byte, pos int64, add []byte) {
+	lhs := (*s)[:pos]
+	rhs := (*s)[pos:]
+	ret := make([]byte, 0, len(lhs)+len(rhs)+len(add))
+	ret = append(ret, lhs...)
+	ret = append(ret, add...)
+	ret = append(ret, rhs...)
+	*s = ret
+}
+
+func deleteString(s *[]byte, start int64, end int64) {
+	if end+1 < start {
+		panic("delete: invalid range start(%d) should be less than or equal to end (%d)")
+	}
+	lhs := (*s)[:start]
+	rhs := (*s)[end+1:]
+	ret := make([]byte, 0, len(lhs)+len(rhs))
+	ret = append(ret, lhs...)
+	ret = append(ret, rhs...)
+	*s = ret
+}
+
 var contains = bytes.Contains
 
 func stringToInteger(s []byte) int64 {

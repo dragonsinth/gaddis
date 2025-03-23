@@ -366,11 +366,21 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArguments(cs.Args, cs.Ref.Params)
-	v.code = append(v.code, Call{
-		baseInst: baseInst{cs.SourceInfo},
-		Label:    v.refLabel(cs.Ref.Name),
-		NArgs:    len(cs.Args),
-	})
+	if cs.Ref.IsExternal {
+		v.code = append(v.code, LibCall{
+			baseInst: baseInst{cs.SourceInfo},
+			Name:     cs.Name,
+			Type:     ast.UnresolvedType,
+			Index:    lib.IndexOf(cs.Name),
+			NArg:     len(cs.Args),
+		})
+	} else {
+		v.code = append(v.code, Call{
+			baseInst: baseInst{cs.SourceInfo},
+			Label:    v.refLabel(cs.Ref.Name),
+			NArgs:    len(cs.Args),
+		})
+	}
 	return false
 }
 
