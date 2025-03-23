@@ -192,7 +192,7 @@ type ForStmt struct {
 	Ref       Expression
 	StartExpr Expression
 	StopExpr  Expression
-	StepExpr  Expression
+	StepExpr  Expression // Literal after typecheck
 	Block     *Block
 }
 

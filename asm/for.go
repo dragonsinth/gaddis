@@ -1,112 +1,33 @@
 package asm
 
-type ForInt struct {
+import "strconv"
+
+type IncrInt struct {
 	baseInst
+	Val int64
 }
 
-func (i ForInt) Exec(p *Execution) {
-	step := p.Pop().(int64)
-	stop := p.Pop().(int64)
-	val := p.Pop().(int64)
+func (i IncrInt) Exec(p *Execution) {
 	ref := p.Pop().(*any)
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
+	refVal := (*ref).(int64)
+	*ref = refVal + i.Val
 }
 
-func (i ForInt) String() string {
-	return "for int"
+func (i IncrInt) String() string {
+	return "incr int " + strconv.FormatInt(i.Val, 10)
 }
 
-type ForReal struct {
+type IncrReal struct {
 	baseInst
+	Val float64
 }
 
-func (i ForReal) Exec(p *Execution) {
-	step := p.Pop().(float64)
-	stop := p.Pop().(float64)
-	val := p.Pop().(float64)
+func (i IncrReal) Exec(p *Execution) {
 	ref := p.Pop().(*any)
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
+	refVal := (*ref).(float64)
+	*ref = refVal + i.Val
 }
 
-func (i ForReal) String() string {
-	return "for real"
-}
-
-type StepInt struct {
-	baseInst
-}
-
-func (i StepInt) Exec(p *Execution) {
-	step := p.Pop().(int64)
-	stop := p.Pop().(int64)
-	ref := p.Pop().(*any)
-	val := (*ref).(int64)
-	val += step
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
-}
-
-func (i StepInt) String() string {
-	return "step int"
-}
-
-type StepReal struct {
-	baseInst
-}
-
-func (i StepReal) Exec(p *Execution) {
-	step := p.Pop().(float64)
-	stop := p.Pop().(float64)
-	ref := p.Pop().(*any)
-	val := (*ref).(float64)
-	val += step
-	*ref = val
-	if step < 0 {
-		p.Push(val >= stop)
-	} else {
-		p.Push(val <= stop)
-	}
-}
-
-func (i StepReal) String() string {
-	return "step real"
-}
-
-type ForEach struct {
-	baseInst
-}
-
-func (i ForEach) Exec(p *Execution) {
-	arr := p.Pop().([]any)
-	idx := p.Pop().(*any)
-	ref := p.Pop().(*any)
-
-	idxVal := (*idx).(int64)
-	idxVal++
-	*idx = idxVal
-
-	if idxVal < int64(len(arr)) {
-		*ref = arr[idxVal]
-		p.Push(true)
-	} else {
-		p.Push(false)
-	}
-}
-
-func (i ForEach) String() string {
-	return "foreach"
+func (i IncrReal) String() string {
+	return "incr real " + strconv.FormatFloat(i.Val, 'g', -1, 64)
 }

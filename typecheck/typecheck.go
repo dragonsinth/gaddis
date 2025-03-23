@@ -136,6 +136,40 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 	if fs.StepExpr != nil {
 		if !ast.CanCoerce(refType, fs.StepExpr.GetType()) {
 			v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StepExpr.GetType(), refType)
+			return
+		}
+
+		val := fs.StepExpr.ConstEval()
+		var intVal int64
+		var floatVal float64
+		switch val := val.(type) {
+		case int64:
+			intVal = val
+			floatVal = float64(val)
+		case float64:
+			floatVal = val
+		default:
+			v.Errorf(fs.StepExpr, "step expression must be a constant number, got %s", val)
+			return
+		}
+
+		switch refType {
+		case ast.Integer:
+			fs.StepExpr = &ast.Literal{
+				SourceInfo:   fs.StepExpr.GetSourceInfo(),
+				Type:         ast.Integer,
+				Val:          intVal,
+				IsTabLiteral: false,
+			}
+		case ast.Real:
+			fs.StepExpr = &ast.Literal{
+				SourceInfo:   fs.StepExpr.GetSourceInfo(),
+				Type:         ast.Real,
+				Val:          floatVal,
+				IsTabLiteral: false,
+			}
+		default:
+			panic(refType)
 		}
 	}
 }

@@ -255,86 +255,105 @@ func (v *Visitor) PreVisitWhileStmt(ws *ast.WhileStmt) bool {
 }
 
 func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
-	endLabel := &Label{Name: "fend", PC: 0}
+	op := ast.LTE
+	intVal := int64(1)
+	floatVal := float64(1)
+	if fs.StepExpr != nil {
+		stepLit := fs.StepExpr.ConstEval()
+		switch val := stepLit.(type) {
+		case int64:
+			if val < 0 {
+				op = ast.GTE
+			}
+			intVal = val
+			floatVal = float64(val)
+		case float64:
+			if val < 0 {
+				op = ast.GTE
+			}
+			floatVal = val
+		default:
+			panic(stepLit)
+		}
+	}
 
 	refType := fs.Ref.GetType()
-	v.varRef(fs.Ref, true)
+	endLabel := &Label{Name: "fend", PC: 0}
+
+	// store
 	v.maybeCast(refType, fs.StartExpr)
-	v.maybeCast(refType, fs.StopExpr)
-	v.stepExpr(fs)
-
-	// attribute all the for/step/jumps to top line of the for loop
-	si := fs.SourceInfo.Head()
-
-	switch refType {
-	case ast.Integer:
-		v.code = append(v.code, ForInt{baseInst: baseInst{si}})
-	case ast.Real:
-		v.code = append(v.code, ForReal{baseInst: baseInst{si}})
-	default:
-		panic(refType)
-	}
-	v.code = append(v.code, JumpFalse{baseInst: baseInst{si}, Label: endLabel})
+	v.varRef(fs.Ref, true)
+	v.code = append(v.code, Store{baseInst{fs.StartExpr.GetSourceInfo()}})
 
 	startLabel := &Label{Name: "for", PC: len(v.code)}
+
+	// test
+	v.varRef(fs.Ref, false)
+	v.maybeCast(refType, fs.StopExpr)
+	switch refType {
+	case ast.Integer:
+		v.code = append(v.code, BinOpInt{baseInst: baseInst{fs.StopExpr.GetSourceInfo()}, Op: op})
+	case ast.Real:
+		v.code = append(v.code, BinOpReal{baseInst: baseInst{fs.StopExpr.GetSourceInfo()}, Op: op})
+	default:
+		panic(refType)
+	}
+	v.code = append(v.code, JumpFalse{baseInst: baseInst{fs.StopExpr.GetSourceInfo()}, Label: endLabel})
+
 	fs.Block.Visit(v)
 
-	// end of loop re-test / increment
-	v.varRef(fs.Ref, true)
-	v.maybeCast(refType, fs.StopExpr)
-	v.stepExpr(fs)
+	// post loop increment+jump
+	si := fs.SourceInfo.Tail()
+
+	v.varRefDecl(si, fs.Ref.(*ast.VariableExpr).Ref, true)
 	switch refType {
 	case ast.Integer:
-		v.code = append(v.code, StepInt{baseInst: baseInst{si}})
+		v.code = append(v.code, IncrInt{baseInst: baseInst{si}, Val: intVal})
 	case ast.Real:
-		v.code = append(v.code, StepReal{baseInst: baseInst{si}})
+		v.code = append(v.code, IncrReal{baseInst: baseInst{si}, Val: floatVal})
 	default:
 		panic(refType)
 	}
-	v.code = append(v.code, JumpTrue{baseInst: baseInst{si}, Label: startLabel})
+
+	v.code = append(v.code, Jump{baseInst: baseInst{si}, Label: startLabel})
 	endLabel.PC = len(v.code)
 	return false
-}
-
-func (v *Visitor) stepExpr(fs *ast.ForStmt) {
-	refType := fs.Ref.GetType().AsPrimitive()
-	if fs.StepExpr != nil {
-		v.maybeCast(refType, fs.StepExpr)
-		return
-	}
-	var val any
-	switch refType {
-	case ast.Integer:
-		val = int64(1)
-	case ast.Real:
-		val = float64(1)
-	default:
-		panic(refType)
-	}
-	v.code = append(v.code, Literal{baseInst: baseInst{fs.StopExpr.GetSourceInfo().Tail()}, Typ: refType, Val: val})
 }
 
 func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 	// attribute all the for/step/jumps to top line of the for loop
 	si := fs.SourceInfo.Head()
+	endLabel := &Label{Name: "fend", PC: 0}
 
 	// initialize the index expression
 	fs.Index.Visit(v)
 
-	endLabel := &Label{Name: "fend", PC: 0}
+	// test
 	startLabel := &Label{Name: "for", PC: len(v.code)}
-	v.varRef(fs.Ref, true)
-	v.code = append(v.code, LocalRef{
-		baseInst: baseInst{si},
-		Name:     fs.Index.Name,
-		Index:    fs.Index.Id,
-	})
+	v.varRefDecl(si, fs.Index, false)
 	fs.ArrayExpr.Visit(v)
-	v.code = append(v.code, ForEach{baseInst: baseInst{si}})
+	v.code = append(v.code, ArrayLen{baseInst: baseInst{si}})
+	v.code = append(v.code, BinOpInt{baseInst: baseInst{si}, Op: ast.LT})
 	v.code = append(v.code, JumpFalse{baseInst: baseInst{si}, Label: endLabel})
+
+	// assign current element value
+	// ref = arr[idx]
+	// arr, idx, array ref, ref, store
+	fs.ArrayExpr.Visit(v)
+	v.varRefDecl(si, fs.Index, false)
+	v.code = append(v.code, OffsetVal{baseInst: baseInst{si}, OffsetType: OffsetTypeArray})
+	v.varRef(fs.Ref, true)
+	v.code = append(v.code, Store{baseInst{si}})
+
 	fs.Block.Visit(v)
-	v.code = append(v.code, Jump{baseInst: baseInst{fs.SourceInfo.Tail()}, Label: startLabel})
+
+	// post loop increment+jump
+	si = fs.SourceInfo.Tail()
+	v.varRefDecl(si, fs.Index, true)
+	v.code = append(v.code, IncrInt{baseInst: baseInst{si}, Val: 1})
+	v.code = append(v.code, Jump{baseInst: baseInst{si}, Label: startLabel})
 	endLabel.PC = len(v.code)
+
 	return false
 }
 

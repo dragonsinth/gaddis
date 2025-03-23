@@ -133,3 +133,16 @@ func arrayTypeTail(dims int) string {
 	}
 	return "[]" + arrayTypeTail(dims-1)
 }
+
+type ArrayLen struct {
+	baseInst
+}
+
+func (a ArrayLen) Exec(p *Execution) {
+	arr := p.Pop().([]any)
+	p.Push(int64(len(arr)))
+}
+
+func (a ArrayLen) String() string {
+	return "array len"
+}

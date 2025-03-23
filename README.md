@@ -94,19 +94,28 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
 
 - Explicit `Character` type and character literals, using single-quoted characters: `'X'`
 
-- For loop variables must be simple variable references, not field or array element references.
-    - This is never specified in the book, but there are no counter examples.
-    - Avoids unspecified potential re-evaluations of complex reference expressions.
+- `For` loop variables must be simple variable references, not field or array element references.
+  - This is implied by the book but not explicitly stated.
+  - Avoids unspecified potential re-evaluations of complex reference expressions.
+  - Could be changed in the future with a temp variable holding a reference.
 
-- New lib funcs to convert number to String in an expression context.
-  - `String integerToString(n Integer)`
-  - `String realToString(n Real)`
-  - (In the book, this only happens when invoking a `Display` statement)
+- `For` loop stop expression is re-evaluated on every iteration.
+  - This behavior is never specified.
 
-- `Print` is just an alias for `Display`, there is no printer support.
+- `For` loop step expression must be a numeric constant.
+  - This is implied by the book but not explicitly stated.
+  - Avoids complicated and ambiguous code generation where the test expression (`<=` vs `>=`)
+    might need to change depending on the value of the step expression.
+
+- New library functions to convert number to String in an expression context.
+  - `String integerToString(Integer n)`
+  - `String realToString(Real n)`
+  - Opposite of `stringToInteger`, `stringToReal`
+  - In the book, this conversion only happens when invoking a `Display` statement, but it
+    seems like an obvious oversight for useful string processing and formatting.
 
 - Nested `Module` and `Function` declarations are not currently supported, but could be.
-  - This is never specified in the book, but there are no examples of nested functions.
+  - This is implied by the book but not explicitly stated.
 
 - `Input` statements will loop until the user inputs a line that can be correctly
   parsed to the type of the input variable; e.g. a non-numeric input will loop and retry
@@ -114,3 +123,17 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
 
 - By contrast, `Read` statements in an `InputFile` where the record data is the wrong type
   exit the program immediately with an exception.
+
+- Arrays are filled with zero values on initialization when there is no initializer. When
+  too few initializer expressions are given, the remainder of the array is filled with zeroes.
+
+- Arrays are deep copied when passed by value.
+  - This is implied by the book but not explicitly stated.
+
+- Array variables cannot be reassigned, nor can sub-array elements in a multidimensional
+  array be reassigned.
+  - This is implied by the book but not explicitly stated.
+  - Multidimensional sub-array elements, however, can be passed by value or reference
+    as an argument to a parameter of the correct type and dimension.
+
+- `Print` just outputs to stderr; there is no printer support.

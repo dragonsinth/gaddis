@@ -23,7 +23,7 @@ func (v *TempVisitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 		Type:       ast.Integer,
 	}
 	// pre-assign the index to -1
-	vd.Expr = &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: int64(-1)}
+	vd.Expr = &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: int64(0)}
 	v.currScope.AddVariable(vd)
 	fs.Index = vd
 }
