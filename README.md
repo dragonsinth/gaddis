@@ -94,10 +94,10 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
 
 - Explicit `Character` type and character literals, using single-quoted characters: `'X'`
 
-- `For` loop variables must be simple variable references, not field or array element references.
+- `For` and `For Each` loop variables must be simple variable references, not field or array element references.
   - This is implied by the book but not explicitly stated.
   - Avoids unspecified potential re-evaluations of complex reference expressions.
-  - Could be changed in the future with a temp variable holding a reference.
+  - Could be changed in the future with a temp reference variable.
 
 - `For` loop stop expression is re-evaluated on every iteration.
   - This behavior is never specified.
@@ -106,6 +106,11 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - This is implied by the book but not explicitly stated.
   - Avoids complicated and ambiguous code generation where the test expression (`<=` vs `>=`)
     might need to change depending on the value of the step expression.
+
+- `For Each` loop array expression is re-evaluated twice on every iteration; once for the array
+  length bounds check, once to assign the loop variable.
+  - This behavior is never specified.
+  - Could be changed in the future with a temp array reference variable.
 
 - New library functions to convert number to String in an expression context.
   - `String integerToString(Integer n)`
