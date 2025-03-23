@@ -21,7 +21,7 @@ func TestParse(t *testing.T) {
 	block, comments, errs := Parse(program)
 	if len(errs) > 0 {
 		for _, err := range errs {
-			t.Error(err)
+			fmt.Println("parse_test.gad:" + err.Error())
 		}
 		t.Fatal("parse errors")
 	}

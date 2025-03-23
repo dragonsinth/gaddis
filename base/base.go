@@ -92,6 +92,12 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {}
 
+func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {}
+
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	return true
 }

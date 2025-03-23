@@ -90,6 +90,11 @@ Module arrayDecls(Integer array[], Integer Ref array2[])
 	Display strings[0]
 	Input strings[0]
 
+	Declare String var
+	For Each var In strings
+		Display var
+	End For
+
 	Declare Integer table[3][4]
 	Declare Integer table2[3][4] 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 // TODO: line break
 	table[0][0] = table2[1][1]

@@ -213,6 +213,28 @@ func (fs *ForStmt) Visit(v Visitor) {
 func (*ForStmt) isStatement() {
 }
 
+type ForEachStmt struct {
+	SourceInfo
+	Ref       Expression
+	ArrayExpr Expression
+	Block     *Block
+
+	Index *VarDecl // filled in later
+}
+
+func (fs *ForEachStmt) Visit(v Visitor) {
+	if !v.PreVisitForEachStmt(fs) {
+		return
+	}
+	fs.Ref.Visit(v)
+	fs.ArrayExpr.Visit(v)
+	fs.Block.Visit(v)
+	v.PostVisitForEachStmt(fs)
+}
+
+func (*ForEachStmt) isStatement() {
+}
+
 type CallStmt struct {
 	SourceInfo
 	Name string

@@ -62,6 +62,8 @@ const (
 	FOR
 	TO
 	STEP
+	EACH
+	IN
 
 	MODULE
 	CALL
@@ -139,6 +141,8 @@ var tokens = []string{
 	FOR:   "FOR",
 	TO:    "TO",
 	STEP:  "STEP",
+	EACH:  "EACH",
+	IN:    "IN",
 
 	MODULE:   "MODULE",
 	CALL:     "CALL",
@@ -184,6 +188,8 @@ var keywords = map[string]Token{
 	"For":       FOR,
 	"To":        TO,
 	"Step":      STEP,
+	"Each":      EACH,
+	"In":        IN,
 	"Module":    MODULE,
 	"Call":      CALL,
 	"Function":  FUNCTION,

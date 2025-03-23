@@ -404,6 +404,22 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 }
 
+func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
+	v.indent()
+	v.output("for _, ")
+	v.varRef(fs.Ref, false)
+	v.output(" = range ")
+	fs.ArrayExpr.Visit(v)
+	v.output(" {\n")
+	fs.Block.Visit(v)
+	v.indent()
+	v.output("}\n")
+	return false
+}
+
+func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
+}
+
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
 	v.ident(cs.Ref)

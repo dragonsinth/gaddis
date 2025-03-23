@@ -114,7 +114,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.gaddis",
-					"match": "\\b(Set|Ref|Constant|Declare|End|If|Then|Else|Select|Case|Default|Do|While|Until|For|To|Step|Module|Call|Function|Return)\\b"
+					"match": "\\b(Set|Ref|Constant|Declare|End|If|Then|Else|Select|Case|Default|Do|While|Until|For|To|Step|Each|In|Module|Call|Function|Return)\\b"
 				}
 			]
 		},

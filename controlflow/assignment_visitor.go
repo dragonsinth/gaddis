@@ -65,6 +65,18 @@ func (v *AssignmentVisitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	return false
 }
 
+func (v *AssignmentVisitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
+	// have to do this one manually: none of the expressions are allowed to reference the count variable
+	v.pendingWrite(fs.Ref)
+	fs.Ref.Visit(v)
+	fs.ArrayExpr.Visit(v)
+
+	// but it's definitely assigned before the inner block
+	v.finishWrite(fs.Ref)
+	fs.Block.Visit(v)
+	return false
+}
+
 func (v *AssignmentVisitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	for i, arg := range cs.Args {
 		if cs.Ref.Params[i].IsRef {

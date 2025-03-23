@@ -287,7 +287,26 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	return false
 }
 
-func (v *Visitor) PostVisitForStmt(ws *ast.ForStmt) {
+func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
+}
+
+func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
+	v.bol(fs.Start)
+	defer v.eol(fs.End)
+
+	v.output("For Each ")
+	fs.Ref.Visit(v)
+	v.output(" In ")
+	fs.ArrayExpr.Visit(v)
+	v.eol(fs.Start)
+	fs.Block.Visit(v)
+
+	v.bol(fs.End)
+	v.output("End For")
+	return false
+}
+
+func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 }
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {

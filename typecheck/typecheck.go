@@ -40,9 +40,11 @@ func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 	for _, d := range vd.DimExprs {
 		val := d.ConstEval()
 		if val == nil || d.GetType() != ast.Integer {
-			v.Visitor.Errorf(d, "dim expression must be constant integer")
+			v.Visitor.Errorf(d, "dim expression must be a constant integer")
+		} else if dim := val.(int64); dim < 0 {
+			v.Visitor.Errorf(d, "dim expression must be a positive integer")
 		} else {
-			vd.Dims = append(vd.Dims, int(val.(int64)))
+			vd.Dims = append(vd.Dims, int(dim))
 		}
 	}
 	if vd.Expr != nil && len(vd.Dims) > 0 {
@@ -135,6 +137,25 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 		if !ast.CanCoerce(refType, fs.StepExpr.GetType()) {
 			v.Errorf(fs.StartExpr, "%s not assignable to %s", fs.StepExpr.GetType(), refType)
 		}
+	}
+}
+
+func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
+	refType := fs.Ref.GetType()
+	if _, ok := fs.Ref.(*ast.VariableExpr); !ok {
+		v.Errorf(fs.Ref, "loop counter must be a plain variable")
+		return
+	}
+
+	arrayType := fs.ArrayExpr.GetType()
+	if !arrayType.IsArrayType() {
+		v.Errorf(fs.ArrayExpr, "For Each In expression must be an array")
+		return
+	}
+
+	elementType := arrayType.AsArrayType().ElementType
+	if !ast.CanCoerce(refType, elementType) {
+		v.Errorf(fs.ArrayExpr, "%s element is not assignable to %s", arrayType, refType)
 	}
 }
 

@@ -284,22 +284,34 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		rEnd := p.parseTok(lex.WHILE)
 		return &ast.WhileStmt{SourceInfo: spanResult(r, rEnd), Expr: expr, Block: block}
 	case lex.FOR:
-		refExpr := p.parseExpression()
-		p.parseTok(lex.ASSIGN)
-		startExpr := p.parseExpression()
-		p.parseTok(lex.TO)
-		stopExpr := p.parseExpression()
+		if p.hasTok(lex.EACH) {
+			p.parseTok(lex.EACH)
+			refExpr := p.parseExpression()
+			p.parseTok(lex.IN)
+			arrayExpr := p.parseExpression()
+			p.parseEol()
+			block := p.parseBlock(lex.END)
+			p.parseTok(lex.END)
+			rEnd := p.parseTok(lex.FOR)
+			return &ast.ForEachStmt{SourceInfo: spanResult(r, rEnd), Ref: refExpr, ArrayExpr: arrayExpr, Block: block}
+		} else {
+			refExpr := p.parseExpression()
+			p.parseTok(lex.ASSIGN)
+			startExpr := p.parseExpression()
+			p.parseTok(lex.TO)
+			stopExpr := p.parseExpression()
 
-		var stepExpr ast.Expression
-		if p.hasTok(lex.STEP) {
-			p.parseTok(lex.STEP)
-			stepExpr = p.parseExpression()
+			var stepExpr ast.Expression
+			if p.hasTok(lex.STEP) {
+				p.parseTok(lex.STEP)
+				stepExpr = p.parseExpression()
+			}
+			p.parseEol()
+			block := p.parseBlock(lex.END)
+			p.parseTok(lex.END)
+			rEnd := p.parseTok(lex.FOR)
+			return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Ref: refExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 		}
-		p.parseEol()
-		block := p.parseBlock(lex.END)
-		p.parseTok(lex.END)
-		rEnd := p.parseTok(lex.FOR)
-		return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Ref: refExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 	case lex.CALL:
 		rNext := p.parseTok(lex.IDENT)
 		name := rNext.Text

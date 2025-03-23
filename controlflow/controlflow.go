@@ -181,6 +181,14 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 	v.push(fs, alt.Result())
 }
 
+func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
+	// assume a for loop might run 0 times
+	alt := alternatives{}
+	alt.Add(CONTINUE)
+	alt.Add(v.pop(fs.Block))
+	v.push(fs, alt.Result())
+}
+
 func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
 	v.push(cs, CONTINUE)
 }

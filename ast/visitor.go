@@ -38,6 +38,9 @@ type Visitor interface {
 	PreVisitForStmt(fs *ForStmt) bool
 	PostVisitForStmt(fs *ForStmt)
 
+	PreVisitForEachStmt(fs *ForEachStmt) bool
+	PostVisitForEachStmt(fs *ForEachStmt)
+
 	PreVisitCallStmt(cs *CallStmt) bool
 	PostVisitCallStmt(cs *CallStmt)
 

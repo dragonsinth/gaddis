@@ -1,0 +1,14 @@
+Constant Integer SIZE = 5
+
+Declare Integer numbers[SIZE] = 1, 2, 3, 4, 5
+Declare String strings[SIZE] = "one", "two", "three", "four"
+
+Declare Integer var
+For Each var In numbers
+	Display var
+End For
+
+Declare String varStr
+For Each varStr In strings
+	Display varStr
+End For

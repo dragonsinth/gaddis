@@ -27,7 +27,7 @@ func RunTestGo(t *testing.T, filename string) error {
 	prog, comments, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
 		for _, err := range ast.ErrorSort(errs) {
-			t.Error(err)
+			fmt.Println(filename + ":" + err.Error())
 		}
 		t.Fatalf("%s: failed to compile", filename)
 	}
@@ -96,7 +96,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 	prog, comments, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
 		for _, err := range ast.ErrorSort(errs) {
-			_, _ = fmt.Fprintln(os.Stderr, err)
+			fmt.Println(filename + ":" + err.Error())
 		}
 		t.Fatalf("%s: failed to compile", filename)
 	}

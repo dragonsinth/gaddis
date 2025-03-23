@@ -85,3 +85,28 @@ func (i StepReal) Exec(p *Execution) {
 func (i StepReal) String() string {
 	return "step real"
 }
+
+type ForEach struct {
+	baseInst
+}
+
+func (i ForEach) Exec(p *Execution) {
+	arr := p.Pop().([]any)
+	idx := p.Pop().(*any)
+	ref := p.Pop().(*any)
+
+	idxVal := (*idx).(int64)
+	idxVal++
+	*idx = idxVal
+
+	if idxVal < int64(len(arr)) {
+		*ref = arr[idxVal]
+		p.Push(true)
+	} else {
+		p.Push(false)
+	}
+}
+
+func (i ForEach) String() string {
+	return "foreach"
+}

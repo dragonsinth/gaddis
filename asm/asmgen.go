@@ -7,6 +7,9 @@ import (
 )
 
 func Assemble(prog *ast.Program) *Assembly {
+	tv := &TempVisitor{currScope: prog.Scope}
+	prog.Visit(tv)
+
 	v := &Visitor{}
 
 	// Map the global scope up front.
@@ -261,7 +264,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.stepExpr(fs)
 
 	// attribute all the for/step/jumps to top line of the for loop
-	si := fs.SourceInfo
+	si := fs.SourceInfo.Head()
 
 	switch refType {
 	case ast.Integer:
@@ -309,6 +312,30 @@ func (v *Visitor) stepExpr(fs *ast.ForStmt) {
 		panic(refType)
 	}
 	v.code = append(v.code, Literal{baseInst: baseInst{fs.StopExpr.GetSourceInfo().Tail()}, Typ: refType, Val: val})
+}
+
+func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
+	// attribute all the for/step/jumps to top line of the for loop
+	si := fs.SourceInfo.Head()
+
+	// initialize the index expression
+	fs.Index.Visit(v)
+
+	endLabel := &Label{Name: "fend", PC: 0}
+	startLabel := &Label{Name: "for", PC: len(v.code)}
+	v.varRef(fs.Ref, true)
+	v.code = append(v.code, LocalRef{
+		baseInst: baseInst{si},
+		Name:     fs.Index.Name,
+		Index:    fs.Index.Id,
+	})
+	fs.ArrayExpr.Visit(v)
+	v.code = append(v.code, ForEach{baseInst: baseInst{si}})
+	v.code = append(v.code, JumpFalse{baseInst: baseInst{si}, Label: endLabel})
+	fs.Block.Visit(v)
+	v.code = append(v.code, Jump{baseInst: baseInst{fs.SourceInfo.Tail()}, Label: startLabel})
+	endLabel.PC = len(v.code)
+	return false
 }
 
 func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
