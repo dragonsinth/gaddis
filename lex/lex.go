@@ -2,6 +2,7 @@ package lex
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -9,6 +10,7 @@ var (
 	ErrSyntax                = errors.New("syntax error")
 	ErrUnterminatedString    = errors.New("unterminated string literal")
 	ErrUnterminatedCharacter = errors.New("unterminated character literal")
+	ErrCharacterTooShort     = errors.New("character literal cannot be empty")
 	ErrCharacterTooLong      = errors.New("character literal too long")
 )
 
@@ -220,6 +222,11 @@ func (l *Lexer) parseStringLiteral() Result {
 			break
 		}
 	}
+
+	text := string(lit)
+	if _, err := strconv.Unquote(text); err != nil {
+		return Result{pos, ILLEGAL, text, fmt.Errorf("invalid string literal: %w", err)}
+	}
 	return Result{pos, STR_LIT, string(lit), nil}
 }
 
@@ -238,11 +245,16 @@ func (l *Lexer) parseCharacterLiteral() Result {
 			break
 		}
 	}
-	// FIXME: real character literal parse with escaping?
-	if len(lit) != 3 {
-		return Result{pos, ILLEGAL, string(lit), ErrCharacterTooLong}
+
+	text := string(lit)
+	if v, err := strconv.Unquote(text); err != nil {
+		return Result{pos, ILLEGAL, text, fmt.Errorf("invalid character literal: %w", err)}
+	} else if len(v) < 0 {
+		return Result{pos, ILLEGAL, text, ErrCharacterTooShort}
+	} else if len(v) > 1 {
+		return Result{pos, ILLEGAL, text, ErrCharacterTooLong}
 	}
-	return Result{pos, CHR_LIT, string(lit), nil}
+	return Result{pos, CHR_LIT, text, nil}
 }
 
 func (l *Lexer) position() Position {

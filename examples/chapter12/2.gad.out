@@ -1,0 +1,43 @@
+=======================
+0
+isDigit: True
+isLetter: False
+isLower: False
+isUpper: False
+isWhitespace: False
+=======================
+a
+isDigit: False
+isLetter: True
+isLower: True
+isUpper: False
+isWhitespace: False
+=======================
+A
+isDigit: False
+isLetter: True
+isLower: False
+isUpper: True
+isWhitespace: False
+=======================
+!
+isDigit: False
+isLetter: False
+isLower: False
+isUpper: False
+isWhitespace: False
+=======================
+space
+isDigit: False
+isLetter: False
+isLower: False
+isUpper: False
+isWhitespace: True
+=======================
+newline
+isDigit: False
+isLetter: False
+isLower: False
+isUpper: False
+isWhitespace: True
+=======================

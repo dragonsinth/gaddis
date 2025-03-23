@@ -60,6 +60,6 @@ var reverseTypeMap = map[string]Type{
 	"int64":   Integer,
 	"float64": Real,
 	"[]uint8": String,
-	"byte":    Character,
+	"uint8":   Character,
 	"bool":    Boolean,
 }

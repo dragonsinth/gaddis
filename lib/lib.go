@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"unicode"
 )
 
 type RandContext struct {
@@ -127,6 +128,26 @@ func isInteger(s []byte) bool {
 func isReal(s []byte) bool {
 	_, err := strconv.ParseFloat(string(s), 64)
 	return err == nil
+}
+
+func isDigit(c byte) bool {
+	return unicode.IsDigit(rune(c))
+}
+
+func isLetter(c byte) bool {
+	return unicode.IsLetter(rune(c))
+}
+
+func isLower(c byte) bool {
+	return unicode.IsLower(rune(c))
+}
+
+func isUpper(c byte) bool {
+	return unicode.IsUpper(rune(c))
+}
+
+func isWhitespace(c byte) bool {
+	return unicode.IsSpace(rune(c))
 }
 
 // BELOW: Used only by the gogen runtime.

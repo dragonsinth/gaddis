@@ -1,0 +1,18 @@
+Module testChar(String desc, Character c)
+	Display desc
+	Display "isDigit: ", isDigit(c)
+	Display "isLetter: ", isLetter(c)
+	Display "isLower: ", isLower(c)
+	Display "isUpper: ", isUpper(c)
+	Display "isWhitespace: ", isWhitespace(c)
+	Display "======================="
+End Module
+
+Display "======================="
+
+Call testChar("0", '0')
+Call testChar("a", 'a')
+Call testChar("A", 'A')
+Call testChar("!", '!')
+Call testChar("space", ' ')
+Call testChar("newline", '\n')

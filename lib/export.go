@@ -99,6 +99,12 @@ func getEntries() []entry {
 		{"isInteger", isInteger},
 		{"isReal", isReal},
 
+		{"isDigit", isDigit},
+		{"isLetter", isLetter},
+		{"isLower", isLower},
+		{"isUpper", isUpper},
+		{"isWhitespace", isWhitespace},
+
 		// NB: these two are NOT part of Gaddis book, but seem like glaring omissions.
 		{"integerToString", integerToString},
 		{"realToString", realToString},
