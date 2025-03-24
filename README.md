@@ -92,7 +92,11 @@ Should cover the whole language by May 2025.
 Gaddis Pseudocode is a bit underspecified, so I've had to make a few design choices here
 and there, or fill in gaps. Here's some possible differences (or clarifications) from the book:
 
-- Explicit `Character` type and character literals, using single-quoted characters: `'X'`
+- `Character` is an explicit type; character literals are denoted using single-quoted characters: `'X'`
+
+- `Display` atatements only accept primitive types, not arrays or classes.
+  - This behavior is left unspecified.
+  - This could be supported in the future with some default string conversion rules.
 
 - `For` and `For Each` loop variables must be simple variable references, not field or array element references.
   - This is implied by the book but not explicitly stated.
@@ -100,7 +104,7 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - Could be changed in the future with a temp reference variable.
 
 - `For` loop stop expression is re-evaluated on every iteration.
-  - This behavior is never specified.
+  - This behavior is left unspecified.
 
 - `For` loop step expression must be a numeric constant.
   - This is implied by the book but not explicitly stated.
@@ -109,7 +113,7 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
 
 - `For Each` loop array expression is re-evaluated twice on every iteration; once for the array
   length bounds check, once to assign the loop variable.
-  - This behavior is never specified.
+  - This behavior is left unspecified.
   - Could be changed in the future with a temp array reference variable.
 
 - New library functions to convert number to String in an expression context.
@@ -122,24 +126,32 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
 - Nested `Module` and `Function` declarations are not currently supported, but could be.
   - This is implied by the book but not explicitly stated.
 
-- `Input` statements will loop until the user inputs a line that can be correctly
+- We implemented `Input` statements to loop until the user inputs a line that can be correctly
   parsed to the type of the input variable; e.g. a non-numeric input will loop and retry
   if the input variable is an `Integer`.
 
 - By contrast, `Read` statements in an `InputFile` where the record data is the wrong type
   exit the program immediately with an exception.
 
-- Arrays are filled with zero values on initialization when there is no initializer. When
-  too few initializer expressions are given, the remainder of the array is filled with zeroes.
+- Arrays are filled with zero values on initialization when there is no initializer. When too
+  few initializer expressions are provided, the remainder of the array is filled with zero values.
+  - This behavior is left unspecified.
 
 - Arrays are deep copied when passed by value.
   - This is implied by the book but not explicitly stated.
 
-- Array variables cannot be reassigned, nor can sub-array elements in a multidimensional
-  array be reassigned.
+- Array variables cannot be reassigned.
   - This is implied by the book but not explicitly stated.
-  - Multidimensional sub-array elements, however, can be passed by value or reference
-    as an argument to a parameter of the correct type and dimension.
+
+- Array elements which are themselves Arrays (ie, part of a multidimensional array) cannot be
+  reassigned either.
+  - This is implied by the book but not explicitly stated.
+  - For example, if `Integer table[3][4], row[4]`, you cannot `Set table[0] = row`.
+  - However, such elements _may_ be passed as arguments, either by value or reference.
+  - For example, `Call printValues(table[3])` is legal.
+ 
+- Arrays cannot be the return value of a Function
+  - This is implied by the book but not explicitly stated.
 
 - Use `Call` to call the external library string modules `insert` and `delete`.
   - The book omits the `Call` keyword, which makes the syntax incompatible with the rest of the book.
