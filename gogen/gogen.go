@@ -216,6 +216,61 @@ func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	return false
 }
 
+func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
+	v.indent()
+	os.File.Visit(v)
+	v.output(" = Open" + os.File.GetType().String())
+	v.output("(")
+	os.Name.Visit(v)
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt) {}
+
+func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool {
+	v.indent()
+	if cs.File.GetType() == ast.InputFile {
+		v.output("CloseInputFile(")
+	} else {
+		v.output("CloseOutputFile(")
+	}
+	cs.File.Visit(v)
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt) {}
+
+func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
+	for _, expr := range rs.Exprs {
+		v.indent()
+		v.varRef(expr, false)
+		v.output(" = Read")
+		v.typeName(expr.GetType().AsPrimitive())
+		v.output("(")
+		rs.File.Visit(v)
+		v.output(")\n")
+	}
+	return false
+}
+
+func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {}
+
+func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
+	v.indent()
+	v.output("WriteFile(")
+	ws.File.Visit(v)
+	for _, expr := range ws.Exprs {
+		v.output(", ")
+		expr.Visit(v)
+	}
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {}
+
 func (v *Visitor) PostVisitSetStmt(s *ast.SetStmt) {
 }
 
@@ -355,7 +410,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.output("for ")
 	v.varRef(fs.Ref, false)
 	v.output(" = ")
-	fs.StartExpr.Visit(v)
+	v.maybeCast(refType, fs.StartExpr)
 	v.output("; ")
 	v.varRef(fs.Ref, false)
 	if isNegative {
@@ -473,9 +528,13 @@ func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
 	switch l.Type {
 	case ast.Integer:
+		v.output("Integer(")
 		v.output(strconv.FormatInt(l.Val.(int64), 10))
+		v.output(")")
 	case ast.Real:
+		v.output("Real(")
 		v.output(strconv.FormatFloat(l.Val.(float64), 'f', -1, 64))
+		v.output(")")
 	case ast.String:
 		v.output("String(")
 		v.output(strconv.Quote(l.Val.(string)))
@@ -760,7 +819,7 @@ func (v *Visitor) typeName(t ast.Type) {
 		v.typeName(t.AsArrayType().ElementType)
 		return
 	}
-	if !t.IsPrimitive() {
+	if !t.IsPrimitive() && !t.IsFileType() {
 		panic("here")
 	}
 	v.output(t.String())

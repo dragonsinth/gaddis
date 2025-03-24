@@ -42,6 +42,28 @@ func (v *AssignmentVisitor) PostVisitSetStmt(ss *ast.SetStmt) {
 	v.finishWrite(ss.Ref)
 }
 
+func (v *AssignmentVisitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
+	v.pendingWrite(os.File)
+	return true
+}
+
+func (v *AssignmentVisitor) PostVisitOpenStmt(os *ast.OpenStmt) {
+	v.finishWrite(os.File)
+}
+
+func (v *AssignmentVisitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
+	for _, expr := range rs.Exprs {
+		v.pendingWrite(expr)
+	}
+	return true
+}
+
+func (v *AssignmentVisitor) PostVisitReadStmt(rs *ast.ReadStmt) {
+	for _, expr := range rs.Exprs {
+		v.finishWrite(expr)
+	}
+}
+
 func (v *AssignmentVisitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	// TODO(scottb): delete `for` operation in favor of `step` only?
 	// Pros:

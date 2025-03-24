@@ -92,7 +92,12 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 	} else {
 		v.output("Declare ")
 	}
-	v.output(ds.Type.String())
+	// special hack case
+	if ds.Type == ast.AppendFile {
+		v.output("OutputFile AppendMode")
+	} else {
+		v.output(ds.Type.String())
+	}
 	v.output(" ")
 	for i, decl := range ds.Decls {
 		if i > 0 {
@@ -111,13 +116,7 @@ func (v *Visitor) PreVisitDisplayStmt(ds *ast.DisplayStmt) bool {
 	defer v.eol(ds.End)
 
 	v.output("Display")
-	for i, arg := range ds.Exprs {
-		if i > 0 {
-			v.output(",")
-		}
-		v.output(" ")
-		arg.Visit(v)
-	}
+	v.outputArguments(" ", ds.Exprs)
 	return false
 }
 
@@ -149,6 +148,54 @@ func (v *Visitor) PreVisitSetStmt(ss *ast.SetStmt) bool {
 
 func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 }
+
+func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
+	v.bol(os.Start)
+	defer v.eol(os.End)
+
+	v.output("Open ")
+	os.File.Visit(v)
+	v.output(" ")
+	os.Name.Visit(v)
+	return false
+}
+
+func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt) {}
+
+func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool {
+	v.bol(cs.Start)
+	defer v.eol(cs.End)
+
+	v.output("Close ")
+	cs.File.Visit(v)
+	return false
+}
+
+func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt) {}
+
+func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
+	v.bol(rs.Start)
+	defer v.eol(rs.End)
+
+	v.output("Read ")
+	rs.File.Visit(v)
+	v.outputArguments(" ", rs.Exprs)
+	return false
+}
+
+func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {}
+
+func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
+	v.bol(ws.Start)
+	defer v.eol(ws.End)
+
+	v.output("Write ")
+	ws.File.Visit(v)
+	v.outputArguments(" ", ws.Exprs)
+	return false
+}
+
+func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {}
 
 func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	v.bol(is.Start)
@@ -316,12 +363,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.output("Call ")
 	v.output(cs.Name)
 	v.output("(")
-	for i, arg := range cs.Args {
-		if i > 0 {
-			v.output(", ")
-		}
-		arg.Visit(v)
-	}
+	v.outputArguments("", cs.Args)
 	v.output(")")
 	return false
 }
@@ -335,12 +377,7 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.output("Module ")
 	v.output(ms.Name)
 	v.output("(")
-	for i, param := range ms.Params {
-		if i > 0 {
-			v.output(", ")
-		}
-		param.Visit(v)
-	}
+	v.outputParams(ms.Params)
 	v.output(")")
 	v.eol(ms.Start)
 
@@ -374,12 +411,7 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.output(" ")
 	v.output(fs.Name)
 	v.output("(")
-	for i, param := range fs.Params {
-		if i > 0 {
-			v.output(", ")
-		}
-		param.Visit(v)
-	}
+	v.outputParams(fs.Params)
 	v.output(")")
 	v.eol(fs.Start)
 
@@ -468,12 +500,7 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	v.output(ce.Name)
 	v.output("(")
-	for i, arg := range ce.Args {
-		if i > 0 {
-			v.output(", ")
-		}
-		arg.Visit(v)
-	}
+	v.outputArguments("", ce.Args)
 	v.output(")")
 	return false
 }
@@ -531,6 +558,28 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 }
 
 func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
+func (v *Visitor) outputArguments(hdr string, exprs []ast.Expression) {
+	if len(exprs) == 0 {
+		return
+	}
+	v.output(hdr)
+	for i, expr := range exprs {
+		if i > 0 {
+			v.output(", ")
+		}
+		expr.Visit(v)
+	}
+}
+
+func (v *Visitor) outputParams(parms []*ast.VarDecl) {
+	for i, param := range parms {
+		if i > 0 {
+			v.output(", ")
+		}
+		param.Visit(v)
+	}
+}
 
 func (v *Visitor) output(s string) {
 	if strings.ContainsFunc(s, func(r rune) bool {

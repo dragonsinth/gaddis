@@ -36,7 +36,7 @@ func runGo(src *source, opts runOpts, isTest bool, streams *procStreams, prog *a
 		return nil
 	}
 
-	if err := goexec.Run(ctx, br.ExeFile, streams.Stdin, streams.Stdout, os.Stderr); err != nil {
+	if err := goexec.Run(ctx, ".", br.ExeFile, streams.Stdin, streams.Stdout, os.Stderr); err != nil {
 		if streams.Silent {
 			_, _ = os.Stdout.Write(streams.Output.Bytes())
 		}

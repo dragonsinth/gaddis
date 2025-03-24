@@ -19,6 +19,15 @@ type Visitor interface {
 	PreVisitSetStmt(ss *SetStmt) bool
 	PostVisitSetStmt(ss *SetStmt)
 
+	PreVisitOpenStmt(os *OpenStmt) bool
+	PostVisitOpenStmt(os *OpenStmt)
+	PreVisitCloseStmt(cs *CloseStmt) bool
+	PostVisitCloseStmt(cs *CloseStmt)
+	PreVisitReadStmt(rs *ReadStmt) bool
+	PostVisitReadStmt(rs *ReadStmt)
+	PreVisitWriteStmt(ws *WriteStmt) bool
+	PostVisitWriteStmt(ws *WriteStmt)
+
 	PreVisitIfStmt(is *IfStmt) bool
 	PostVisitIfStmt(is *IfStmt)
 	PreVisitCondBlock(cb *CondBlock) bool

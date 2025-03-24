@@ -69,7 +69,7 @@ func (i Return) String() string {
 type LibCall struct {
 	baseInst
 	Name  string
-	Type  ast.PrimitiveType
+	Type  ast.Type
 	Index int
 	NArg  int
 }
@@ -79,7 +79,13 @@ func (i LibCall) Exec(p *Execution) {
 	fn := p.Lib[i.Index].FuncPtr
 	var ret []reflect.Value
 	if fn.Type().IsVariadic() {
-		ret = fn.CallSlice([]reflect.Value{reflect.ValueOf(args)})
+		var rArgs []reflect.Value
+		for i, c := 0, fn.Type().NumIn()-1; i < c; i++ {
+			rArgs = append(rArgs, reflect.ValueOf(args[0]))
+			args = args[1:]
+		}
+		rArgs = append(rArgs, reflect.ValueOf(args))
+		ret = fn.CallSlice(rArgs)
 	} else {
 		ret = callWithReflection(fn, args)
 	}

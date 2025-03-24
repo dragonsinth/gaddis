@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"testing"
 )
 
@@ -62,7 +63,8 @@ func RunTestGo(t *testing.T, filename string) error {
 		t.Fatalf("failed to build %s: %v", filename, err)
 	}
 
-	err = goexec.Run(ctx, br.ExeFile, io.NopCloser(&input), &output, &errput)
+	workDir := filepath.Dir(filename)
+	err = goexec.Run(ctx, workDir, br.ExeFile, io.NopCloser(&input), &output, &errput)
 	if err != nil {
 		t.Fatalf("failed to exec %s: %v", br.ExeFile, err)
 	}
@@ -120,7 +122,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 		IoProvider: gaddis.IoAdapter{
 			In:      gaddis.StreamInput(&input),
 			Out:     gaddis.StreamOutput(&output),
-			WorkDir: ".",
+			WorkDir: filepath.Dir(filename),
 		},
 	})
 

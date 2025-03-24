@@ -78,6 +78,14 @@ const (
 
 	TRUE
 	FALSE
+
+	READ
+	WRITE
+	OPEN
+	CLOSE
+	OUTPUTFILE
+	INPUTFILE
+	APPENDMODE
 )
 
 var tokens = []string{
@@ -157,46 +165,61 @@ var tokens = []string{
 
 	TRUE:  "TRUE",
 	FALSE: "FALSE",
+
+	READ:       "READ",
+	WRITE:      "WRITE",
+	OPEN:       "OPEN",
+	CLOSE:      "CLOSE",
+	OUTPUTFILE: "OUTPUTFILE",
+	INPUTFILE:  "INPUTFILE",
+	APPENDMODE: "APPENDMODE",
 }
 
 var keywords = map[string]Token{
-	"Integer":   INTEGER,
-	"Real":      REAL,
-	"String":    STRING,
-	"Character": CHARACTER,
-	"Boolean":   BOOLEAN,
-	"Ref":       REF,
-	"MOD":       MOD,
-	"AND":       AND,
-	"OR":        OR,
-	"NOT":       NOT,
-	"Constant":  CONSTANT,
-	"Declare":   DECLARE,
-	"Display":   DISPLAY,
-	"Input":     INPUT,
-	"Set":       SET,
-	"End":       END,
-	"If":        IF,
-	"Then":      THEN,
-	"Else":      ELSE,
-	"Select":    SELECT,
-	"Case":      CASE,
-	"Default":   DEFAULT,
-	"Do":        DO,
-	"While":     WHILE,
-	"Until":     UNTIL,
-	"For":       FOR,
-	"To":        TO,
-	"Step":      STEP,
-	"Each":      EACH,
-	"In":        IN,
-	"Module":    MODULE,
-	"Call":      CALL,
-	"Function":  FUNCTION,
-	"Return":    RETURN,
-	"Tab":       TAB_LIT,
-	"True":      TRUE,
-	"False":     FALSE,
+	"Integer":    INTEGER,
+	"Real":       REAL,
+	"String":     STRING,
+	"Character":  CHARACTER,
+	"Boolean":    BOOLEAN,
+	"Ref":        REF,
+	"MOD":        MOD,
+	"AND":        AND,
+	"OR":         OR,
+	"NOT":        NOT,
+	"Constant":   CONSTANT,
+	"Declare":    DECLARE,
+	"Display":    DISPLAY,
+	"Input":      INPUT,
+	"Set":        SET,
+	"End":        END,
+	"If":         IF,
+	"Then":       THEN,
+	"Else":       ELSE,
+	"Select":     SELECT,
+	"Case":       CASE,
+	"Default":    DEFAULT,
+	"Do":         DO,
+	"While":      WHILE,
+	"Until":      UNTIL,
+	"For":        FOR,
+	"To":         TO,
+	"Step":       STEP,
+	"Each":       EACH,
+	"In":         IN,
+	"Module":     MODULE,
+	"Call":       CALL,
+	"Function":   FUNCTION,
+	"Return":     RETURN,
+	"Tab":        TAB_LIT,
+	"True":       TRUE,
+	"False":      FALSE,
+	"Read":       READ,
+	"Write":      WRITE,
+	"Open":       OPEN,
+	"Close":      CLOSE,
+	"OutputFile": OUTPUTFILE,
+	"InputFile":  INPUTFILE,
+	"AppendMode": APPENDMODE,
 }
 
 func (t Token) String() string {

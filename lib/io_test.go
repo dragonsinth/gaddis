@@ -34,6 +34,10 @@ func (tp *testProvider) Input() (string, error) {
 	return "", io.EOF
 }
 
+func (tp *testProvider) Dir() string {
+	return ","
+}
+
 func (tp *testProvider) String() string {
 	return tp.outbuf.String()
 }

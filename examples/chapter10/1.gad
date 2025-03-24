@@ -1,0 +1,28 @@
+Declare OutputFile out
+
+Open out "1.gad.dat"
+Write out 1, True, "Edmund Burke"
+Close out
+
+Call readAndPrint(1)
+
+Declare OutputFile AppendMode app
+Open app "1.gad.dat"
+Write app 2, False, "Plato"
+Close app
+
+Call readAndPrint(2)
+
+Module readAndPrint(Integer count)
+	Declare InputFile in
+	Declare Integer a
+	Declare Boolean b
+	Declare String c
+	Declare Integer i
+
+	Open in "1.gad.dat"
+	For i = 1 To count
+		Read in a, b, c
+		Display a, ", ", b, ", ", c
+	End For
+End Module

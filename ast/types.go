@@ -10,6 +10,8 @@ type Type interface {
 	AsPrimitive() PrimitiveType
 	IsArrayType() bool
 	AsArrayType() *ArrayType
+	IsFileType() bool
+	AsFileType() FileType
 	BaseType() Type
 
 	isType()
@@ -44,6 +46,10 @@ func (t PrimitiveType) IsArrayType() bool { return false }
 
 func (t PrimitiveType) AsArrayType() *ArrayType { return nil }
 
+func (t PrimitiveType) IsFileType() bool { return false }
+
+func (t PrimitiveType) AsFileType() FileType { return InvalidFileType }
+
 func (t PrimitiveType) BaseType() Type { return t }
 
 func (t PrimitiveType) isType() {
@@ -73,6 +79,10 @@ func (t *ArrayType) IsNumeric() bool { return false }
 func (t *ArrayType) IsArrayType() bool { return true }
 
 func (t *ArrayType) AsArrayType() *ArrayType { return t }
+
+func (t *ArrayType) IsFileType() bool { return false }
+
+func (t *ArrayType) AsFileType() FileType { return InvalidFileType }
 
 func (t *ArrayType) BaseType() Type { return t.Base }
 
@@ -104,4 +114,40 @@ func IsOrderedType(typ Type) bool {
 		return false // cannot order booleans
 	}
 	return typ.IsPrimitive() // the other primitive types are ordered
+}
+
+const (
+	InvalidFileType = FileType(iota)
+	OutputFile
+	AppendFile
+	InputFile
+)
+
+var fileTypeNames = [...]string{"INVALID_FILE", "OutputFile", "AppendFile", "InputFile"}
+
+var _ Type = InvalidFileType
+
+type FileType int
+
+func (t FileType) Key() TypeKey { return TypeKey(fileTypeNames[t]) }
+
+func (t FileType) String() string { return fileTypeNames[t] }
+
+func (t FileType) IsPrimitive() bool { return false }
+
+func (t FileType) AsPrimitive() PrimitiveType { return UnresolvedType }
+
+func (t FileType) IsNumeric() bool { return false }
+
+func (t FileType) IsArrayType() bool { return false }
+
+func (t FileType) AsArrayType() *ArrayType { return nil }
+
+func (t FileType) IsFileType() bool { return true }
+
+func (t FileType) AsFileType() FileType { return t }
+
+func (t FileType) BaseType() Type { return t }
+
+func (t FileType) isType() {
 }

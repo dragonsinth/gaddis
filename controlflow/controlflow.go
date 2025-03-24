@@ -89,6 +89,22 @@ func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 	v.push(ss, CONTINUE)
 }
 
+func (v *Visitor) PostVisitOpenStmt(is *ast.OpenStmt) {
+	v.push(is, CONTINUE)
+}
+
+func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt) {
+	v.push(cs, CONTINUE)
+}
+
+func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {
+	v.push(rs, CONTINUE)
+}
+
+func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {
+	v.push(ws, CONTINUE)
+}
+
 func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
 	alt := alternatives{}
 	pl := v.popList(len(is.Cases))

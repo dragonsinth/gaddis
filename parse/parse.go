@@ -172,6 +172,12 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: true, Decls: decls}
 	case lex.DECLARE:
 		typ := p.parseType()
+
+		if p.hasTok(lex.APPENDMODE) {
+			p.parseTok(lex.APPENDMODE)
+			typ = ast.AppendFile
+		}
+
 		var decls []*ast.VarDecl
 		lastDecl := p.parseVarDecl(typ, false)
 		decls = append(decls, lastDecl)
@@ -182,19 +188,10 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		}
 		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: false, Decls: decls}
 	case lex.DISPLAY:
-		var exprs []ast.Expression
 		si := toSourceInfo(r)
-		if peek := p.Peek(); peek.Token != lex.EOL && peek.Token != lex.EOF {
-			for {
-				expr := p.parseExpression()
-				exprs = append(exprs, expr)
-				si = spanAst(r, expr)
-				if p.hasTok(lex.COMMA) {
-					p.parseTok(lex.COMMA)
-				} else {
-					break
-				}
-			}
+		exprs := p.parseCommaExpressions(lex.EOL)
+		if len(exprs) > 0 {
+			si = mergeSourceInfo(si, exprs[len(exprs)-1])
 		}
 		return &ast.DisplayStmt{SourceInfo: si, Exprs: exprs}
 	case lex.INPUT:
@@ -315,16 +312,8 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 	case lex.CALL:
 		rNext := p.parseTok(lex.IDENT)
 		name := rNext.Text
-
-		var args []ast.Expression
 		p.parseTok(lex.LPAREN)
-		if !p.hasTok(lex.RPAREN) {
-			args = append(args, p.parseExpression())
-		}
-		for p.hasTok(lex.COMMA) {
-			p.parseTok(lex.COMMA)
-			args = append(args, p.parseExpression())
-		}
+		args := p.parseCommaExpressions(lex.RPAREN)
 		rEnd := p.parseTok(lex.RPAREN)
 		return &ast.CallStmt{SourceInfo: spanResult(r, rEnd), Name: name, Args: args}
 	case lex.MODULE:
@@ -377,12 +366,38 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		p.parseTok(lex.END)
 		rEnd := p.parseTok(lex.FUNCTION)
 		return &ast.FunctionStmt{SourceInfo: spanResult(r, rEnd), Name: name, Type: returnType, Params: params, Block: block}
+	case lex.OPEN:
+		return &ast.OpenStmt{SourceInfo: toSourceInfo(r), File: p.parseExpression(), Name: p.parseExpression()}
+	case lex.CLOSE:
+		return &ast.CloseStmt{SourceInfo: toSourceInfo(r), File: p.parseExpression()}
+	case lex.READ:
+		file := p.parseExpression()
+
+		si := toSourceInfo(r)
+		exprs := p.parseCommaExpressions(lex.EOL)
+		if len(exprs) > 0 {
+			si = mergeSourceInfo(si, exprs[len(exprs)-1])
+		}
+		return &ast.ReadStmt{SourceInfo: si, File: file, Exprs: exprs}
+	case lex.WRITE:
+		file := p.parseExpression()
+
+		si := toSourceInfo(r)
+		exprs := p.parseCommaExpressions(lex.EOL)
+		if len(exprs) > 0 {
+			si = mergeSourceInfo(si, exprs[len(exprs)-1])
+		}
+		return &ast.WriteStmt{SourceInfo: si, File: file, Exprs: exprs}
 	default:
 		panic(p.Errorf(r, "expected statement, got %s %q", r.Token, r.Text))
 	}
 }
 
 func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
+	if typ.IsFileType() {
+		return p.parseFileVarDecl(typ.AsFileType(), isConst)
+	}
+
 	r := p.parseTok(lex.IDENT)
 	rEnd := r
 
@@ -414,6 +429,18 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 		panic(p.Errorf(r, "expected constant initializer, got %s %q", r.Token, r.Text))
 	}
 	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, DimExprs: dims, Expr: expr, IsConst: isConst}
+}
+
+// special handling for these
+func (p *Parser) parseFileVarDecl(typ ast.FileType, isConst bool) *ast.VarDecl {
+	r := p.parseTok(lex.IDENT)
+	si := toSourceInfo(r)
+
+	if isConst {
+		panic(p.Errorf(r, "file types cannot be constant"))
+	}
+
+	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ}
 }
 
 func (p *Parser) parseParamDecl() *ast.VarDecl {
@@ -460,9 +487,29 @@ func (p *Parser) parseType() ast.Type {
 		return ast.Character
 	case lex.BOOLEAN:
 		return ast.Boolean
+	case lex.OUTPUTFILE:
+		return ast.OutputFile
+	case lex.INPUTFILE:
+		return ast.InputFile
 	default:
 		panic(p.Errorf(r, "expected type, got %s, %q", r.Token, r.Text))
 	}
+}
+
+func (p *Parser) parseCommaExpressions(endTokens ...lex.Token) []ast.Expression {
+	var exprs []ast.Expression
+	if peek := p.Peek(); peek.Token != lex.EOF && !slices.Contains(endTokens, peek.Token) {
+		for {
+			expr := p.parseExpression()
+			exprs = append(exprs, expr)
+			if p.hasTok(lex.COMMA) {
+				p.parseTok(lex.COMMA)
+			} else {
+				break
+			}
+		}
+	}
+	return exprs
 }
 
 func (p *Parser) parseExpression() ast.Expression {
@@ -506,17 +553,9 @@ func (p *Parser) parseTerminal() ast.Expression {
 	case lex.IDENT:
 		// If the next token is a '(', this is actually a CallExpr.
 		if p.hasTok(lex.LPAREN) {
-			p.parseTok(lex.LPAREN)
-
 			// This is actually a call expression.
-			var args []ast.Expression
-			if !p.hasTok(lex.RPAREN) {
-				args = append(args, p.parseExpression())
-			}
-			for p.hasTok(lex.COMMA) {
-				p.parseTok(lex.COMMA)
-				args = append(args, p.parseExpression())
-			}
+			p.parseTok(lex.LPAREN)
+			args := p.parseCommaExpressions(lex.RPAREN)
 			rEnd := p.parseTok(lex.RPAREN)
 			return &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: r.Text, Args: args}
 		} else {

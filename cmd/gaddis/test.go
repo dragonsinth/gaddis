@@ -77,7 +77,7 @@ func test(args []string, opts runOpts) error {
 		// compare the output instead
 		if !bytes.Equal(gotOutput, wantOutput) {
 			// compare the output
-			_, _ = fmt.Fprintf(os.Stderr, "wrong output: want=\n%s\ngot=\n%s\n", gotOutput, wantOutput)
+			_, _ = fmt.Fprintf(os.Stderr, "wrong output: got=\n%s\nwant=\n%s\n", gotOutput, wantOutput)
 			os.Exit(1)
 		}
 		fmt.Println("PASSED")

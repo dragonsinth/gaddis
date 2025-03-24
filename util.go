@@ -8,6 +8,7 @@ import (
 type IoProvider interface {
 	Input() (string, error)
 	Output(string)
+	Dir() string
 }
 
 type IoAdapter struct {
@@ -22,6 +23,10 @@ func (i IoAdapter) Input() (string, error) {
 
 func (i IoAdapter) Output(s string) {
 	i.Out(s)
+}
+
+func (i IoAdapter) Dir() string {
+	return i.WorkDir
 }
 
 func StreamOutput(w io.Writer) func(string) {

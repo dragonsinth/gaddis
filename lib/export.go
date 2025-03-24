@@ -22,6 +22,20 @@ func CreateLibrary(iop IoProvider, rng RandContext) []Func {
 		ctx.InputString,
 		ctx.InputCharacter,
 		ctx.InputBoolean,
+
+		ctx.OpenOutputFile,
+		ctx.OpenAppendFile,
+		ctx.OpenInputFile,
+		ctx.CloseOutputFile,
+		ctx.CloseInputFile,
+		ctx.WriteFile,
+
+		ctx.ReadInteger,
+		ctx.ReadReal,
+		ctx.ReadString,
+		ctx.ReadCharacter,
+		ctx.ReadBoolean,
+
 		rng.random,
 	} {
 		entries[i].funcPtr = v
@@ -71,6 +85,19 @@ func getEntries() []entry {
 		{"InputString", nil},
 		{"InputCharacter", nil},
 		{"InputBoolean", nil},
+
+		{"OpenOutputFile", nil},
+		{"OpenAppendFile", nil},
+		{"OpenInputFile", nil},
+		{"CloseOutputFile", nil},
+		{"CloseInputFile", nil},
+		{"WriteFile", nil},
+
+		{"ReadInteger", nil},
+		{"ReadReal", nil},
+		{"ReadString", nil},
+		{"ReadCharacter", nil},
+		{"ReadBoolean", nil},
 
 		{"random", nil},
 

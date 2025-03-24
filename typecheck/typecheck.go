@@ -64,9 +64,9 @@ func (v *Visitor) PostVisitDisplayStmt(ds *ast.DisplayStmt) {
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
 	ref := is.Ref
 	if !ref.CanReference() {
-		v.Errorf(is, "input variable must be a reference")
+		v.Errorf(ref, "Input argument must be a reference")
 	} else if !ref.GetType().IsPrimitive() {
-		v.Errorf(is, "input variable must be a primitive type")
+		v.Errorf(ref, "Input argument must be a primitive type")
 	}
 }
 
@@ -74,11 +74,56 @@ func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 	exprType := ss.Expr.GetType()
 	refType := ss.Ref.GetType()
 	if !ss.Ref.CanReference() {
-		v.Errorf(ss.Ref, "set variable must be a reference")
+		v.Errorf(ss.Ref, "set argument must be a reference")
 	} else if !ast.CanCoerce(refType, exprType) {
 		v.Errorf(ss.Expr, "%s not assignable to %s", exprType, refType)
 	} else if refType.IsArrayType() {
 		v.Errorf(ss.Expr, "arrays cannot be assigned to")
+	}
+}
+
+func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt) {
+	file := os.File
+	if !file.CanReference() {
+		v.Errorf(file, "Open file argument must be a reference")
+	} else if !file.GetType().IsFileType() {
+		v.Errorf(file, "expected file type; got %s", file.GetType())
+	}
+	if os.Name.GetType() != ast.String {
+		v.Errorf(os, "expected String; got %s", os.Name)
+	}
+}
+
+func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt) {
+	file := cs.File
+	if !file.GetType().IsFileType() {
+		v.Errorf(file, "expected file type; got %s", file.GetType())
+	}
+}
+
+func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {
+	file := rs.File
+	if !file.GetType().IsFileType() {
+		v.Errorf(file, "expected file type; got %s", file.GetType())
+	}
+	for _, expr := range rs.Exprs {
+		if !expr.CanReference() {
+			v.Errorf(expr, "Read data argument must be a reference")
+		} else if !expr.GetType().IsPrimitive() {
+			v.Errorf(expr, "Read data argument must be a primitive type")
+		}
+	}
+}
+
+func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {
+	file := ws.File
+	if !file.GetType().IsFileType() {
+		v.Errorf(file, "expected file type; got %s", file.GetType())
+	}
+	for _, expr := range ws.Exprs {
+		if !expr.GetType().IsPrimitive() {
+			v.Errorf(expr, "Write data argument must be a primitive type")
+		}
 	}
 }
 

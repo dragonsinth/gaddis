@@ -168,6 +168,75 @@ func (v *Visitor) PreVisitSetStmt(i *ast.SetStmt) bool {
 	return false
 }
 
+func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
+	os.Name.Visit(v)
+	name := "Open" + os.File.GetType().String()
+	v.code = append(v.code, LibCall{
+		baseInst: baseInst{os.SourceInfo},
+		Name:     name,
+		Type:     os.File.GetType(),
+		Index:    lib.IndexOf(name),
+		NArg:     1,
+	})
+	v.varRef(os.File, true)
+	v.code = append(v.code, Store{baseInst{os.SourceInfo}})
+	return false
+}
+
+func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool {
+	var name string
+	if cs.File.GetType() == ast.InputFile {
+		name = "CloseInputFile"
+	} else {
+		name = "CloseOutputFile"
+	}
+	cs.File.Visit(v)
+	v.code = append(v.code, LibCall{
+		baseInst: baseInst{cs.SourceInfo},
+		Name:     name,
+		Type:     ast.UnresolvedType,
+		Index:    lib.IndexOf(name),
+		NArg:     1,
+	})
+	return false
+}
+
+func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
+	for _, arg := range rs.Exprs {
+		rs.File.Visit(v)
+		name := "Read" + arg.GetType().String()
+		v.code = append(v.code, LibCall{
+			baseInst: baseInst{rs.GetSourceInfo()},
+			Name:     name,
+			Type:     ast.UnresolvedType,
+			Index:    lib.IndexOf(name),
+			NArg:     1,
+		})
+		v.varRef(arg, true)
+		v.code = append(v.code, Store{baseInst{rs.GetSourceInfo()}})
+	}
+	return false
+}
+
+func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {}
+
+func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
+	ws.File.Visit(v)
+	for _, arg := range ws.Exprs {
+		arg.Visit(v)
+	}
+	v.code = append(v.code, LibCall{
+		baseInst: baseInst{ws.GetSourceInfo()},
+		Name:     "WriteFile",
+		Type:     ast.UnresolvedType,
+		Index:    lib.IndexOf("WriteFile"),
+		NArg:     len(ws.Exprs) + 1,
+	})
+	return false
+}
+
+func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {}
+
 func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	endLabel := &Label{Name: "endif"}
 	for _, cb := range is.Cases {

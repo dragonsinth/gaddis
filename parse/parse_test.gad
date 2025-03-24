@@ -152,6 +152,19 @@ Module arrayDecls(Integer array[], Integer Ref array2[])
 	Set table[0][0] = table2[1][1]
 End Module
 
+Module files()
+	Declare OutputFile out
+    Declare OutputFile AppendMode app
+    Declare InputFile in
+    Open out "1.dat"
+    Write out "John Locke"
+    Close out
+    Open in "1.dat"
+    Declare String field
+    Read in field
+    Close in
+End Module
+
 
 // comment 1 at end of file
 
