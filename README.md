@@ -70,7 +70,7 @@ reading from stdin to create input and output files for subsequent test runs.
 
 ## Status
 
-Implemented up through Chapter 9; supports:
+Implemented up through Chapter 12; supports:
 
 - Basic statements, expressions, operations, variables, constants, control structures.
 - `Integer`, `Real`, `String`, `Character`, `Boolean`
@@ -79,12 +79,23 @@ Implemented up through Chapter 9; supports:
 - Arrays, `For Each`
 - Indexing `String` as `Character`
 - External function library
+- File I/O
 
 Should cover the whole language by May 2025.
 
+### TODO
+
+- Currently, Strings are reference objects.
+  - That means insert/delete/character assignment modifies all references to that String.
+  - Should Strings be copy-on-assign / like arrays?
+    - Lots of copies: assign, param by val, return value.
+  - Alternative: copy on write?
+    - But passing `(Character Ref c)` complicates things.
+    - Could disallow string[i] by reference and force a local var.
+  - Gogen would be more straightforward with true immutable strings.
+
 ### Not yet supported
 
-- file I/O
 - classes
 
 ## Errata / Differences from the Book
