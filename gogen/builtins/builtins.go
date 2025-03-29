@@ -9,7 +9,7 @@ import (
 
 type Integer = int64
 type Real = float64
-type String = []byte
+type String = string
 type Character = byte
 type Boolean = bool
 
@@ -47,26 +47,8 @@ func ExpReal(base, exp Real) Real {
 	return math.Pow(base, exp)
 }
 
-func ForInteger(ref *Integer, start, stop, step Integer) Boolean {
-	*ref = start
-	if step < 0 {
-		return *ref >= stop
-	} else {
-		return *ref <= stop
-	}
-}
-
 func StepInteger(ref *Integer, stop, step Integer) Boolean {
 	*ref += step
-	if step < 0 {
-		return *ref >= stop
-	} else {
-		return *ref <= stop
-	}
-}
-
-func ForReal(ref *Real, start, stop, step Real) Boolean {
-	*ref = start
 	if step < 0 {
 		return *ref >= stop
 	} else {

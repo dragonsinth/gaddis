@@ -33,8 +33,8 @@ func translateMethod(scope *Scope, name string, methodType reflect.Type) *Decl {
 		})
 	}
 
-	switch methodType.NumOut() {
-	case 0:
+	if name == "insert" || name == "delete" {
+		// special case!
 		ms := &ModuleStmt{
 			SourceInfo: SourceInfo{},
 			Name:       name,
@@ -43,20 +43,18 @@ func translateMethod(scope *Scope, name string, methodType reflect.Type) *Decl {
 			Scope:      scope,
 		}
 		return &Decl{ModuleStmt: ms}
-	case 1:
-		returnType, _ := translateType(methodType.Out(0))
-		fs := &FunctionStmt{
-			SourceInfo: SourceInfo{},
-			Name:       name,
-			Type:       returnType,
-			Params:     params,
-			IsExternal: true,
-			Scope:      scope,
-		}
-		return &Decl{FunctionStmt: fs}
-	default:
-		panic(name)
 	}
+
+	returnType, _ := translateType(methodType.Out(0))
+	fs := &FunctionStmt{
+		SourceInfo: SourceInfo{},
+		Name:       name,
+		Type:       returnType,
+		Params:     params,
+		IsExternal: true,
+		Scope:      scope,
+	}
+	return &Decl{FunctionStmt: fs}
 }
 
 func translateType(inType reflect.Type) (Type, bool) {
@@ -76,7 +74,7 @@ func translateType(inType reflect.Type) (Type, bool) {
 var reverseTypeMap = map[string]Type{
 	"int64":   Integer,
 	"float64": Real,
-	"[]uint8": String,
+	"string":  String,
 	"uint8":   Character,
 	"bool":    Boolean,
 }

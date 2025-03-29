@@ -22,9 +22,6 @@ func (i OffsetRef) Exec(p *Execution) {
 	idx := p.Pop().(int64)
 
 	switch i.OffsetType {
-	case OffsetTypeString:
-		ref := p.Pop().([]byte)
-		p.Push(&ref[idx])
 	case OffsetTypeArray, OffsetTypeObject:
 		arr := p.Pop().([]any)
 		p.Push(&arr[idx])
@@ -35,8 +32,6 @@ func (i OffsetRef) Exec(p *Execution) {
 
 func (i OffsetRef) String() string {
 	switch i.OffsetType {
-	case OffsetTypeString:
-		return "&offset str"
 	case OffsetTypeArray:
 		return "&offset arr"
 	case OffsetTypeObject:
@@ -56,8 +51,8 @@ func (i OffsetVal) Exec(p *Execution) {
 
 	switch i.OffsetType {
 	case OffsetTypeString:
-		ref := p.Pop().([]byte)
-		p.Push(ref[idx])
+		str := p.Pop().(string)
+		p.Push(str[idx])
 	case OffsetTypeArray, OffsetTypeObject:
 		arr := p.Pop().([]any)
 		p.Push(arr[idx])

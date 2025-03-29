@@ -15,11 +15,7 @@ type Literal struct {
 }
 
 func (i Literal) Exec(p *Execution) {
-	val := i.Val
-	if v, ok := i.Val.(string); ok {
-		val = []byte(v)
-	}
-	p.Push(val)
+	p.Push(i.Val)
 }
 
 func (i Literal) String() string {

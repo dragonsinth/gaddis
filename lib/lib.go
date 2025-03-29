@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 )
@@ -36,16 +37,16 @@ func toReal(x int64) float64 {
 }
 
 // not specced
-func integerToString(x int64) []byte {
-	return []byte(strconv.FormatInt(x, 10))
+func integerToString(x int64) string {
+	return strconv.FormatInt(x, 10)
 }
 
 // not specced
-func realToString(x float64) []byte {
-	return []byte(strconv.FormatFloat(x, 'f', -1, 64))
+func realToString(x float64) string {
+	return string(strconv.FormatFloat(x, 'f', -1, 64))
 }
 
-func currencyFormat(amount float64) []byte {
+func currencyFormat(amount float64) string {
 	var sb bytes.Buffer
 	cents := int64(math.Round(amount * 100))
 	if cents < 0 {
@@ -78,55 +79,44 @@ func currencyFormat(amount float64) []byte {
 	sb.WriteByte('.')
 	sb.WriteByte('0' + pennies/10)
 	sb.WriteByte('0' + pennies%10)
-	return sb.Bytes()
+	return sb.String()
 }
 
-func length(s []byte) int64 {
+func length(s string) int64 {
 	return int64(len(s))
 }
 
-func appendString(a, b []byte) []byte {
-	// make a copy
-	ret := make([]byte, 0, len(a)+len(b))
-	ret = append(ret, a...)
-	ret = append(ret, b...)
-	return ret
+func appendString(a, b string) string {
+	return a + b
 }
 
 var (
-	toUpper = bytes.ToUpper
-	toLower = bytes.ToLower
+	toUpper = strings.ToUpper
+	toLower = strings.ToLower
 )
 
-func substring(s []byte, start int64, end int64) []byte {
+func substring(s string, start int64, end int64) string {
 	return s[start : end+1]
 }
 
-func insert(s *[]byte, pos int64, add []byte) {
-	lhs := (*s)[:pos]
-	rhs := (*s)[pos:]
-	ret := make([]byte, 0, len(lhs)+len(rhs)+len(add))
-	ret = append(ret, lhs...)
-	ret = append(ret, add...)
-	ret = append(ret, rhs...)
-	*s = ret
+func insertString(s string, pos int64, add string) string {
+	lhs := s[:pos]
+	rhs := s[pos:]
+	return lhs + add + rhs
 }
 
-func deleteString(s *[]byte, start int64, end int64) {
+func deleteString(s string, start int64, end int64) string {
 	if end+1 < start {
 		panic("delete: invalid range start(%d) should be less than or equal to end (%d)")
 	}
-	lhs := (*s)[:start]
-	rhs := (*s)[end+1:]
-	ret := make([]byte, 0, len(lhs)+len(rhs))
-	ret = append(ret, lhs...)
-	ret = append(ret, rhs...)
-	*s = ret
+	lhs := s[:start]
+	rhs := s[end+1:]
+	return lhs + rhs
 }
 
-var contains = bytes.Contains
+var contains = strings.Contains
 
-func stringToInteger(s []byte) int64 {
+func stringToInteger(s string) int64 {
 	v, err := strconv.ParseInt(string(s), 10, 64)
 	if err != nil {
 		panic(err)
@@ -134,7 +124,7 @@ func stringToInteger(s []byte) int64 {
 	return v
 }
 
-func stringToReal(s []byte) float64 {
+func stringToReal(s string) float64 {
 	v, err := strconv.ParseFloat(string(s), 64)
 	if err != nil {
 		panic(err)
@@ -142,12 +132,12 @@ func stringToReal(s []byte) float64 {
 	return v
 }
 
-func isInteger(s []byte) bool {
+func isInteger(s string) bool {
 	_, err := strconv.ParseInt(string(s), 10, 64)
 	return err == nil
 }
 
-func isReal(s []byte) bool {
+func isReal(s string) bool {
 	_, err := strconv.ParseFloat(string(s), 64)
 	return err == nil
 }
@@ -170,6 +160,12 @@ func isUpper(c byte) bool {
 
 func isWhitespace(c byte) bool {
 	return unicode.IsSpace(rune(c))
+}
+
+func stringWithCharUpdate(c byte, idx int64, str string) string {
+	buf := []byte(str)
+	buf[idx] = c
+	return string(buf)
 }
 
 // BELOW: Used only by the gogen runtime.

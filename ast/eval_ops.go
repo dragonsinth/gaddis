@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"bytes"
 	"math"
 )
 
@@ -105,26 +104,6 @@ func StringOp(op Operator, a, b string) any {
 		return a > b
 	case GTE:
 		return a >= b
-	default:
-		panic(op)
-	}
-}
-
-func ByteStringOp(op Operator, a, b []byte) any {
-	cmp := bytes.Compare(a, b)
-	switch op {
-	case EQ:
-		return cmp == 0
-	case NEQ:
-		return cmp != 0
-	case LT:
-		return cmp < 0
-	case LTE:
-		return cmp <= 0
-	case GT:
-		return cmp > 0
-	case GTE:
-		return cmp >= 0
 	default:
 		panic(op)
 	}

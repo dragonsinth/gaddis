@@ -144,28 +144,39 @@ func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 		Index:    lib.IndexOf(name),
 		NArg:     0,
 	})
-	v.varRef(i.Ref, true)
-	if ar, ok := i.Ref.(*ast.ArrayRef); ok {
-		if ar.RefExpr.GetType() == ast.String {
-			v.code = append(v.code, StoreChar{baseInst{i.SourceInfo}})
-			return false
-		}
-	}
-	v.store(i)
+	v.emitAssignment(i.SourceInfo, i.Ref)
 	return false
 }
 
 func (v *Visitor) PreVisitSetStmt(i *ast.SetStmt) bool {
 	v.maybeCast(i.Ref.GetType(), i.Expr)
-	v.varRef(i.Ref, true)
-	if ar, ok := i.Ref.(*ast.ArrayRef); ok {
-		if ar.RefExpr.GetType() == ast.String {
-			v.code = append(v.code, StoreChar{baseInst{i.SourceInfo}})
-			return false
-		}
-	}
-	v.store(i)
+	v.emitAssignment(i.SourceInfo, i.Ref)
 	return false
+}
+
+func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression) {
+	if ar, ok := lhs.(*ast.ArrayRef); ok && lhs.GetType() == ast.Character {
+		// stringWithCharUpdate(c byte, idx int64, str string) string
+		// the character (arg 0) was already emitted
+		ar.IndexExpr.Visit(v)
+		ar.RefExpr.Visit(v)
+		v.code = append(v.code, LibCall{
+			baseInst: baseInst{si},
+			Name:     "$stringWithCharUpdate",
+			Type:     ast.String,
+			Index:    lib.IndexOf("$stringWithCharUpdate"),
+			NArg:     3,
+		})
+		if ar.RefExpr.CanReference() {
+			v.varRef(ar.RefExpr, true)
+			v.store(si)
+		} else {
+			v.code = append(v.code, Pop{baseInst{si}})
+		}
+	} else {
+		v.varRef(lhs, true)
+		v.store(si)
+	}
 }
 
 func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
@@ -436,13 +447,19 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	if cs.Ref.IsExternal {
+		name := cs.Name
 		v.code = append(v.code, LibCall{
 			baseInst: baseInst{cs.SourceInfo},
-			Name:     cs.Name,
+			Name:     name,
 			Type:     ast.UnresolvedType,
-			Index:    lib.IndexOf(cs.Name),
+			Index:    lib.IndexOf(name),
 			NArg:     len(cs.Args),
 		})
+		if name == "delete" || name == "insert" {
+			// special case!
+			v.varRef(cs.Args[0], true)
+			v.store(cs)
+		}
 	} else {
 		v.code = append(v.code, Call{
 			baseInst: baseInst{cs.SourceInfo},

@@ -196,11 +196,12 @@ func (v *Visitor) PostVisitDisplayStmt(d *ast.DisplayStmt) {
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
 	v.indent()
-	v.varRef(i.Ref, false) // assignment auto-refs
-	v.output(" = ")
-	v.output(" Input")
-	v.output(i.Ref.GetType().AsPrimitive().String())
-	v.output("()\n")
+	v.emitAssignment(i.Ref, func() {
+		v.output(" Input")
+		v.output(i.Ref.GetType().AsPrimitive().String())
+		v.output("()")
+	})
+	v.output("\n")
 	return false
 }
 
@@ -209,11 +210,33 @@ func (v *Visitor) PostVisitInputStmt(i *ast.InputStmt) {
 
 func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 	v.indent()
-	v.varRef(s.Ref, false) // assignment auto-refs
-	v.output(" = ")
-	v.maybeCast(s.Ref.GetType(), s.Expr)
+	v.emitAssignment(s.Ref, func() {
+		v.maybeCast(s.Ref.GetType(), s.Expr)
+	})
 	v.output("\n")
 	return false
+}
+
+func (v *Visitor) emitAssignment(lhs ast.Expression, emitRhs func()) {
+	if ar, ok := lhs.(*ast.ArrayRef); ok && lhs.GetType() == ast.Character {
+		// special case string index assignment
+		if ar.RefExpr.CanReference() {
+			v.varRef(ar.RefExpr, false)
+			v.output(" = ")
+		}
+		// stringWithCharUpdate(c byte, idx int64, str string) string
+		v.output("stringWithCharUpdate(")
+		emitRhs()
+		v.output(", ")
+		v.maybeCast(ast.Integer, ar.IndexExpr)
+		v.output(", ")
+		ar.RefExpr.Visit(v)
+		v.output(")")
+	} else {
+		v.varRef(lhs, false) // assignment auto-refs
+		v.output(" = ")
+		emitRhs()
+	}
 }
 
 func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
@@ -311,10 +334,6 @@ func (v *Visitor) PreVisitSelectStmt(ss *ast.SelectStmt) bool {
 
 	// string equality
 	typ := ss.Type
-	if typ == ast.String {
-		typ = goStringType
-	}
-
 	v.output("switch (")
 	v.maybeCast(typ, ss.Expr)
 	v.output(") {\n")
@@ -456,11 +475,14 @@ func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
 	if cs.Ref.IsExternal {
-		if cs.Ref.Name == "delete" {
-			v.output("deleteString") // special case append vice builtin append
-		} else {
-			v.output(cs.Ref.Name)
+		name := cs.Ref.Name
+		if name == "delete" || name == "insert" {
+			// special case!
+			name = name + "String"
+			v.varRef(cs.Args[0], false)
+			v.output(" = ")
 		}
+		v.output(name)
 	} else {
 		v.ident(cs.Ref)
 	}
@@ -536,9 +558,7 @@ func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
 		v.output(strconv.FormatFloat(l.Val.(float64), 'f', -1, 64))
 		v.output(")")
 	case ast.String:
-		v.output("String(")
 		v.output(strconv.Quote(l.Val.(string)))
-		v.output(")")
 	case ast.Character:
 		v.output(strconv.QuoteRune(rune(l.Val.(byte))))
 	case ast.Boolean:
@@ -578,10 +598,6 @@ func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
 
 func (v *Visitor) PreVisitBinaryOperation(bo *ast.BinaryOperation) bool {
 	argType := bo.ArgType
-	if argType == ast.String {
-		// force byte[] to string for binary operations
-		argType = goStringType
-	}
 
 	// must special case exp and mod
 	if bo.Op == ast.MOD || bo.Op == ast.EXP {
@@ -706,9 +722,7 @@ func (v *Visitor) outputLiteral(typ ast.PrimitiveType, val any) {
 	case ast.Real:
 		v.output(strconv.FormatFloat(val.(float64), 'f', -1, 64))
 	case ast.String:
-		v.output("String(")
 		v.output(strconv.Quote(val.(string)))
-		v.output(")")
 	case ast.Character:
 		v.output(strconv.QuoteRune(rune(val.(byte))))
 	case ast.Boolean:
@@ -725,10 +739,6 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 		v.output(")")
 	} else if dstType == ast.Integer && exp.GetType() == ast.Real {
 		v.output("Integer(")
-		exp.Visit(v)
-		v.output(")")
-	} else if dstType == goStringType && exp.GetType() == ast.String {
-		v.output("string(")
 		exp.Visit(v)
 		v.output(")")
 	} else {
@@ -831,6 +841,8 @@ func (v *Visitor) zero(typ ast.Type) {
 		v.output("0")
 	case ast.Boolean:
 		v.output("false")
+	case ast.String:
+		v.output("\"\"")
 	default:
 		v.output("nil")
 	}

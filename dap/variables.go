@@ -248,9 +248,6 @@ func (h *Session) onSetVariableRequest(request *api.SetVariableRequest) {
 			val = nil
 		} else if lit := parse.ParseLiteral(value, ast.SourceInfo{}, typ.AsPrimitive()); lit != nil {
 			val = lit.Val
-			if str, ok := val.(string); ok {
-				val = []byte(str)
-			}
 		} else {
 			return fmt.Errorf("cannot parse <%s> into type %s", value, typ)
 		}

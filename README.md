@@ -85,18 +85,14 @@ Should cover the whole language by May 2025.
 
 ### TODO
 
-- Currently, Strings are reference objects.
-  - That means insert/delete/character assignment modifies all references to that String.
-  - Should Strings be copy-on-assign / like arrays?
-    - Lots of copies: assign, param by val, return value.
-  - Alternative: copy on write?
-    - But passing `(Character Ref c)` complicates things.
-    - Could disallow string[i] by reference and force a local var.
-  - Gogen would be more straightforward with true immutable strings.
+- Resolve questions around type -> string conversions:
+  - `String characterToString(Character c)`?
+  - `String booleanToString(Boolean b)`?
+  - Or should append(s, ?) take any type?
 
 ### Not yet supported
 
-- classes
+- Classes
 
 ## Errata / Differences from the Book
 
@@ -104,6 +100,10 @@ Gaddis Pseudocode is a bit underspecified, so I've had to make a few design choi
 and there, or fill in gaps. Here's some possible differences (or clarifications) from the book:
 
 - `Character` is an explicit type; character literals are denoted using single-quoted characters: `'X'`
+
+- `String` values are immutable and copy-on-write under the hood. Updating a string in any way
+  creates a new `String` and assigns it back into the given reference; no other copies of the
+  original `String` are affected.
 
 - `Display` atatements only accept primitive types, not arrays or classes.
   - This behavior is left unspecified.

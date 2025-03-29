@@ -51,7 +51,7 @@ func (tp *testProvider) assertEmpty(t *testing.T) {
 
 func TestDisplay(t *testing.T) {
 	ctx, tp := makeIoContext("")
-	ctx.Display([]byte("the score is "), 17, []byte(" to "), 21.5, []byte(" is "), false)
+	ctx.Display("the score is ", 17, " to ", 21.5, " is ", false)
 	assertEqual(t, "the score is 17 to 21.5 is False\n", tp.String())
 }
 
@@ -74,7 +74,7 @@ func TestInputReal(t *testing.T) {
 func TestInputString(t *testing.T) {
 	ctx, tp := makeIoContext("David\n")
 	got := ctx.InputString()
-	assertEqual(t, "David", string(got))
+	assertEqual(t, "David", got)
 	tp.assertEmpty(t)
 	assertEqual(t, "string> ", tp.String())
 }
@@ -96,6 +96,7 @@ func TestInputBoolean(t *testing.T) {
 }
 
 func assertEqual[T comparable](t *testing.T, want T, got T) {
+	t.Helper()
 	if want != got {
 		t.Errorf("want=%v, got=%v", want, got)
 	}

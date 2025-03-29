@@ -120,7 +120,7 @@ func getEntries() []entry {
 		{"toLower", toLower},
 		{"substring", substring},
 		{"contains", contains},
-		{"insert", insert},
+		{"insert", insertString},
 		{"delete", deleteString},
 
 		{"stringToInteger", stringToInteger},
@@ -137,6 +137,9 @@ func getEntries() []entry {
 		// NB: these two are NOT part of Gaddis book, but seem like glaring omissions.
 		{"integerToString", integerToString},
 		{"realToString", realToString},
+
+		// code gen helpers
+		{"$stringWithCharUpdate", stringWithCharUpdate},
 	}
 }
 

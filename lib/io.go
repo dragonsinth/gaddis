@@ -36,10 +36,10 @@ func (ctx ioContext) Display(args ...any) {
 			for sb.Len() < 8*tabCount {
 				sb.WriteByte(' ')
 			}
-		case string:
-			panic(typedArg) // should be impossible
 		case []byte:
-			sb.Write(typedArg)
+			panic("should not get")
+		case string:
+			sb.WriteString(typedArg)
 		case byte:
 			sb.WriteByte(typedArg)
 		default:
@@ -75,10 +75,10 @@ func (ctx ioContext) InputReal() float64 {
 	}
 }
 
-func (ctx ioContext) InputString() []byte {
+func (ctx ioContext) InputString() string {
 	ctx.provider.Output("string> ")
 	input := ctx.readLine()
-	return []byte(input)
+	return input
 }
 
 func (ctx ioContext) InputCharacter() byte {
@@ -112,7 +112,7 @@ func (ctx ioContext) readLine() string {
 	return in
 }
 
-func (ctx ioContext) OpenOutputFile(name []byte) OutputFile {
+func (ctx ioContext) OpenOutputFile(name string) OutputFile {
 	filename := filepath.Join(ctx.provider.Dir(), string(name))
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
@@ -121,7 +121,7 @@ func (ctx ioContext) OpenOutputFile(name []byte) OutputFile {
 	return OutputFile{File: f}
 }
 
-func (ctx ioContext) OpenAppendFile(name []byte) OutputFile {
+func (ctx ioContext) OpenAppendFile(name string) OutputFile {
 	filename := filepath.Join(ctx.provider.Dir(), string(name))
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -130,7 +130,7 @@ func (ctx ioContext) OpenAppendFile(name []byte) OutputFile {
 	return OutputFile{File: f}
 }
 
-func (ctx ioContext) OpenInputFile(name []byte) InputFile {
+func (ctx ioContext) OpenInputFile(name string) InputFile {
 	filename := filepath.Join(ctx.provider.Dir(), string(name))
 	f, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
@@ -156,25 +156,32 @@ func (ctx ioContext) CloseInputFile(file InputFile) {
 func (ctx ioContext) WriteFile(of OutputFile, args ...any) {
 	file := of.File
 	for _, arg := range args {
+		var err error
 		switch typedArg := arg.(type) {
 		case bool:
 			if typedArg {
-				file.WriteString("True")
+				_, err = file.WriteString("True")
 			} else {
-				file.WriteString("False")
+				_, err = file.WriteString("False")
 			}
-		case []byte:
-			file.WriteString(strconv.Quote(string(typedArg)))
+		case string:
+			_, err = file.WriteString(strconv.Quote(string(typedArg)))
 		case byte:
-			file.WriteString(strconv.QuoteRune(rune(typedArg)))
+			_, err = file.WriteString(strconv.QuoteRune(rune(typedArg)))
 		case int64:
-			file.WriteString(strconv.FormatInt(typedArg, 10))
+			_, err = file.WriteString(strconv.FormatInt(typedArg, 10))
 		case float64:
-			file.WriteString(strconv.FormatFloat(typedArg, 'g', -1, 64))
+			_, err = file.WriteString(strconv.FormatFloat(typedArg, 'g', -1, 64))
 		default:
 			panic(typedArg)
 		}
-		file.Write([]byte{'\n'})
+		if err != nil {
+			panic(err)
+		}
+		_, err = file.WriteString("\n")
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -196,13 +203,13 @@ func (ctx ioContext) ReadReal(file InputFile) float64 {
 	return v
 }
 
-func (ctx ioContext) ReadString(file InputFile) []byte {
+func (ctx ioContext) ReadString(file InputFile) string {
 	input := ctx.scanLine(file)
 	v, err := strconv.Unquote(input)
 	if err != nil {
 		panic(err)
 	}
-	return []byte(v)
+	return v
 }
 
 func (ctx ioContext) ReadCharacter(file InputFile) byte {
@@ -270,7 +277,7 @@ func (dio defaultIo) Input() (string, error) {
 }
 
 func (dio defaultIo) Output(text string) {
-	_, _ = os.Stdout.Write([]byte(text))
+	_, _ = os.Stdout.WriteString(text)
 	_ = os.Stdout.Sync()
 }
 

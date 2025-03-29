@@ -226,10 +226,10 @@ func DebugStringVal(typ ast.Type, arg any) string {
 		} else {
 			return "False"
 		}
-	case string:
-		panic(typedArg) // should be impossible
 	case []byte:
-		_, _ = fmt.Fprintf(&sb, "%#v", string(typedArg))
+		panic(typedArg) // should be impossible
+	case string:
+		_, _ = fmt.Fprintf(&sb, "%#v", typedArg)
 	case byte:
 		_, _ = fmt.Fprintf(&sb, "%#v", rune(typedArg))
 	case []any:
@@ -254,7 +254,7 @@ func zeroValue(typ ast.Type) any {
 	case ast.Real:
 		return float64(0)
 	case ast.String:
-		return []byte{}
+		return ""
 	case ast.Character:
 		return byte(0)
 	case ast.Boolean:

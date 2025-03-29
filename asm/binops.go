@@ -19,22 +19,6 @@ func (i Store) String() string {
 	return "store"
 }
 
-// StoreChar specifically stores a character into a string; we have to special case this
-// because the ref is to a *byte rather than a *any.
-type StoreChar struct {
-	baseInst
-}
-
-func (i StoreChar) Exec(p *Execution) {
-	ref := p.Pop().(*byte)
-	val := p.Pop().(byte)
-	*ref = val
-}
-
-func (i StoreChar) String() string {
-	return "store char"
-}
-
 type BinOpInt struct {
 	baseInst
 	Op ast.Operator
@@ -71,9 +55,9 @@ type BinOpStr struct {
 }
 
 func (i BinOpStr) Exec(p *Execution) {
-	b := p.Pop().([]byte)
-	a := p.Pop().([]byte)
-	p.Push(ast.ByteStringOp(i.Op, a, b))
+	b := p.Pop().(string)
+	a := p.Pop().(string)
+	p.Push(ast.StringOp(i.Op, a, b))
 }
 
 func (i BinOpStr) String() string {
