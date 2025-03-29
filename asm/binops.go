@@ -19,6 +19,8 @@ func (i Store) String() string {
 	return "store"
 }
 
+// StoreChar specifically stores a character into a string; we have to special case this
+// because the ref is to a *byte rather than a *any.
 type StoreChar struct {
 	baseInst
 }
