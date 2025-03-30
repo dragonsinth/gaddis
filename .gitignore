@@ -27,3 +27,5 @@ dist/
 *.gad.go
 *.gad.exe
 *.gad.dat
+
+examples/.vscode
