@@ -6,7 +6,7 @@ import (
 )
 
 type IShape interface {
-	CalculateArea() float64
+	CalculateArea_() float64
 }
 
 type Shape struct {
@@ -15,11 +15,11 @@ type Shape struct {
 
 var _ IShape = (*Shape)(nil)
 
-func (s *Shape) CalculateArea() float64 {
+func (s *Shape) CalculateArea_() float64 {
 	return 0.0
 }
 
-type ShapeVal struct {
+type Shape_ struct {
 	IFace IShape
 	IBody *Shape
 }
@@ -35,17 +35,17 @@ type Circle struct {
 
 var _ ICircle = (*Circle)(nil)
 
-func (c *Circle) CalculateArea() float64 {
+func (c *Circle) CalculateArea_() float64 {
 	return math.Pi * c.radius * c.radius
 }
 
-type CircleVal struct {
+type Circle_ struct {
 	IFace ICircle
 	IBody *Circle
 }
 
-func newCircle(v Circle) CircleVal {
-	return CircleVal{IFace: &v, IBody: &v}
+func newCircle(v Circle) Circle_ {
+	return Circle_{IFace: &v, IBody: &v}
 }
 
 type IRectangle interface {
@@ -59,20 +59,39 @@ type Rectangle struct {
 
 var _ IRectangle = (*Rectangle)(nil)
 
-func (r *Rectangle) CalculateArea() float64 {
+func (r *Rectangle) CalculateArea_() float64 {
 	return r.width * r.height
 }
 
-type RectangleVal struct {
+type Rectangle_ struct {
 	IFace IRectangle
 	IBody *Rectangle
 }
 
-func newRectangle(v Rectangle) RectangleVal {
-	return RectangleVal{IFace: &v, IBody: &v}
+func newRectangle(v Rectangle) Rectangle_ {
+	return Rectangle_{IFace: &v, IBody: &v}
 }
 
-func ExampleShape() {
+type ISquare interface {
+	IRectangle
+}
+
+type Square struct {
+	Rectangle
+}
+
+var _ ISquare = (*Square)(nil)
+
+type Square_ struct {
+	IFace ISquare
+	IBody *Square
+}
+
+func newSquare(v Square) Square_ {
+	return Square_{IFace: &v, IBody: &v}
+}
+
+func Example() {
 	rect := newRectangle(Rectangle{
 		Shape:  Shape{color: "red"},
 		width:  1.0,
@@ -84,17 +103,28 @@ func ExampleShape() {
 		radius: 1.0,
 	})
 
-	describeShape(ShapeVal{IFace: rect.IFace, IBody: &rect.IBody.Shape})
-	describeShape(ShapeVal{IFace: circle.IFace, IBody: &circle.IBody.Shape})
+	square := newSquare(Square{
+		Rectangle: Rectangle{
+			Shape:  Shape{color: "green"},
+			width:  4.0,
+			height: 4.0,
+		},
+	})
+
+	describeShape(Shape_{IFace: rect.IFace, IBody: &rect.IBody.Shape})
+	describeShape(Shape_{IFace: circle.IFace, IBody: &circle.IBody.Shape})
+	describeShape(Shape_{IFace: square.IFace, IBody: &square.IBody.Shape})
 
 	// Output:
 	// 1
 	// red
 	// 3.141592653589793
 	// blue
+	// 16
+	// green
 }
 
-func describeShape(value ShapeVal) {
-	fmt.Println(value.IFace.CalculateArea())
+func describeShape(value Shape_) {
+	fmt.Println(value.IFace.CalculateArea_())
 	fmt.Println(value.IBody.color)
 }

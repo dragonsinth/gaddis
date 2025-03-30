@@ -7,32 +7,32 @@ import (
 )
 
 type IShape interface {
-	CalculateArea() float64
+	CalculateArea_() float64
 }
 
-type Shape struct {
+type Shape_ struct {
 	face   IShape
 	color_ string
 }
 
-var _ IShape = (*Shape)(nil)
+var _ IShape = (*Shape_)(nil)
 
-func NewShape() *Shape {
-	this := &Shape{}
+func NewShape() *Shape_ {
+	this := &Shape_{}
 	this.face = this
 	return this
 }
 
-func SuperShape(face IShape) Shape {
-	return Shape{face: face}
+func SuperShape(face IShape) Shape_ {
+	return Shape_{face: face}
 }
 
-func ShapeConstructor(this *Shape, color_ string) *Shape {
+func ShapeConstructor(this *Shape_, color_ string) *Shape_ {
 	this.color_ = color_
 	return this
 }
 
-func (this *Shape) CalculateArea() float64 {
+func (this *Shape_) CalculateArea_() float64 {
 	return 0.0
 }
 
@@ -40,32 +40,35 @@ type ICircle interface {
 	IShape
 }
 
-type Circle struct {
-	Shape
+type Circle_ struct {
+	Shape_
 	face    ICircle
 	radius_ float64
 }
 
-var _ ICircle = (*Circle)(nil)
+var _ ICircle = (*Circle_)(nil)
 
-func NewCircle() *Circle {
-	this := &Circle{}
-	this.Shape = SuperShape(this)
+func NewCircle() *Circle_ {
+	this := &Circle_{}
+	this.Shape_ = SuperShape(this)
 	this.face = this
 	return this
 }
 
-func SuperCircle(face ICircle) Circle {
-	return Circle{face: face}
+func SuperCircle(face ICircle) Circle_ {
+	return Circle_{
+		Shape_: SuperShape(face),
+		face:   face,
+	}
 }
 
-func CircleConstructor(this *Circle, color_ string, radius_ float64) *Circle {
-	ShapeConstructor(&this.Shape, color_)
+func CircleConstructor(this *Circle_, color_ string, radius_ float64) *Circle_ {
+	ShapeConstructor(&this.Shape_, color_)
 	this.radius_ = radius_
 	return this
 }
 
-func (this *Circle) CalculateArea() float64 {
+func (this *Circle_) CalculateArea_() float64 {
 	return math.Pi * this.radius_ * this.radius_
 }
 
@@ -73,52 +76,89 @@ type IRectangle interface {
 	IShape
 }
 
-type Rectangle struct {
-	Shape
+type Rectangle_ struct {
+	Shape_
 	face    IRectangle
 	width_  float64
 	height_ float64
 }
 
-var _ IRectangle = (*Rectangle)(nil)
+var _ IRectangle = (*Rectangle_)(nil)
 
-func SuperRectangle(face IRectangle) Rectangle {
-	return Rectangle{face: face}
+func SuperRectangle(face IRectangle) Rectangle_ {
+	return Rectangle_{
+		Shape_: SuperShape(face),
+		face:   face,
+	}
 }
 
-func NewRectangle() *Rectangle {
-	this := &Rectangle{}
-	this.Shape = SuperShape(this)
+func NewRectangle() *Rectangle_ {
+	this := &Rectangle_{}
+	this.Shape_ = SuperShape(this)
 	this.face = this
 	return this
 }
 
-func RectangleConstructor(this *Rectangle, color_ string, width_, height_ float64) *Rectangle {
-	ShapeConstructor(&this.Shape, color_)
+func RectangleConstructor(this *Rectangle_, color_ string, width_, height_ float64) *Rectangle_ {
+	ShapeConstructor(&this.Shape_, color_)
 	this.width_ = width_
 	this.height_ = height_
 	return this
 }
 
-func (this *Rectangle) CalculateArea() float64 {
+func (this *Rectangle_) CalculateArea_() float64 {
 	return this.width_ * this.height_
 }
 
-func ExampleShape() {
-	rect := RectangleConstructor(NewRectangle(), "red", 1.0, 1.0)
-	circle := CircleConstructor(NewCircle(), "blue", 1.0)
+type ISquare interface {
+	IRectangle
+}
 
-	describeShape(&rect.Shape)
-	describeShape(&circle.Shape)
+type Square_ struct {
+	Rectangle_
+	face ISquare
+}
+
+var _ ISquare = (*Square_)(nil)
+
+func NewSquare() *Square_ {
+	this := &Square_{}
+	this.Rectangle_ = SuperRectangle(this)
+	this.face = this
+	return this
+}
+
+func SuperSquare(face ISquare) Square_ {
+	return Square_{
+		Rectangle_: SuperRectangle(face),
+		face:       face,
+	}
+}
+
+func SquareConstructor(this *Square_, color_ string, side_ float64) *Square_ {
+	RectangleConstructor(&this.Rectangle_, color_, side_, side_)
+	return this
+}
+
+func Example() {
+	var rect_ *Rectangle_ = RectangleConstructor(NewRectangle(), "red", 1.0, 1.0)
+	var circle_ *Circle_ = CircleConstructor(NewCircle(), "blue", 1.0)
+	var square_ *Square_ = SquareConstructor(NewSquare(), "green", 4.0)
+
+	describeShape_(&rect_.Shape_)
+	describeShape_(&circle_.Shape_)
+	describeShape_(&square_.Rectangle_.Shape_)
 
 	// Output:
 	// 1
 	// red
 	// 3.141592653589793
 	// blue
+	// 16
+	// green
 }
 
-func describeShape(shape *Shape) {
-	fmt.Println(shape.face.CalculateArea())
+func describeShape_(shape *Shape_) {
+	fmt.Println(shape.face.CalculateArea_())
 	fmt.Println(shape.color_)
 }
