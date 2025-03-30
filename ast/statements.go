@@ -27,7 +27,8 @@ func (*DeclareStmt) isStatement() {
 
 type DisplayStmt struct {
 	SourceInfo
-	Exprs []Expression
+	Exprs   []Expression
+	IsPrint bool
 }
 
 func (ds *DisplayStmt) Visit(v Visitor) {

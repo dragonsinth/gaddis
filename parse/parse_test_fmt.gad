@@ -159,6 +159,8 @@ Module files()
 	Declare String field
 	Read in field
 	Close in
+
+	Print "hi"
 End Module
 
 // comment 1 at end of file

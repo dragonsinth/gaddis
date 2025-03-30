@@ -45,6 +45,7 @@ const (
 	CONSTANT
 	DECLARE
 	DISPLAY
+	PRINT
 	INPUT
 	SET
 
@@ -132,6 +133,7 @@ var tokens = []string{
 	CONSTANT: "CONSTANT",
 	DECLARE:  "DECLARE",
 	DISPLAY:  "DISPLAY",
+	PRINT:    "PRINT",
 	INPUT:    "INPUT",
 	SET:      "SET",
 
@@ -189,6 +191,7 @@ var keywords = map[string]Token{
 	"Constant":   CONSTANT,
 	"Declare":    DECLARE,
 	"Display":    DISPLAY,
+	"Print":      PRINT,
 	"Input":      INPUT,
 	"Set":        SET,
 	"End":        END,

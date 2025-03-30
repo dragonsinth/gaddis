@@ -115,7 +115,11 @@ func (v *Visitor) PreVisitDisplayStmt(ds *ast.DisplayStmt) bool {
 	v.bol(ds.Start)
 	defer v.eol(ds.End)
 
-	v.output("Display")
+	if ds.IsPrint {
+		v.output("Print")
+	} else {
+		v.output("Display")
+	}
 	v.outputArguments(" ", ds.Exprs)
 	return false
 }

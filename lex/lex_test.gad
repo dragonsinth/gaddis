@@ -111,4 +111,6 @@ Module files()
 	Declare String field
 	Read in field
 	Close in
+
+	Print "hi"
 End Module

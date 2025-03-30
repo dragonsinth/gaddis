@@ -187,13 +187,13 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			decls = append(decls, lastDecl)
 		}
 		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: false, Decls: decls}
-	case lex.DISPLAY:
+	case lex.DISPLAY, lex.PRINT:
 		si := toSourceInfo(r)
 		exprs := p.parseCommaExpressions(lex.EOL)
 		if len(exprs) > 0 {
 			si = mergeSourceInfo(si, exprs[len(exprs)-1])
 		}
-		return &ast.DisplayStmt{SourceInfo: si, Exprs: exprs}
+		return &ast.DisplayStmt{SourceInfo: si, Exprs: exprs, IsPrint: r.Token == lex.PRINT}
 	case lex.INPUT:
 		refExpr := p.parseExpression()
 		return &ast.InputStmt{SourceInfo: spanAst(r, refExpr), Ref: refExpr}
