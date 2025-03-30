@@ -21,7 +21,6 @@ var (
 		lex.GTE: ast.GTE,
 		lex.AND: ast.AND,
 		lex.OR:  ast.OR,
-		lex.NOT: ast.NOT,
 	}
 	binaryPrecedence = [][]ast.Operator{
 		{ast.EXP},

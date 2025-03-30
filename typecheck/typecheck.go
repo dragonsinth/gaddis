@@ -339,14 +339,14 @@ func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {
 		v.Errorf(ar.IndexExpr, "index expression must be of type Integer")
 	}
 
-	if refType := ar.RefExpr.GetType(); refType == ast.UnresolvedType {
+	if refType := ar.Qualifier.GetType(); refType == ast.UnresolvedType {
 		// reduce error spam
 	} else if refType == ast.String {
 		ar.Type = ast.Character
 	} else if refType.IsArrayType() {
 		ar.Type = refType.AsArrayType().ElementType
 	} else {
-		v.Errorf(ar.RefExpr, "array reference expression must be a String or Array type")
+		v.Errorf(ar.Qualifier, "array reference expression must be a String or Array type")
 	}
 }
 
@@ -368,7 +368,7 @@ func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression,
 		if param.IsRef {
 			// must be an exact type match for reference
 			if ar, ok := arg.(*ast.ArrayRef); ok {
-				if ar.RefExpr.GetType() == ast.String {
+				if ar.Qualifier.GetType() == ast.String {
 					// TODO(scottb): could allow this with an auto temp var?
 					v.Errorf(arg, "argument %d: expression may not be a string index", i+1)
 				}

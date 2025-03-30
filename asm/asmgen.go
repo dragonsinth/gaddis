@@ -178,7 +178,7 @@ func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression) {
 		// stringWithCharUpdate(c byte, idx int64, str string) string
 		// the character (arg 0) was already emitted
 		ar.IndexExpr.Visit(v)
-		ar.RefExpr.Visit(v)
+		ar.Qualifier.Visit(v)
 		v.code = append(v.code, LibCall{
 			baseInst: baseInst{si},
 			Name:     "$stringWithCharUpdate",
@@ -186,8 +186,8 @@ func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression) {
 			Index:    lib.IndexOf("$stringWithCharUpdate"),
 			NArg:     3,
 		})
-		if ar.RefExpr.CanReference() {
-			v.varRef(ar.RefExpr, true)
+		if ar.Qualifier.CanReference() {
+			v.varRef(ar.Qualifier, true)
 			v.store(si)
 		} else {
 			v.code = append(v.code, Pop{baseInst{si}})
@@ -598,10 +598,10 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 }
 
 func (v *Visitor) PreVisitArrayRef(arr *ast.ArrayRef) bool {
-	arr.RefExpr.Visit(v)
+	arr.Qualifier.Visit(v)
 	arr.IndexExpr.Visit(v)
 	typ := OffsetTypeArray
-	if arr.RefExpr.GetType() == ast.String {
+	if arr.Qualifier.GetType() == ast.String {
 		typ = OffsetTypeString
 	}
 
@@ -662,10 +662,10 @@ func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 		v.varRefDecl(expr, exp.Ref, needRef)
 	case *ast.ArrayRef:
 		typ := OffsetTypeArray
-		if exp.RefExpr.GetType() == ast.String {
+		if exp.Qualifier.GetType() == ast.String {
 			typ = OffsetTypeString
 		}
-		exp.RefExpr.Visit(v)
+		exp.Qualifier.Visit(v)
 		exp.IndexExpr.Visit(v)
 		if needRef {
 			v.code = append(v.code, OffsetRef{

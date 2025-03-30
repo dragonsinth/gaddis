@@ -41,6 +41,7 @@ const (
 	LBRACKET
 	RBRACKET
 	COLON
+	DOT
 
 	CONSTANT
 	DECLARE
@@ -135,6 +136,7 @@ var tokens = []string{
 	LBRACKET: "(",
 	RBRACKET: ")",
 	COLON:    ":",
+	DOT:      ".",
 
 	CONSTANT: "CONSTANT",
 	DECLARE:  "DECLARE",

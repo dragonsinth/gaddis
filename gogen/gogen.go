@@ -220,8 +220,8 @@ func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 func (v *Visitor) emitAssignment(lhs ast.Expression, emitRhs func()) {
 	if ar, ok := lhs.(*ast.ArrayRef); ok && lhs.GetType() == ast.Character {
 		// special case string index assignment
-		if ar.RefExpr.CanReference() {
-			v.varRef(ar.RefExpr, false)
+		if ar.Qualifier.CanReference() {
+			v.varRef(ar.Qualifier, false)
 			v.output(" = ")
 		}
 		// stringWithCharUpdate(c byte, idx int64, str string) string
@@ -230,7 +230,7 @@ func (v *Visitor) emitAssignment(lhs ast.Expression, emitRhs func()) {
 		v.output(", ")
 		v.maybeCast(ast.Integer, ar.IndexExpr)
 		v.output(", ")
-		ar.RefExpr.Visit(v)
+		ar.Qualifier.Visit(v)
 		v.output(")")
 	} else {
 		v.varRef(lhs, false) // assignment auto-refs
@@ -661,7 +661,7 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {}
 
 func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
 	// TODO: this won't be sufficient for passing in as a reference param
-	ar.RefExpr.Visit(v)
+	ar.Qualifier.Visit(v)
 	v.output("[")
 	ar.IndexExpr.Visit(v)
 	v.output("]")

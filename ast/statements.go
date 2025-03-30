@@ -240,8 +240,9 @@ func (*ForEachStmt) isStatement() {
 
 type CallStmt struct {
 	SourceInfo
-	Name string
-	Args []Expression
+	Name      string
+	Qualifier Expression
+	Args      []Expression
 
 	Ref *ModuleStmt // resolve
 }
@@ -249,6 +250,9 @@ type CallStmt struct {
 func (cs *CallStmt) Visit(v Visitor) {
 	if !v.PreVisitCallStmt(cs) {
 		return
+	}
+	if cs.Qualifier != nil {
+		cs.Qualifier.Visit(v)
 	}
 	for _, arg := range cs.Args {
 		arg.Visit(v)

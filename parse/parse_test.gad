@@ -168,15 +168,19 @@ Module files()
 End Module
 
 Class Shape
-    Private String color
+	Private String color
 
-    Public Module Shape(String c)
-        Set color = c
-    End Module
+	Public Module Shape(String c)
+		Set color = c
+	End Module
 
-    Public Function Real CalculateArea()
-        Return 0.0
-    End Function
+	Public Module SetColor(String c)
+		Set color = c
+	End Module
+
+	Public Function Real CalculateArea()
+		Return 0.0
+	End Function
 End Class
 
 Class Circle Extends Shape
@@ -187,7 +191,11 @@ Module Classes()
 	Declare Circle c
 	Set c = New Circle()
 	Set s = c
+	Call s.SetColor("blue")
+	Display "Area: ", s.CalculateArea()
+	Display "Color: ", s.color
 End Module
+
 
 // comment 1 at end of file
 

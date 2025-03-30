@@ -308,12 +308,14 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Ref: refExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 		}
 	case lex.CALL:
-		rNext := p.parseTok(lex.IDENT)
-		name := rNext.Text
-		p.parseTok(lex.LPAREN)
-		args := p.parseCommaExpressions(lex.RPAREN)
-		rEnd := p.parseTok(lex.RPAREN)
-		return &ast.CallStmt{SourceInfo: spanResult(r, rEnd), Name: name, Args: args}
+		expr := p.parseExpression()
+		// Better be a call expressions...
+		callExpr, ok := expr.(*ast.CallExpr)
+		if !ok {
+			panic(p.Errorf(r, "Expected call expression, got %T", expr))
+		}
+		// Promote to a call statement
+		return &ast.CallStmt{SourceInfo: spanAst(r, callExpr), Name: callExpr.Name, Qualifier: callExpr.Qualifier, Args: callExpr.Args}
 	case lex.MODULE:
 		if !isGlobalBlock {
 			panic(p.Errorf(r, "Module may only be declared in the global scope"))

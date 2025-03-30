@@ -30,7 +30,7 @@ func (p *Parser) parseExpression() ast.Expression {
 
 func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 	if level < 0 {
-		return p.parseTrailingArrayRefs()
+		return p.parseUnaryOperations()
 	}
 	ops := binaryPrecedence[level]
 	ret := p.parseBinaryOperations(level - 1)
@@ -48,31 +48,61 @@ func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 	}
 }
 
-func (p *Parser) parseTrailingArrayRefs() ast.Expression {
-	expr := p.parseTerminal()
-	for p.hasTok(lex.LBRACKET) {
-		r := p.parseTok(lex.LBRACKET)
-		indexExpr := p.parseExpression()
-		rEnd := p.parseTok(lex.RBRACKET)
-		expr = &ast.ArrayRef{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, RefExpr: expr, IndexExpr: indexExpr}
+func (p *Parser) parseUnaryOperations() ast.Expression {
+	for {
+		r := p.Peek()
+		switch r.Token {
+		case lex.NOT:
+			p.Next()
+			expr := p.parseUnaryOperations()
+			return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
+		case lex.SUB:
+			p.Next()
+			expr := p.parseUnaryOperations()
+			return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: ast.UnresolvedType, Expr: expr}
+		default:
+			return p.parsePostfixOps()
+		}
 	}
-	return expr
 }
 
-func (p *Parser) parseTerminal() ast.Expression {
+func (p *Parser) parsePostfixOps() ast.Expression {
+	expr := p.parsePrimary()
+	for {
+		r := p.Peek()
+		switch r.Token {
+		case lex.LBRACKET:
+			p.Next()
+			indexExpr := p.parseExpression()
+			rEnd := p.parseTok(lex.RBRACKET)
+			expr = &ast.ArrayRef{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, Qualifier: expr, IndexExpr: indexExpr}
+		case lex.DOT:
+			p.Next()
+			rEnd := p.parseTok(lex.IDENT)
+			expr = &ast.VariableExpr{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, Name: rEnd.Text, Qualifier: expr}
+		case lex.LPAREN:
+			p.Next()
+			// This is actually a call expression, the LHS better be a variable reference...
+			varRef, ok := expr.(*ast.VariableExpr)
+			if !ok {
+				panic(p.Errorf(r, "call qualifier must be an identifier, got %T", expr))
+			}
+			// Parse the args...
+			args := p.parseCommaExpressions(lex.RPAREN)
+			rEnd := p.parseTok(lex.RPAREN)
+			// Promote the variable reference to a call expression.
+			return &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: varRef.Name, Qualifier: varRef.Qualifier, Args: args}
+		default:
+			return expr
+		}
+	}
+}
+
+func (p *Parser) parsePrimary() ast.Expression {
 	r := p.Next()
 	switch r.Token {
 	case lex.IDENT:
-		// If the next token is a '(', this is actually a CallExpr.
-		if p.hasTok(lex.LPAREN) {
-			// This is actually a call expression.
-			p.parseTok(lex.LPAREN)
-			args := p.parseCommaExpressions(lex.RPAREN)
-			rEnd := p.parseTok(lex.RPAREN)
-			return &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: r.Text, Args: args}
-		} else {
-			return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
-		}
+		return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
 	case lex.INT_LIT:
 		return p.parseLiteral(r, ast.Integer)
 	case lex.REAL_LIT:
@@ -81,12 +111,6 @@ func (p *Parser) parseTerminal() ast.Expression {
 		return p.parseLiteral(r, ast.String)
 	case lex.CHR_LIT:
 		return p.parseLiteral(r, ast.Character)
-	case lex.NOT:
-		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
-	case lex.SUB:
-		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: ast.UnresolvedType, Expr: expr}
 	case lex.NEW:
 		// Must be a call expression
 		rNext := p.parseTok(lex.IDENT)

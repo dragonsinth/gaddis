@@ -369,6 +369,10 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	defer v.eol(cs.End)
 
 	v.output("Call ")
+	if cs.Qualifier != nil {
+		cs.Qualifier.Visit(v)
+		v.output(".")
+	}
 	v.output(cs.Name)
 	v.output("(")
 	v.outputArguments("", cs.Args)
@@ -531,14 +535,22 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
+	if ve.Qualifier != nil {
+		ve.Qualifier.Visit(v)
+		v.output(".")
+	}
 	v.output(ve.Name)
-	return true
+	return false
 }
 
 func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	if ce.Qualifier != nil {
+		ce.Qualifier.Visit(v)
+		v.output(".")
+	}
 	v.output(ce.Name)
 	v.output("(")
 	v.outputArguments("", ce.Args)
@@ -550,7 +562,7 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 }
 
 func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
-	ar.RefExpr.Visit(v)
+	ar.Qualifier.Visit(v)
 	v.output("[")
 	ar.IndexExpr.Visit(v)
 	v.output("]")
