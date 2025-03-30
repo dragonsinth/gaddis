@@ -549,6 +549,12 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
+func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	return false
+}
+
+func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {}
+
 func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
 	switch l.Type {
 	case ast.Integer:
@@ -670,6 +676,13 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 }
 
 func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
+func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
+	return false
+}
+
+func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+}
 
 func (v *Visitor) outputArrayInitializer(t *ast.ArrayType, dims []int, exprs []ast.Expression) []ast.Expression {
 	v.typeName(t)

@@ -6,13 +6,15 @@ type HasName interface {
 
 type VarDecl struct {
 	SourceInfo
-	Name     string
-	Type     Type
-	DimExprs []Expression
-	Expr     Expression
-	IsConst  bool
-	IsParam  bool
-	IsRef    bool // TODO: should this be part of the type?
+	Name      string
+	Type      Type
+	DimExprs  []Expression
+	Expr      Expression
+	IsConst   bool
+	IsField   bool
+	IsPrivate bool
+	IsParam   bool
+	IsRef     bool
 
 	Scope *Scope // collect
 	Id    int

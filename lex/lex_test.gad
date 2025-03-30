@@ -126,3 +126,10 @@ Class Shape
         Return 0.0
     End Function
 End Class
+
+Module Classes()
+	Declare Shape s
+	Declare Circle c
+	Set c = New Circle()
+	Set s = c
+End Module

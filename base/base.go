@@ -135,6 +135,13 @@ func (v *Visitor) PreVisitLiteral(i *ast.Literal) bool {
 	return true
 }
 
+func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {
+}
+
 func (v *Visitor) PostVisitLiteral(i *ast.Literal) {}
 
 func (v *Visitor) PreVisitParenExpr(pe *ast.ParenExpr) bool {
@@ -178,6 +185,14 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 }
 
 func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
+func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+
+}
 
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {
 	v.Errors = append(v.Errors, ast.Error{

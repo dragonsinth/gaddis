@@ -7,9 +7,11 @@ type Statement interface {
 
 type DeclareStmt struct {
 	SourceInfo
-	Type    Type
-	IsConst bool
-	Decls   []*VarDecl
+	Type      Type
+	IsConst   bool
+	IsField   bool
+	IsPrivate bool
+	Decls     []*VarDecl
 }
 
 func (ds *DeclareStmt) Visit(v Visitor) {
@@ -263,6 +265,8 @@ type ModuleStmt struct {
 	Block  *Block
 
 	IsExternal bool
+	IsMethod   bool
+	IsPrivate  bool
 
 	Scope *Scope // collect
 }
@@ -311,6 +315,8 @@ type FunctionStmt struct {
 	Block  *Block
 
 	IsExternal bool
+	IsMethod   bool
+	IsPrivate  bool
 
 	Scope *Scope // collect
 }

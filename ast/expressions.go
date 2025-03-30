@@ -254,3 +254,27 @@ func (ai *ArrayInitializer) Visit(v Visitor) {
 func (ai *ArrayInitializer) GetType() Type {
 	return ai.Type
 }
+
+type NewExpr struct {
+	SourceInfo
+	baseExpression
+	Name string
+	Args []Expression
+
+	Ctor *ModuleStmt // resolve
+	Type *ClassType  // type checking
+}
+
+func (ne *NewExpr) Visit(v Visitor) {
+	if !v.PreVisitNewExpr(ne) {
+		return
+	}
+	for _, arg := range ne.Args {
+		arg.Visit(v)
+	}
+	v.PostVisitNewExpr(ne)
+}
+
+func (ne *NewExpr) GetType() Type {
+	return ne.Type
+}

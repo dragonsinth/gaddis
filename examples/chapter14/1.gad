@@ -1,0 +1,74 @@
+Constant Real PI = 3.141592653589793
+
+Class Shape
+    Public String color
+
+    Public Module Shape(String c)
+        Set color = c
+    End Module
+
+    Public Function Real CalculateArea()
+        Return 0.0
+    End Function
+End Class
+
+Class Rectangle Extends Shape
+    Private Real width
+    Private Real height
+
+    Public Module Rectangle(String c, Real w, Real h)
+        Call Shape(c)
+        Set width = w
+        Set height = h
+    End Module
+
+    Public Function Real CalculateArea()
+        Return width * height
+    End Function
+End Class
+
+Class Square Extends Rectangle
+    Public Module Square(String c, Real side)
+        Call Rectangle(c, side, side)
+    End Module
+End Class
+
+Class Circle Extends Shape
+    Private Real radius
+
+    Public Module Circle(String c, Real r)
+        Call Shape(c)
+        Set radius = r
+    End Module
+
+    Public Function Real CalculateArea()
+        Return PI * radius * radius
+    End Function
+End Class
+
+Module Main()
+    Declare Rectangle rect
+    Declare Circle circle
+    Declare Square square = New Square("green", 4.0)
+
+    Set rect = New Rectangle("red", 2.0, 3.0)
+    Set circle = New Circle("blue", 1.0)
+
+    Call DescribeShape(rect)
+    Call DescribeShape(circle)
+    Call DescribeShape(square)
+
+    Declare Shape shapeRef
+    Set shapeRef = rect
+    Call DescribeShape(shapeRef)
+End Module
+
+// TODO: test super -> sub calls
+// TODO: test sub -> super calls
+// TODO: test sub -> super fields
+
+Module DescribeShape(Shape s)
+    Display "Area: ", s.CalculateArea()
+    Display "Color: ", s.color
+    Display ""
+End Module

@@ -179,6 +179,15 @@ Class Shape
     End Function
 End Class
 
+Class Circle Extends Shape
+End Class
+
+Module Classes()
+	Declare Shape s
+	Declare Circle c
+	Set c = New Circle()
+	Set s = c
+End Module
 
 // comment 1 at end of file
 

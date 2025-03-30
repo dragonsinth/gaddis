@@ -89,6 +89,10 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 
 	if ds.IsConst {
 		v.output("Constant ")
+	} else if ds.IsPrivate {
+		v.output("Private ")
+	} else if ds.IsField {
+		v.output("Public ")
 	} else {
 		v.output("Declare ")
 	}
@@ -378,6 +382,12 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.bol(ms.Start)
 	defer v.eol(ms.End)
 
+	if ms.IsPrivate {
+		v.output("Private ")
+	} else if ms.IsMethod {
+		v.output("Public ")
+	}
+
 	v.output("Module ")
 	v.output(ms.Name)
 	v.output("(")
@@ -391,6 +401,8 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.output("End Module")
 	return false
 }
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
 	v.bol(rs.Start)
@@ -410,6 +422,12 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.bol(fs.Start)
 	defer v.eol(fs.End)
 
+	if fs.IsPrivate {
+		v.output("Private ")
+	} else if fs.IsMethod {
+		v.output("Public ")
+	}
+
 	v.output("Function ")
 	v.output(fs.Type.String())
 	v.output(" ")
@@ -426,7 +444,26 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	return false
 }
 
-func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
+func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	v.bol(cs.Start)
+	defer v.eol(cs.End)
+
+	v.output("Class ")
+	v.output(cs.Typ.String())
+	if cs.Typ.Extends != nil {
+		v.output(" Extends ")
+		v.output(cs.Typ.Extends.String())
+	}
+	v.eol(cs.Start)
+
+	cs.Block.Visit(v)
+
+	v.bol(cs.End)
+	v.output("End Class")
+	return false
+}
+
+func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {}
 
 func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
 	if l.IsTabLiteral {
@@ -562,6 +599,18 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 }
 
 func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
+func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
+	v.output("New ")
+	v.output(ne.Name)
+	v.output("(")
+	v.outputArguments("", ne.Args)
+	v.output(")")
+	return false
+}
+
+func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+}
 
 func (v *Visitor) outputArguments(hdr string, exprs []ast.Expression) {
 	if len(exprs) == 0 {
