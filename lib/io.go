@@ -112,7 +112,10 @@ func (ctx ioContext) readLine() string {
 	return in
 }
 
-func (ctx ioContext) OpenOutputFile(name string) OutputFile {
+func (ctx ioContext) OpenOutputFile(file OutputFile, name string) OutputFile {
+	if file.File != nil {
+		panic("file already open")
+	}
 	filename := filepath.Join(ctx.provider.Dir(), string(name))
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
@@ -121,7 +124,10 @@ func (ctx ioContext) OpenOutputFile(name string) OutputFile {
 	return OutputFile{File: f}
 }
 
-func (ctx ioContext) OpenAppendFile(name string) OutputFile {
+func (ctx ioContext) OpenAppendFile(file OutputFile, name string) OutputFile {
+	if file.File != nil {
+		panic("file already open")
+	}
 	filename := filepath.Join(ctx.provider.Dir(), string(name))
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -130,7 +136,10 @@ func (ctx ioContext) OpenAppendFile(name string) OutputFile {
 	return OutputFile{File: f}
 }
 
-func (ctx ioContext) OpenInputFile(name string) InputFile {
+func (ctx ioContext) OpenInputFile(file InputFile, name string) InputFile {
+	if file.File != nil {
+		panic("file already open")
+	}
 	filename := filepath.Join(ctx.provider.Dir(), string(name))
 	f, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
@@ -140,20 +149,32 @@ func (ctx ioContext) OpenInputFile(name string) InputFile {
 }
 
 func CloseOutputFile(file OutputFile) {
+	if file.File == nil {
+		panic("file not open")
+	}
 	err := file.File.Close()
+	file.File = nil
 	if err != nil {
 		panic(err)
 	}
 }
 
 func CloseInputFile(file InputFile) {
+	if file.File == nil {
+		panic("file not open")
+	}
 	err := file.File.Close()
+	file.File = nil
+	file.Reader = nil
 	if err != nil {
 		panic(err)
 	}
 }
 
 func WriteFile(of OutputFile, args ...any) {
+	if of.File == nil {
+		panic("file not open")
+	}
 	file := of.File
 	for _, arg := range args {
 		var err error
@@ -186,6 +207,9 @@ func WriteFile(of OutputFile, args ...any) {
 }
 
 func ReadInteger(file InputFile) int64 {
+	if file.File == nil {
+		panic("file not open")
+	}
 	input := scanLine(file)
 	v, err := strconv.ParseInt(input, 10, 64)
 	if err != nil {
@@ -195,6 +219,9 @@ func ReadInteger(file InputFile) int64 {
 }
 
 func ReadReal(file InputFile) float64 {
+	if file.File == nil {
+		panic("file not open")
+	}
 	input := scanLine(file)
 	v, err := strconv.ParseFloat(input, 64)
 	if err != nil {
@@ -234,6 +261,9 @@ func ReadBoolean(file InputFile) bool {
 }
 
 func scanLine(file InputFile) string {
+	if file.File == nil {
+		panic("file not open")
+	}
 	v, err := file.Reader.ReadString('\n')
 	if err != nil {
 		panic(err)
@@ -242,6 +272,9 @@ func scanLine(file InputFile) string {
 }
 
 func eof(file InputFile) bool {
+	if file.File == nil {
+		panic("file not open")
+	}
 	_, err := file.Reader.Peek(1)
 	return err == io.EOF
 }

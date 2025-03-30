@@ -259,6 +259,12 @@ func zeroValue(typ ast.Type) any {
 		return byte(0)
 	case ast.Boolean:
 		return false
+	case ast.OutputFile:
+		return lib.OutputFile{}
+	case ast.AppendFile:
+		return lib.AppendFile{}
+	case ast.InputFile:
+		return lib.InputFile{}
 	default:
 		panic(typ)
 	}

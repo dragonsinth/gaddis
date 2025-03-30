@@ -117,13 +117,18 @@ func IsOrderedType(typ Type) bool {
 }
 
 const (
-	InvalidFileType = FileType(iota)
-	OutputFile
-	AppendFile
-	InputFile
+	InvalidFileType = FileType(0)
+	OutputFile      = FileType(11)
+	AppendFile      = FileType(12)
+	InputFile       = FileType(13)
 )
 
-var fileTypeNames = [...]string{"INVALID_FILE", "OutputFile", "AppendFile", "InputFile"}
+var fileTypeNames = [...]string{
+	InvalidFileType: "INVALID_FILE",
+	OutputFile:      "OutputFile",
+	AppendFile:      "AppendFile",
+	InputFile:       "InputFile",
+}
 
 var _ Type = InvalidFileType
 

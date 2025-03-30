@@ -98,6 +98,8 @@ Should cover the whole language by May 2025.
   - Display/Read/Write
 
 ### Not yet supported
+- `Delete "filename"`
+- `Rename "oldname" "newname"`
 
 - Classes
   - `Class Classname ... End Class`

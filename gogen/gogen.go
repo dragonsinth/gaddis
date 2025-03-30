@@ -244,6 +244,8 @@ func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
 	os.File.Visit(v)
 	v.output(" = Open" + os.File.GetType().String())
 	v.output("(")
+	os.File.Visit(v)
+	v.output(", ")
 	os.Name.Visit(v)
 	v.output(")\n")
 	return false
@@ -843,6 +845,12 @@ func (v *Visitor) zero(typ ast.Type) {
 		v.output("false")
 	case ast.String:
 		v.output("\"\"")
+	case ast.OutputFile:
+		v.output("OutputFile{}")
+	case ast.AppendFile:
+		v.output("AppendFile{}")
+	case ast.InputFile:
+		v.output("InputFile{}")
 	default:
 		v.output("nil")
 	}

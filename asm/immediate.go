@@ -9,7 +9,7 @@ import (
 
 type Literal struct {
 	baseInst
-	Typ ast.PrimitiveType
+	Typ ast.Type
 	Val any
 	Id  int // only for strings
 }
@@ -19,29 +19,44 @@ func (i Literal) Exec(p *Execution) {
 }
 
 func (i Literal) String() string {
-	var str string
+	var typ, str string
 	switch i.Typ {
 	case ast.UnresolvedType:
+		typ = "unk"
 	case ast.Integer:
+		typ = "int"
 		str = strconv.FormatInt(i.Val.(int64), 10)
 	case ast.Real:
+		typ = "real"
 		str = strconv.FormatFloat(i.Val.(float64), 'g', -1, 64)
 	case ast.String:
+		typ = "str"
 		if i.Val == lib.TabDisplay {
 			str = "tab"
 		} else {
 			str = fmt.Sprintf("[%d]", i.Id)
 		}
 	case ast.Character:
+		typ = "chr"
 		str = strconv.QuoteRune(rune(i.Val.(byte)))
 	case ast.Boolean:
+		typ = "bool"
 		if i.Val.(bool) {
 			str = "true"
 		} else {
 			str = "false"
 		}
+	case ast.OutputFile:
+		typ = "out_file"
+		str = "{}"
+	case ast.AppendFile:
+		typ = "app_file"
+		str = "{}"
+	case ast.InputFile:
+		typ = "in_file"
+		str = "{}"
 	}
-	return fmt.Sprintf("literal %s %s", litTypes[i.Typ], str)
+	return fmt.Sprintf("literal %s %s", typ, str)
 }
 
 var litTypes = []string{
@@ -51,6 +66,9 @@ var litTypes = []string{
 	ast.String:         "str",
 	ast.Character:      "char",
 	ast.Boolean:        "bool",
+	ast.OutputFile:     "out_file",
+	ast.AppendFile:     "app_file",
+	ast.InputFile:      "in_file",
 }
 
 type GlobalRef struct {

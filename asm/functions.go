@@ -87,7 +87,11 @@ func (i LibCall) Exec(p *Execution) {
 		rArgs = append(rArgs, reflect.ValueOf(args))
 		ret = fn.CallSlice(rArgs)
 	} else {
-		ret = callWithReflection(fn, args)
+		rArgs := make([]reflect.Value, i.NArg)
+		for i, arg := range args {
+			rArgs[i] = reflect.ValueOf(arg)
+		}
+		ret = fn.Call(rArgs)
 	}
 
 	switch len(ret) {
@@ -105,30 +109,4 @@ func (i LibCall) String() string {
 
 func (i LibCall) Sym() string {
 	return i.Name
-}
-
-func callWithReflection(fn reflect.Value, args []interface{}) []reflect.Value {
-	rArgs := make([]reflect.Value, len(args))
-	for i, arg := range args {
-		if ptr, ok := arg.(*any); ok {
-			// Odd case, need to convert the `*any` to a pointer of the correct type for the function.
-			underlyingValue := *ptr
-			newPtr := reflect.New(fn.Type().In(i).Elem())
-			newPtr.Elem().Set(reflect.ValueOf(underlyingValue))
-			rArgs[i] = newPtr
-		} else {
-			rArgs[i] = reflect.ValueOf(arg)
-		}
-	}
-
-	ret := fn.Call(rArgs)
-
-	for i, arg := range args {
-		if ptr, ok := arg.(*any); ok {
-			// Copy the value of any translated pointers back through the original pointer.
-			*ptr = rArgs[i].Elem().Interface()
-		}
-	}
-
-	return ret
 }

@@ -100,15 +100,34 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 		return false
 	}
 	// emit an assignment
-	if vd.Expr != nil || len(vd.Dims) > 0 {
-		if vd.Expr != nil {
-			v.maybeCast(vd.Type, vd.Expr)
-		} else {
-			v.outputArrayInitializer(vd.SourceInfo, vd.Type.AsArrayType(), vd.Dims, nil)
+	if vd.Expr != nil {
+		v.maybeCast(vd.Type, vd.Expr)
+	} else if len(vd.Dims) > 0 {
+		v.outputArrayInitializer(vd.SourceInfo, vd.Type.AsArrayType(), vd.Dims, nil)
+	} else if vd.Type.IsFileType() {
+		switch vd.Type.AsFileType() {
+		case ast.OutputFile, ast.AppendFile:
+			v.code = append(v.code, Literal{
+				baseInst: baseInst{vd.SourceInfo},
+				Typ:      vd.Type,
+				Val:      lib.OutputFile{},
+				Id:       0,
+			})
+		case ast.InputFile:
+			v.code = append(v.code, Literal{
+				baseInst: baseInst{vd.SourceInfo},
+				Typ:      vd.Type,
+				Val:      lib.InputFile{},
+				Id:       0,
+			})
+		default:
+			panic(vd.Type)
 		}
-		v.varRefDecl(vd, vd, true)
-		v.store(vd)
+	} else {
+		return false // no initializer
 	}
+	v.varRefDecl(vd, vd, true)
+	v.store(vd)
 	return false
 }
 
@@ -180,6 +199,7 @@ func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression) {
 }
 
 func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
+	os.File.Visit(v)
 	os.Name.Visit(v)
 	name := "Open" + os.File.GetType().String()
 	v.code = append(v.code, LibCall{
@@ -187,7 +207,7 @@ func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
 		Name:     name,
 		Type:     os.File.GetType(),
 		Index:    lib.IndexOf(name),
-		NArg:     1,
+		NArg:     2,
 	})
 	v.varRef(os.File, true)
 	v.code = append(v.code, Store{baseInst{os.SourceInfo}})
@@ -611,7 +631,7 @@ func (v *Visitor) outputArrayInitializer(newLitSi ast.SourceInfo, t *ast.ArrayTy
 				v.maybeCast(typ, expr)
 				exprs = exprs[1:]
 			} else {
-				v.zero(newLitSi, typ.AsPrimitive())
+				v.zero(newLitSi, typ)
 			}
 		}
 	} else {
@@ -782,7 +802,7 @@ func (v *Visitor) refLabel(name string) *Label {
 	return v.labels[name]
 }
 
-func (v *Visitor) zero(si ast.SourceInfo, typ ast.PrimitiveType) {
+func (v *Visitor) zero(si ast.SourceInfo, typ ast.Type) {
 	v.code = append(v.code, Literal{
 		baseInst: baseInst{si},
 		Typ:      typ,

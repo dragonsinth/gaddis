@@ -394,12 +394,14 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 }
 
 func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
-	if typ.IsFileType() {
-		return p.parseFileVarDecl(typ.AsFileType(), isConst)
-	}
+	isFileType := typ.IsFileType()
 
 	r := p.parseTok(lex.IDENT)
 	rEnd := r
+
+	if isConst && isFileType {
+		panic(p.Errorf(r, "file types cannot be constant"))
+	}
 
 	var dims []ast.Expression
 	if !isConst {
@@ -414,7 +416,11 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 
 	si := spanResult(r, rEnd)
 	var expr ast.Expression
+
 	if p.hasTok(lex.ASSIGN) {
+		if isFileType {
+			panic(p.Errorf(r, "file types cannot have initializers"))
+		}
 		rAssign := p.parseTok(lex.ASSIGN)
 		if len(dims) > 0 {
 			expr = p.parseArrayInitializer(rAssign, typ.(*ast.ArrayType))
@@ -422,25 +428,11 @@ func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
 			expr = p.parseExpression()
 		}
 		si = spanAst(r, expr)
-	} else if !isConst {
-		expr = nil
-	} else {
+	} else if isConst {
 		r := p.Peek()
 		panic(p.Errorf(r, "expected constant initializer, got %s %q", r.Token, r.Text))
 	}
 	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, DimExprs: dims, Expr: expr, IsConst: isConst}
-}
-
-// special handling for these
-func (p *Parser) parseFileVarDecl(typ ast.FileType, isConst bool) *ast.VarDecl {
-	r := p.parseTok(lex.IDENT)
-	si := toSourceInfo(r)
-
-	if isConst {
-		panic(p.Errorf(r, "file types cannot be constant"))
-	}
-
-	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ}
 }
 
 func (p *Parser) parseParamDecl() *ast.VarDecl {

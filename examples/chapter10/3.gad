@@ -1,0 +1,4 @@
+Declare OutputFile x[3]
+Open x[0] "3.gad.dat"
+Write x[0] "hi"
+Close x[0]
