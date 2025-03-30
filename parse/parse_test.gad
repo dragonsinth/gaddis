@@ -167,6 +167,18 @@ Module files()
 	Print "hi"
 End Module
 
+Class Shape
+    Private String color
+
+    Public Module Shape(String c)
+        Set color = c
+    End Module
+
+    Public Function Real CalculateArea()
+        Return 0.0
+    End Function
+End Class
+
 
 // comment 1 at end of file
 

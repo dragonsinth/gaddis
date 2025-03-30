@@ -87,6 +87,12 @@ const (
 	OUTPUTFILE
 	INPUTFILE
 	APPENDMODE
+
+	CLASS
+	EXTENDS
+	PUBLIC
+	PRIVATE
+	NEW
 )
 
 var tokens = []string{
@@ -175,6 +181,12 @@ var tokens = []string{
 	OUTPUTFILE: "OUTPUTFILE",
 	INPUTFILE:  "INPUTFILE",
 	APPENDMODE: "APPENDMODE",
+
+	CLASS:   "CLASS",
+	EXTENDS: "EXTENDS",
+	PUBLIC:  "PUBLIC",
+	PRIVATE: "PRIVATE",
+	NEW:     "NEW",
 }
 
 var keywords = map[string]Token{
@@ -223,6 +235,11 @@ var keywords = map[string]Token{
 	"OutputFile": OUTPUTFILE,
 	"InputFile":  INPUTFILE,
 	"AppendMode": APPENDMODE,
+	"Class":      CLASS,
+	"Extends":    EXTENDS,
+	"Public":     PUBLIC,
+	"Private":    PRIVATE,
+	"New":        NEW,
 }
 
 func (t Token) String() string {
