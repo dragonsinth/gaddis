@@ -83,9 +83,14 @@ func (uo *UnaryOperation) GetType() Type {
 }
 
 func (uo *UnaryOperation) ConstEval() any {
+	expr := uo.Expr.ConstEval()
+	if expr == nil {
+		return nil
+	}
+
 	switch uo.Op {
 	case NEG:
-		switch v := uo.Expr.ConstEval().(type) {
+		switch v := expr.(type) {
 		case int64:
 			return -v
 		case float64:
@@ -94,7 +99,7 @@ func (uo *UnaryOperation) ConstEval() any {
 			panic(v)
 		}
 	case NOT:
-		switch v := uo.Expr.ConstEval().(type) {
+		switch v := expr.(type) {
 		case bool:
 			return !v
 		default:

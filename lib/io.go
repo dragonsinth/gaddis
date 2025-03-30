@@ -136,24 +136,24 @@ func (ctx ioContext) OpenInputFile(name string) InputFile {
 	if err != nil {
 		panic(err)
 	}
-	return InputFile{File: f, Scan: bufio.NewScanner(f)}
+	return InputFile{File: f, Reader: bufio.NewReader(f)}
 }
 
-func (ctx ioContext) CloseOutputFile(file OutputFile) {
+func CloseOutputFile(file OutputFile) {
 	err := file.File.Close()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (ctx ioContext) CloseInputFile(file InputFile) {
+func CloseInputFile(file InputFile) {
 	err := file.File.Close()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (ctx ioContext) WriteFile(of OutputFile, args ...any) {
+func WriteFile(of OutputFile, args ...any) {
 	file := of.File
 	for _, arg := range args {
 		var err error
@@ -185,8 +185,8 @@ func (ctx ioContext) WriteFile(of OutputFile, args ...any) {
 	}
 }
 
-func (ctx ioContext) ReadInteger(file InputFile) int64 {
-	input := ctx.scanLine(file)
+func ReadInteger(file InputFile) int64 {
+	input := scanLine(file)
 	v, err := strconv.ParseInt(input, 10, 64)
 	if err != nil {
 		panic(err)
@@ -194,8 +194,8 @@ func (ctx ioContext) ReadInteger(file InputFile) int64 {
 	return v
 }
 
-func (ctx ioContext) ReadReal(file InputFile) float64 {
-	input := ctx.scanLine(file)
+func ReadReal(file InputFile) float64 {
+	input := scanLine(file)
 	v, err := strconv.ParseFloat(input, 64)
 	if err != nil {
 		panic(err)
@@ -203,8 +203,8 @@ func (ctx ioContext) ReadReal(file InputFile) float64 {
 	return v
 }
 
-func (ctx ioContext) ReadString(file InputFile) string {
-	input := ctx.scanLine(file)
+func ReadString(file InputFile) string {
+	input := scanLine(file)
 	v, err := strconv.Unquote(input)
 	if err != nil {
 		panic(err)
@@ -212,8 +212,8 @@ func (ctx ioContext) ReadString(file InputFile) string {
 	return v
 }
 
-func (ctx ioContext) ReadCharacter(file InputFile) byte {
-	input := ctx.scanLine(file)
+func ReadCharacter(file InputFile) byte {
+	input := scanLine(file)
 	v, err := strconv.Unquote(input)
 	if err != nil {
 		panic(err)
@@ -224,8 +224,8 @@ func (ctx ioContext) ReadCharacter(file InputFile) byte {
 	return v[0]
 }
 
-func (ctx ioContext) ReadBoolean(file InputFile) bool {
-	input := ctx.scanLine(file)
+func ReadBoolean(file InputFile) bool {
+	input := scanLine(file)
 	v, err := strconv.ParseBool(input)
 	if err != nil {
 		panic(err)
@@ -233,14 +233,17 @@ func (ctx ioContext) ReadBoolean(file InputFile) bool {
 	return v
 }
 
-func (ctx ioContext) scanLine(file InputFile) string {
-	if !file.Scan.Scan() {
-		if err := file.Scan.Err(); err != nil {
-			panic(err)
-		}
-		panic(io.EOF)
+func scanLine(file InputFile) string {
+	v, err := file.Reader.ReadString('\n')
+	if err != nil {
+		panic(err)
 	}
-	return file.Scan.Text()
+	return v[:len(v)-1]
+}
+
+func eof(file InputFile) bool {
+	_, err := file.Reader.Peek(1)
+	return err == io.EOF
 }
 
 type tabDisplay struct{}
@@ -255,8 +258,8 @@ type OutputFile struct {
 type AppendFile = OutputFile
 
 type InputFile struct {
-	File *os.File
-	Scan *bufio.Scanner
+	File   *os.File
+	Reader *bufio.Reader
 }
 
 // BELOW: Used only by the gogen runtime.
@@ -295,16 +298,7 @@ var (
 	InputCharacter = ioCtx.InputCharacter
 	InputBoolean   = ioCtx.InputBoolean
 
-	OpenOutputFile  = ioCtx.OpenOutputFile
-	OpenAppendFile  = ioCtx.OpenAppendFile
-	OpenInputFile   = ioCtx.OpenInputFile
-	CloseOutputFile = ioCtx.CloseOutputFile
-	CloseInputFile  = ioCtx.CloseInputFile
-	WriteFile       = ioCtx.WriteFile
-
-	ReadInteger   = ioCtx.ReadInteger
-	ReadReal      = ioCtx.ReadReal
-	ReadString    = ioCtx.ReadString
-	ReadCharacter = ioCtx.ReadCharacter
-	ReadBoolean   = ioCtx.ReadBoolean
+	OpenOutputFile = ioCtx.OpenOutputFile
+	OpenAppendFile = ioCtx.OpenAppendFile
+	OpenInputFile  = ioCtx.OpenInputFile
 )

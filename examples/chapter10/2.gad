@@ -1,20 +1,20 @@
-Constant String FILE = "1.gad.dat"
+Constant String FILE = "2.gad.dat"
 Declare OutputFile out
 
 Open out FILE
 Write out 1, True, "Edmund Burke"
 Close out
 
-Call readAndPrint(1)
+Call readAndPrint()
 
 Declare OutputFile AppendMode app
 Open app FILE
 Write app 2, False, "Plato"
 Close app
 
-Call readAndPrint(2)
+Call readAndPrint()
 
-Module readAndPrint(Integer count)
+Module readAndPrint()
 	Declare InputFile in
 	Declare Integer a
 	Declare Boolean b
@@ -22,8 +22,8 @@ Module readAndPrint(Integer count)
 	Declare Integer i
 
 	Open in FILE
-	For i = 1 To count
+	While NOT eof(in)
 		Read in a, b, c
 		Display a, ", ", b, ", ", c
-	End For
+	End While
 End Module

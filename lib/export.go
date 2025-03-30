@@ -26,15 +26,15 @@ func CreateLibrary(iop IoProvider, rng RandContext) []Func {
 		ctx.OpenOutputFile,
 		ctx.OpenAppendFile,
 		ctx.OpenInputFile,
-		ctx.CloseOutputFile,
-		ctx.CloseInputFile,
-		ctx.WriteFile,
+		CloseOutputFile,
+		CloseInputFile,
+		WriteFile,
 
-		ctx.ReadInteger,
-		ctx.ReadReal,
-		ctx.ReadString,
-		ctx.ReadCharacter,
-		ctx.ReadBoolean,
+		ReadInteger,
+		ReadReal,
+		ReadString,
+		ReadCharacter,
+		ReadBoolean,
 
 		rng.random,
 	} {
@@ -100,6 +100,8 @@ func getEntries() []entry {
 		{"ReadBoolean", nil},
 
 		{"random", nil},
+
+		{"eof", eof},
 
 		{"sqrt", sqrt},
 		{"pow", pow},

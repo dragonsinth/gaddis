@@ -77,4 +77,8 @@ var reverseTypeMap = map[string]Type{
 	"string":  String,
 	"uint8":   Character,
 	"bool":    Boolean,
+
+	"lib.OutputFile": OutputFile,
+	"lib.AppendFile": AppendFile,
+	"lib.InputFile":  InputFile,
 }

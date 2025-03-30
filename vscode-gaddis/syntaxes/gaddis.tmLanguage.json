@@ -154,7 +154,7 @@
 			"patterns": [
 				{
 					"name": "support.function.gaddis",
-					"match": "\\b(Display|Input|Open|Read|Write|Close|Rename|Delete)\\b"
+					"match": "\\b(Display|Print|Input|Open|Read|Write|Close|Rename|Delete)\\b"
 				}
 			]
 		},

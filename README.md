@@ -90,9 +90,28 @@ Should cover the whole language by May 2025.
   - `String booleanToString(Boolean b)`?
   - Or should append(s, ?) take any type?
 
+- Consider enforcing field vs. record separators in file I/O.
+
+- Consider extending multi-line parsing/printing to all comma-delimited lists:
+  - parameter lists
+  - argument lists
+  - Display/Read/Write
+
 ### Not yet supported
 
 - Classes
+  - `Class Classname ... End Class`
+  - `Private String value`
+  - `Public Module ...` / `Public Function ...`
+  - `Set phone = New Phone()`
+  - variables are always references (pointers) like Java
+  - `Call phone.setNumber()` / `phone.getNumber()`
+  - `Public Module Phone([...args])` / default constructor.. assign zero values?
+  - `Class FinalExam extends GradedActivity...`
+  - Private members are not inherited
+  - Internal polymorphism is not defined!!!
+  - gogen:  define iface/struct hybrid for methods vs. fields
+  - asmgen: define class / super / vtable representation
 
 ## Errata / Differences from the Book
 
@@ -100,6 +119,7 @@ Gaddis Pseudocode is a bit underspecified, so I've had to make a few design choi
 and there, or fill in gaps. Here's some possible differences (or clarifications) from the book:
 
 - `Character` is an explicit type; character literals are denoted using single-quoted characters: `'X'`
+  - The book only mentions an explicit type in the index without examples; character literals are never defined.
 
 - `String` values are immutable and copy-on-write under the hood. Updating a string in any way
   creates a new `String` and assigns it back into the given reference; no other copies of the
@@ -148,6 +168,11 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   few initializer expressions are provided, the remainder of the array is filled with zero values.
   - This behavior is left unspecified.
 
+- Array initializers are currently the _only_ construct that may be parsed across multiple lines.
+  - There are explicit examples of this in the book.
+  - All other statements must appear on a single line!
+  - This restriction may be relaxed in the future for other kinds of comma-separated lists.
+
 - Arrays are deep copied when passed by value.
   - This is implied by the book but not explicitly stated.
 
@@ -168,3 +193,7 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - The book omits the `Call` keyword, which makes the syntax incompatible with the rest of the book.
 
 - `Print` just outputs to stderr; there is no printer support.
+
+- When reading and writing records with multiple fields using file I/O, there is no internal
+  distinction between field and record separation. Writing or Reading multiple values in a
+  single statement is equivalent to using multiple Write or Read statements.
