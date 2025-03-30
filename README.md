@@ -159,6 +159,10 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
 - Nested `Module` and `Function` declarations are not currently supported, but could be.
   - This is implied by the book but not explicitly stated.
 
+- Programs with a `Module main()` are still allowed to execute arbitrary statements in the global block.
+  - Global block statements first execute in lexical order, then `main()` is called afterward.
+  - The book is unclear on whether mixing global statements and `Module main()` is legal.
+
 - We implemented `Input` statements to loop until the user inputs a line that can be correctly
   parsed to the type of the input variable; e.g. a non-numeric input will loop and retry
   if the input variable is an `Integer`.
