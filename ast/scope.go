@@ -142,6 +142,16 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	vd.Scope = s
 }
 
+func (s *Scope) EnclosingClass() *ClassStmt {
+	for s != nil {
+		if s.ClassStmt != nil {
+			return s.ClassStmt
+		}
+		s = s.Parent
+	}
+	return nil
+}
+
 func NewGlobalScope(bl *Block) *Scope {
 	return &Scope{
 		SourceInfo: bl.SourceInfo,

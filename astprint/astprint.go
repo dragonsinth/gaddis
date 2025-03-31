@@ -388,7 +388,7 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 
 	if ms.IsPrivate {
 		v.output("Private ")
-	} else if ms.IsMethod {
+	} else if ms.IsMethod != nil {
 		v.output("Public ")
 	}
 
@@ -428,7 +428,7 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 
 	if fs.IsPrivate {
 		v.output("Private ")
-	} else if fs.IsMethod {
+	} else if fs.IsMethod != nil {
 		v.output("Public ")
 	}
 

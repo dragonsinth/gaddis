@@ -7,8 +7,8 @@ import (
 
 type varDeclOpts struct {
 	isConst   bool
-	isField   bool
 	isPrivate bool
+	isField   *ast.ClassType
 }
 
 func (p *Parser) parseVarDecl(typ ast.Type, opts varDeclOpts) *ast.VarDecl {

@@ -484,8 +484,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
 	if cs.Qualifier != nil {
 		if cs.Ref.IsConstructor {
-			classType := cs.Ref.Scope.Parent.ClassStmt.Type
-			v.maybeCast(classType, cs.Qualifier)
+			v.maybeCast(cs.Ref.IsMethod, cs.Qualifier)
 		} else {
 			cs.Qualifier.Visit(v)
 		}
@@ -517,9 +516,9 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.indent()
 	v.output("func ")
-	if ms.IsMethod {
+	if enc := ms.IsMethod; enc != nil {
 		v.output("(this *")
-		v.ident(ms.Scope.Parent.ClassStmt)
+		v.ident(enc)
 		v.output(") ")
 	}
 	v.ident(ms)
@@ -557,9 +556,9 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {}
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.indent()
 	v.output("func ")
-	if fs.IsMethod {
+	if enc := fs.IsMethod; enc != nil {
 		v.output("(this *")
-		v.ident(fs.Scope.Parent.ClassStmt)
+		v.ident(enc)
 		v.output(") ")
 	}
 	v.ident(fs)

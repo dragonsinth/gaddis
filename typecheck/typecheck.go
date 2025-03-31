@@ -270,13 +270,12 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
 
 	// check the number and type of each argument
 	cs.Ref = decl.ModuleStmt
-	if decl.ModuleStmt.IsMethod && cs.Qualifier == nil {
+	if decl.ModuleStmt.IsMethod != nil && cs.Qualifier == nil {
 		// synthesize this ref of the immediate enclosing class type
 		cs.Qualifier = &ast.ThisRef{
 			SourceInfo: cs.Head(),
-			Type:       v.Scope().Parent.ClassStmt.Type,
+			Type:       v.Scope().EnclosingClass().Type,
 		}
-
 	}
 	v.checkArgumentList(cs, cs.Args, cs.Ref.Params)
 }
@@ -417,11 +416,11 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 		return
 	}
 
-	if decl.VarDecl.IsField && ve.Qualifier == nil {
+	if decl.VarDecl.IsField != nil && ve.Qualifier == nil {
 		// synthesize this ref of the immediate enclosing class type
 		ve.Qualifier = &ast.ThisRef{
 			SourceInfo: ve.Head(),
-			Type:       v.Scope().Parent.ClassStmt.Type,
+			Type:       v.Scope().EnclosingClass().Type,
 		}
 	}
 
@@ -452,11 +451,11 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 		return
 	}
 
-	if decl.FunctionStmt.IsMethod && ce.Qualifier == nil {
+	if decl.FunctionStmt.IsMethod != nil && ce.Qualifier == nil {
 		// synthesize this ref of the immediate enclosing class type
 		ce.Qualifier = &ast.ThisRef{
 			SourceInfo: ce.Head(),
-			Type:       v.Scope().Parent.ClassStmt.Type,
+			Type:       v.Scope().EnclosingClass().Type,
 		}
 	}
 
@@ -530,11 +529,8 @@ func (v *Visitor) qualifiedLookup(qual ast.Expression, name string) *ast.Decl {
 		v.Errorf(qual, "expected qualifier to be class type, got: %s", qualType)
 		return nil
 	}
-	ct := qualType.AsClassType()
-	classDecl := v.globalScope.Lookup(ct.String()) // this should not fail
-
-	for scope := classDecl.ClassStmt.Scope; !scope.IsGlobal; scope = scope.Parent {
-		if decl := scope.Decls[name]; decl != nil {
+	for ct := qualType.AsClassType(); ct != nil; ct = ct.Extends {
+		if decl := ct.Scope.Decls[name]; decl != nil {
 			return decl
 		}
 	}

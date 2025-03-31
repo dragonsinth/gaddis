@@ -102,6 +102,8 @@ func (t *ArrayType) isType() {
 type ClassType struct {
 	TypeKey TypeKey
 	Extends *ClassType
+	Class   *ClassStmt
+	Scope   *Scope
 }
 
 func (t *ClassType) Key() TypeKey {

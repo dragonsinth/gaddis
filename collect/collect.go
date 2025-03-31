@@ -32,6 +32,8 @@ func createClassScope(classes map[string]*ast.ClassStmt, stmt *ast.ClassStmt, gl
 		parentScope = parent.Scope
 	}
 	stmt.Scope = ast.NewClassScope(stmt, parentScope)
+	stmt.Type.Class = stmt
+	stmt.Type.Scope = stmt.Scope
 }
 
 type ClassCollector struct {
@@ -54,7 +56,7 @@ var _ ast.Visitor = &Visitor{}
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
 	if existing := v.Scope().Decls[vd.Name]; existing != nil {
 		v.Errorf(vd, "symbol %s redeclared in this scope; previous declaration: %s", vd.Name, existing.String())
-	} else if v.isEnclosingClass(vd.Name) {
+	} else if nameMatchesClass(vd, vd.IsField) {
 		v.Errorf(vd, "only a constructor is allowed to use the name of the enclosing class")
 	} else {
 		v.Scope().AddVariable(vd)
@@ -72,7 +74,7 @@ func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
 	if existing := v.Scope().Decls[ms.Name]; existing != nil {
 		v.Errorf(ms, "symbol %s redeclared in this scope; previous declaration: %s", ms.Name, existing)
 	} else {
-		if v.isEnclosingClass(ms.Name) {
+		if nameMatchesClass(ms, ms.IsMethod) {
 			ms.IsConstructor = true
 		}
 		v.Scope().AddModule(ms)
@@ -89,7 +91,7 @@ func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
 	v.PopScope()
 	if existing := v.Scope().Decls[fs.Name]; existing != nil {
 		v.Errorf(fs, "symbol %s redeclared in this scope; previous declaration: %s", fs.Name, existing)
-	} else if v.isEnclosingClass(fs.Name) {
+	} else if nameMatchesClass(fs, fs.IsMethod) {
 		v.Errorf(fs, "only a constructor is allowed to use the name of the enclosing class")
 	} else {
 		v.Scope().AddFunction(fs)
@@ -110,9 +112,6 @@ func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {
 	}
 }
 
-func (v *Visitor) isEnclosingClass(name string) bool {
-	if cs := v.Scope().ClassStmt; cs != nil {
-		return cs.Name == name
-	}
-	return false
+func nameMatchesClass(named ast.HasName, class *ast.ClassType) bool {
+	return class != nil && class.GetName() == named.GetName()
 }

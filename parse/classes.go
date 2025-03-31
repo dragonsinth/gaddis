@@ -41,7 +41,7 @@ func (p *Parser) parseClassBody(r lex.Result) *ast.ClassStmt {
 			}
 		}
 
-		st := p.safeParseClassElement()
+		st := p.safeParseClassElement(classType)
 		if _, ok := st.(EmptyStatement); ok {
 			// nothing
 		} else if st != nil {
@@ -59,7 +59,7 @@ func (p *Parser) parseClassBody(r lex.Result) *ast.ClassStmt {
 	}
 }
 
-func (p *Parser) safeParseClassElement() ast.Statement {
+func (p *Parser) safeParseClassElement(enclosing *ast.ClassType) ast.Statement {
 	defer func() {
 		if e := recover(); e != nil {
 			if pe, ok := e.(ast.Error); ok {
@@ -70,10 +70,10 @@ func (p *Parser) safeParseClassElement() ast.Statement {
 		}
 	}()
 
-	return p.parseClassElement()
+	return p.parseClassElement(enclosing)
 }
 
-func (p *Parser) parseClassElement() ast.Statement {
+func (p *Parser) parseClassElement(enclosing *ast.ClassType) ast.Statement {
 	r := p.Next()
 	isPrivate := false
 	switch r.Token {
@@ -91,13 +91,13 @@ func (p *Parser) parseClassElement() ast.Statement {
 	case lex.MODULE:
 		p.Next()
 		ms := p.parseModuleStmt(r)
-		ms.IsMethod = true
+		ms.IsMethod = enclosing
 		ms.IsPrivate = isPrivate
 		return ms
 	case lex.FUNCTION:
 		p.Next()
 		fs := p.parseFunctionStmt(r)
-		fs.IsMethod = true
+		fs.IsMethod = enclosing
 		fs.IsPrivate = isPrivate
 		return fs
 	default:
@@ -108,11 +108,11 @@ func (p *Parser) parseClassElement() ast.Statement {
 		}
 
 		var decls []*ast.VarDecl
-		lastDecl := p.parseVarDecl(typ, varDeclOpts{isField: true, isPrivate: isPrivate})
+		lastDecl := p.parseVarDecl(typ, varDeclOpts{isField: enclosing, isPrivate: isPrivate})
 		decls = append(decls, lastDecl)
 		for p.hasTok(lex.COMMA) {
 			p.parseTok(lex.COMMA)
-			lastDecl = p.parseVarDecl(typ, varDeclOpts{isField: true, isPrivate: isPrivate})
+			lastDecl = p.parseVarDecl(typ, varDeclOpts{isField: enclosing, isPrivate: isPrivate})
 			decls = append(decls, lastDecl)
 		}
 		return &ast.DeclareStmt{
