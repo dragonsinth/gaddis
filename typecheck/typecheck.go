@@ -5,15 +5,24 @@ import (
 	"github.com/dragonsinth/gaddis/base"
 )
 
-func TypeCheck(node ast.Node) []ast.Error {
-	// visit the statements in the global block
+// TODO(scottb): access control checking!!
+
+func TypeCheck(node ast.Node, scope *ast.Scope) []ast.Error {
 	v := &Visitor{}
+	for s := scope; true; s = s.Parent {
+		if s.IsGlobal {
+			v.globalScope = scope
+			break
+		}
+	}
+	v.PushScope(scope)
 	node.Visit(v)
 	return v.Errors
 }
 
 type Visitor struct {
 	base.Visitor
+	globalScope *ast.Scope
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -239,16 +248,79 @@ func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 }
 
 func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
+	var decl *ast.Decl
+	if cs.Qualifier == nil {
+		decl = v.Scope().Lookup(cs.Name)
+		if decl == nil {
+			v.Errorf(cs, "unresolved symbol: %s", cs.Name)
+			return
+		}
+	} else {
+		decl = v.qualifiedLookup(cs.Qualifier, cs.Name)
+		if decl == nil {
+			v.Errorf(cs, "unresolved symbol: %s in Type %s", cs.Name, cs.Qualifier.GetType())
+			return
+		}
+	}
+
+	if decl.ModuleStmt == nil {
+		v.Errorf(cs, "expected Module ref, got: %s", decl)
+		return
+	}
+
 	// check the number and type of each argument
+	cs.Ref = decl.ModuleStmt
+	if decl.ModuleStmt.IsMethod && cs.Qualifier == nil {
+		// synthesize this ref of the immediate enclosing class type
+		cs.Qualifier = &ast.ThisRef{
+			SourceInfo: cs.Head(),
+			Type:       v.Scope().Parent.ClassStmt.Type,
+		}
+
+	}
 	v.checkArgumentList(cs, cs.Args, cs.Ref.Params)
 }
 
+func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
+	v.PushScope(ms.Scope)
+	return true
+}
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
+	v.PopScope()
+}
+
 func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
+	ref := v.Scope().FunctionStmt
+	if ref == nil {
+		v.Errorf(rs, "return statement without enclosing Function")
+	} else {
+		rs.Ref = ref
+	}
+
 	returnType := rs.Ref.Type
 	exprType := rs.Expr.GetType()
 	if !ast.CanCoerce(returnType, exprType) {
 		v.Errorf(rs.Expr, "return: %s not assignable to %s", exprType, returnType)
 	}
+}
+
+func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
+	v.PushScope(fs.Scope)
+	return true
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+	v.PopScope()
+}
+
+func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	v.PushScope(cs.Scope)
+	return true
+}
+
+func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {
+	v.PopScope()
 }
 
 func (v *Visitor) PostVisitUnaryOperation(uo *ast.UnaryOperation) {
@@ -323,14 +395,74 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
+	ve.Type = ast.UnresolvedType
+
+	var decl *ast.Decl
+	if ve.Qualifier == nil {
+		decl = v.Scope().Lookup(ve.Name)
+		if decl == nil {
+			v.Errorf(ve, "unresolved symbol: %s", ve.Name)
+			return
+		}
+	} else {
+		decl = v.qualifiedLookup(ve.Qualifier, ve.Name)
+		if decl == nil {
+			v.Errorf(ve, "unresolved symbol: %s in Type %s", ve.Name, ve.Qualifier.GetType())
+			return
+		}
+	}
+
+	if decl.VarDecl == nil {
+		v.Errorf(ve, "expected variable ref, got: %s", decl)
+		return
+	}
+
+	if decl.VarDecl.IsField && ve.Qualifier == nil {
+		// synthesize this ref of the immediate enclosing class type
+		ve.Qualifier = &ast.ThisRef{
+			SourceInfo: ve.Head(),
+			Type:       v.Scope().Parent.ClassStmt.Type,
+		}
+	}
+
+	ve.Ref = decl.VarDecl
 	ve.Type = ve.Ref.Type
 }
 
 func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
-	// Assign the return type.
-	ce.Type = ce.Ref.Type
+	ce.Type = ast.UnresolvedType
 
-	// check the number and type of each argument
+	var decl *ast.Decl
+	if ce.Qualifier == nil {
+		decl = v.Scope().Lookup(ce.Name)
+		if decl == nil {
+			v.Errorf(ce, "unresolved symbol: %s", ce.Name)
+			return
+		}
+	} else {
+		decl = v.qualifiedLookup(ce.Qualifier, ce.Name)
+		if decl == nil {
+			v.Errorf(ce, "unresolved symbol: %s in Type %s", ce.Name, ce.Qualifier.GetType())
+			return
+		}
+	}
+
+	if decl.FunctionStmt == nil {
+		v.Errorf(ce, "expected Function ref, got: %s", decl)
+		return
+	}
+
+	if decl.FunctionStmt.IsMethod && ce.Qualifier == nil {
+		// synthesize this ref of the immediate enclosing class type
+		ce.Qualifier = &ast.ThisRef{
+			SourceInfo: ce.Head(),
+			Type:       v.Scope().Parent.ClassStmt.Type,
+		}
+	}
+
+	// Assign the return type, check the number and type of each argument
+	ce.Ref = decl.FunctionStmt
+	ce.Type = ce.Ref.Type
 	v.checkArgumentList(ce, ce.Args, ce.Ref.Params)
 }
 
@@ -341,6 +473,7 @@ func (v *Visitor) PostVisitArrayRef(ar *ast.ArrayRef) {
 
 	if refType := ar.Qualifier.GetType(); refType == ast.UnresolvedType {
 		// reduce error spam
+		ar.Type = ast.UnresolvedType
 	} else if refType == ast.String {
 		ar.Type = ast.Character
 	} else if refType.IsArrayType() {
@@ -357,6 +490,55 @@ func (v *Visitor) PostArrayInitializer(ar *ast.ArrayInitializer) {
 			v.Errorf(arg, "initializer %d: %s is not assignable to %s", i+1, arg.GetType(), typ)
 		}
 	}
+}
+
+func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+	ne.Type = ast.UnresolvedType
+
+	classDecl := v.globalScope.Lookup(ne.Name)
+	if classDecl == nil {
+		v.Errorf(ne, "unresolved symbol: %s", ne.Name)
+		return
+	}
+	cls := classDecl.ClassStmt
+	if cls == nil {
+		v.Errorf(ne, "expected Class type, got %s", classDecl)
+		return
+	}
+	// find the actual constructor
+	modDecl := cls.Scope.Decls[ne.Name]
+	if modDecl == nil {
+		// There's no constructor; assume a default constructor
+		if len(ne.Args) > 0 {
+			v.Errorf(ne, "expected 0 args, got %d", len(ne.Args))
+		}
+		return
+	}
+
+	ne.Type = cls.Type
+	ctor := modDecl.ModuleStmt
+	ne.Ctor = ctor
+	v.checkArgumentList(ne, ne.Args, ctor.Params)
+}
+
+func (v *Visitor) qualifiedLookup(qual ast.Expression, name string) *ast.Decl {
+	qualType := qual.GetType()
+	if qualType == ast.UnresolvedType {
+		return nil
+	}
+	if !qualType.IsClassType() {
+		v.Errorf(qual, "expected qualifier to be class type, got: %s", qualType)
+		return nil
+	}
+	ct := qualType.AsClassType()
+	classDecl := v.globalScope.Lookup(ct.String()) // this should not fail
+
+	for scope := classDecl.ClassStmt.Scope; !scope.IsGlobal; scope = scope.Parent {
+		if decl := scope.Decls[name]; decl != nil {
+			return decl
+		}
+	}
+	return nil
 }
 
 func (v *Visitor) checkArgumentList(si ast.HasSourceInfo, args []ast.Expression, params []*ast.VarDecl) {

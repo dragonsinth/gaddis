@@ -7,9 +7,29 @@ import (
 
 type Visitor struct {
 	Errors []ast.Error
+	scope  *ast.Scope
+	scopes []*ast.Scope
 }
 
-var _ ast.Visitor = &Visitor{}
+func (v *Visitor) Scope() *ast.Scope {
+	return v.scope
+}
+
+func (v *Visitor) PushScope(scope *ast.Scope) {
+	v.scopes = append(v.scopes, scope)
+	v.scope = scope
+}
+
+func (v *Visitor) PopScope() {
+	v.scopes = v.scopes[:len(v.scopes)-1]
+	if len(v.scopes) == 0 {
+		v.scope = nil
+	} else {
+		v.scope = v.scopes[len(v.scopes)-1]
+	}
+}
+
+var _ ast.ScopeVisitor = &Visitor{}
 
 func (v *Visitor) PreVisitBlock(bl *ast.Block) bool {
 	return true
@@ -131,15 +151,15 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
-func (v *Visitor) PreVisitLiteral(i *ast.Literal) bool {
-	return true
-}
-
 func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
 	return true
 }
 
 func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {
+}
+
+func (v *Visitor) PreVisitLiteral(i *ast.Literal) bool {
+	return true
 }
 
 func (v *Visitor) PostVisitLiteral(i *ast.Literal) {}
@@ -191,7 +211,13 @@ func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
 }
 
 func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+}
 
+func (v *Visitor) PreVisitThisRef(ref *ast.ThisRef) bool {
+	return true
+}
+
+func (v *Visitor) PostVisitThisRef(ref *ast.ThisRef) {
 }
 
 func (v *Visitor) Errorf(si ast.HasSourceInfo, fmtStr string, args ...any) {

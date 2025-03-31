@@ -7,7 +7,7 @@ import (
 )
 
 func Assemble(prog *ast.Program) *Assembly {
-	tv := &TempVisitor{currScope: prog.Scope}
+	tv := &TempVisitor{}
 	prog.Visit(tv)
 
 	v := &Visitor{}
@@ -210,7 +210,7 @@ func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
 		NArg:     2,
 	})
 	v.varRef(os.File, true)
-	v.code = append(v.code, Store{baseInst{os.SourceInfo}})
+	v.store(os)
 	return false
 }
 
@@ -244,7 +244,7 @@ func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
 			NArg:     1,
 		})
 		v.varRef(arg, true)
-		v.code = append(v.code, Store{baseInst{rs.GetSourceInfo()}})
+		v.store(rs)
 	}
 	return false
 }

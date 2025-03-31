@@ -268,9 +268,10 @@ type ModuleStmt struct {
 	Params []*VarDecl
 	Block  *Block
 
-	IsExternal bool
-	IsMethod   bool
-	IsPrivate  bool
+	IsExternal    bool
+	IsMethod      bool
+	IsPrivate     bool
+	IsConstructor bool
 
 	Scope *Scope // collect
 }

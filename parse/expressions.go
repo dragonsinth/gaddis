@@ -49,20 +49,18 @@ func (p *Parser) parseBinaryOperations(level int) ast.Expression {
 }
 
 func (p *Parser) parseUnaryOperations() ast.Expression {
-	for {
-		r := p.Peek()
-		switch r.Token {
-		case lex.NOT:
-			p.Next()
-			expr := p.parseUnaryOperations()
-			return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
-		case lex.SUB:
-			p.Next()
-			expr := p.parseUnaryOperations()
-			return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: ast.UnresolvedType, Expr: expr}
-		default:
-			return p.parsePostfixOps()
-		}
+	r := p.Peek()
+	switch r.Token {
+	case lex.NOT:
+		p.Next()
+		expr := p.parseUnaryOperations()
+		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
+	case lex.SUB:
+		p.Next()
+		expr := p.parseUnaryOperations()
+		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: ast.UnresolvedType, Expr: expr}
+	default:
+		return p.parsePostfixOps()
 	}
 }
 
@@ -91,7 +89,7 @@ func (p *Parser) parsePostfixOps() ast.Expression {
 			args := p.parseCommaExpressions(lex.RPAREN)
 			rEnd := p.parseTok(lex.RPAREN)
 			// Promote the variable reference to a call expression.
-			return &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: varRef.Name, Qualifier: varRef.Qualifier, Args: args}
+			expr = &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: varRef.Name, Qualifier: varRef.Qualifier, Args: args}
 		default:
 			return expr
 		}

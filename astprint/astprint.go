@@ -369,7 +369,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	defer v.eol(cs.End)
 
 	v.output("Call ")
-	if cs.Qualifier != nil {
+	if shouldPrintQualifier(cs.Qualifier) {
 		cs.Qualifier.Visit(v)
 		v.output(".")
 	}
@@ -453,10 +453,10 @@ func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
 	defer v.eol(cs.End)
 
 	v.output("Class ")
-	v.output(cs.Typ.String())
-	if cs.Typ.Extends != nil {
+	v.output(cs.Name)
+	if cs.Extends != "" {
 		v.output(" Extends ")
-		v.output(cs.Typ.Extends.String())
+		v.output(cs.Extends)
 	}
 	v.eol(cs.Start)
 
@@ -535,7 +535,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
-	if ve.Qualifier != nil {
+	if shouldPrintQualifier(ve.Qualifier) {
 		ve.Qualifier.Visit(v)
 		v.output(".")
 	}
@@ -547,7 +547,7 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
-	if ce.Qualifier != nil {
+	if shouldPrintQualifier(ce.Qualifier) {
 		ce.Qualifier.Visit(v)
 		v.output(".")
 	}
@@ -622,6 +622,13 @@ func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
 }
 
 func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+}
+
+func (v *Visitor) PreVisitThisRef(ref *ast.ThisRef) bool {
+	panic("implement me")
+}
+
+func (v *Visitor) PostVisitThisRef(ref *ast.ThisRef) {
 }
 
 func (v *Visitor) outputArguments(hdr string, exprs []ast.Expression) {
@@ -723,4 +730,14 @@ func commentText(comment ast.Comment) string {
 	text = strings.TrimPrefix(text, "//")
 	text = strings.TrimSpace(text)
 	return text
+}
+
+func shouldPrintQualifier(qualifier ast.Expression) bool {
+	if qualifier == nil {
+		return false
+	}
+	if _, ok := qualifier.(*ast.ThisRef); ok {
+		return false
+	}
+	return true
 }

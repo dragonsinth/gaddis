@@ -91,4 +91,14 @@ type Visitor interface {
 
 	PreVisitNewExpr(ne *NewExpr) bool
 	PostVisitNewExpr(ne *NewExpr)
+
+	PreVisitThisRef(ref *ThisRef) bool
+	PostVisitThisRef(ref *ThisRef)
+}
+
+type ScopeVisitor interface {
+	Visitor
+	PushScope(*Scope)
+	PopScope()
+	Scope() *Scope
 }

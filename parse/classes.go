@@ -33,7 +33,9 @@ func (p *Parser) parseClassBody(r lex.Result) *ast.ClassStmt {
 			}
 			return &ast.ClassStmt{
 				SourceInfo: spanResult(r, rEnd),
-				Typ:        classType,
+				Name:       name,
+				Extends:    extends,
+				Type:       classType,
 				Block:      &ast.Block{SourceInfo: si, Statements: stmts},
 				Scope:      nil,
 			}

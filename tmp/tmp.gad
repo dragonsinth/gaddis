@@ -7,8 +7,12 @@ Class Shape
 		Set color = c
 	End Module
 
+	Public Module SetColor(String c)
+		Set color = c
+	End Module
+
 	Public Function Real CalculateArea()
-		Return 0.0
+		Return 0
 	End Function
 End Class
 
@@ -20,10 +24,6 @@ Class Rectangle Extends Shape
 		Call Shape(c)
 		Set width = w
 		Set height = h
-	End Module
-
-	Public Module SetColor(String c)
-		Set color = c
 	End Module
 
 	Public Function Real CalculateArea()
@@ -50,13 +50,13 @@ Class Circle Extends Shape
 	End Function
 End Class
 
-Module Main()
+Module main()
 	Declare Rectangle rect
 	Declare Circle circle
-	Declare Square square = New Square("green", 4.0)
+	Declare Square square = New Square("green", 4)
 
-	Set rect = New Rectangle("red", 2.0, 3.0)
-	Set circle = New Circle("blue", 1.0)
+	Set rect = New Rectangle("red", 2, 3)
+	Set circle = New Circle("blue", 1)
 
 	Call DescribeShape(rect)
 	Call DescribeShape(circle)

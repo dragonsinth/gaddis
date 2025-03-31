@@ -270,7 +270,7 @@ type NewExpr struct {
 	Args []Expression
 
 	Ctor *ModuleStmt // resolve
-	Type *ClassType  // type checking
+	Type Type        // type checking
 }
 
 func (ne *NewExpr) Visit(v Visitor) {

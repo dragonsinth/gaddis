@@ -132,6 +132,8 @@ func (t *ClassType) AsFileType() FileType { return InvalidFileType }
 
 func (t *ClassType) BaseType() Type { return t }
 
+func (t *ClassType) GetName() string { return string(t.TypeKey) }
+
 func (t *ClassType) isType() {
 }
 
@@ -187,7 +189,24 @@ func CanCoerce(dst Type, src Type) bool {
 	if dst == Real && src == Integer {
 		return true // promote
 	}
-	// TODO: class types
+	if IsSubclass(dst, src) {
+		return true
+	}
+	return false
+}
+
+func IsSubclass(dst Type, src Type) bool {
+	if dst == src {
+		return false
+	}
+	if !dst.IsClassType() || !src.IsClassType() {
+		return false
+	}
+	for p := src.AsClassType(); p != nil; p = p.Extends {
+		if dst == p {
+			return true
+		}
+	}
 	return false
 }
 

@@ -13,6 +13,7 @@ type Scope struct {
 	IsEval       bool
 	ModuleStmt   *ModuleStmt   // if true, enclosing module
 	FunctionStmt *FunctionStmt // if true, enclosing function
+	ClassStmt    *ClassStmt    // if true, enclosing class
 	Decls        map[string]*Decl
 	Params       []*VarDecl
 	Locals       []*VarDecl
@@ -29,6 +30,8 @@ func (s *Scope) Desc() string {
 		return fmt.Sprintf("%s()", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
 		return fmt.Sprintf("%s()", s.FunctionStmt.Name)
+	} else if s.ClassStmt != nil {
+		return s.ClassStmt.Name
 	} else {
 		panic("unset")
 	}
@@ -45,6 +48,8 @@ func (s *Scope) String() string {
 		return fmt.Sprintf("Module %s", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
 		return fmt.Sprintf("Function %s %s", s.FunctionStmt.Type, s.FunctionStmt.Name)
+	} else if s.ClassStmt != nil {
+		return fmt.Sprintf("Class %s", s.ClassStmt.Name)
 	} else {
 		panic("unset")
 	}
@@ -53,6 +58,7 @@ func (s *Scope) String() string {
 type Decl struct {
 	ModuleStmt   *ModuleStmt
 	FunctionStmt *FunctionStmt
+	ClassStmt    *ClassStmt
 	VarDecl      *VarDecl
 }
 
@@ -65,6 +71,8 @@ func (d *Decl) String() string {
 		} else {
 			return fmt.Sprintf("Function %s %s", d.FunctionStmt.Type, d.FunctionStmt.Name)
 		}
+	} else if d.ClassStmt != nil {
+		return fmt.Sprintf("Class %s", d.ClassStmt.Name)
 	} else if d.VarDecl != nil {
 		if d.VarDecl.IsParam {
 			if d.VarDecl.IsRef {
@@ -106,6 +114,14 @@ func (s *Scope) AddFunction(fs *FunctionStmt) {
 		panic(name)
 	}
 	s.Decls[name] = &Decl{FunctionStmt: fs}
+}
+
+func (s *Scope) AddClass(cs *ClassStmt) {
+	name := cs.Name
+	if s.Decls[name] != nil {
+		panic(name)
+	}
+	s.Decls[name] = &Decl{ClassStmt: cs}
 }
 
 func (s *Scope) AddVariable(vd *VarDecl) {
@@ -150,6 +166,15 @@ func NewFunctionScope(fs *FunctionStmt, parent *Scope) *Scope {
 		Parent:       parent,
 		FunctionStmt: fs,
 		Decls:        map[string]*Decl{},
+	}
+}
+
+func NewClassScope(cs *ClassStmt, parent *Scope) *Scope {
+	return &Scope{
+		SourceInfo: cs.Block.SourceInfo,
+		Parent:     parent,
+		ClassStmt:  cs,
+		Decls:      map[string]*Decl{},
 	}
 }
 

@@ -1,17 +1,18 @@
 package gogen
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/lib"
 	"io"
 	"slices"
 	"strconv"
-	"strings"
+	"text/template"
 )
 
 func GoGenerate(prog *ast.Program, isTest bool) string {
-	var sb strings.Builder
+	var sb bytes.Buffer
 	sb.WriteString("package main\n")
 
 	var imports, code []string
@@ -56,7 +57,7 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 				v.typeName(decl.Type)
 				v.output("\n")
 			}
-		case *ast.ModuleStmt, *ast.FunctionStmt:
+		case *ast.ModuleStmt, *ast.FunctionStmt, *ast.ClassStmt:
 			stmt.Visit(v)
 		default:
 			// nothing
@@ -88,7 +89,7 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 					v.output("\n")
 				}
 			}
-		case *ast.ModuleStmt, *ast.FunctionStmt:
+		case *ast.ModuleStmt, *ast.FunctionStmt, *ast.ClassStmt:
 			// nothing
 		default:
 			stmt.Visit(v)
@@ -105,7 +106,12 @@ func GoGenerate(prog *ast.Program, isTest bool) string {
 	return sb.String()
 }
 
-func New(indent string, out io.StringWriter) *Visitor {
+type sw interface {
+	io.Writer
+	io.StringWriter
+}
+
+func New(indent string, out sw) *Visitor {
 	return &Visitor{
 		ind: indent,
 		out: out,
@@ -114,7 +120,7 @@ func New(indent string, out io.StringWriter) *Visitor {
 
 type Visitor struct {
 	ind string
-	out io.StringWriter
+	out sw
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -476,6 +482,18 @@ func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
+	if cs.Qualifier != nil {
+		if cs.Ref.IsConstructor {
+			classType := cs.Ref.Scope.Parent.ClassStmt.Type
+			v.maybeCast(classType, cs.Qualifier)
+		} else {
+			cs.Qualifier.Visit(v)
+		}
+		v.output(".")
+		if !cs.Ref.IsConstructor {
+			v.output("face.")
+		}
+	}
 	if cs.Ref.IsExternal {
 		name := cs.Ref.Name
 		if name == "delete" || name == "insert" {
@@ -488,8 +506,9 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	} else {
 		v.ident(cs.Ref)
 	}
-	v.outputArguments(cs.Args, cs.Ref.Params)
-	v.output("\n")
+	v.output("(")
+	v.outputArgumentList(cs.Args, cs.Ref.Params)
+	v.output(")\n")
 	return false
 }
 
@@ -498,16 +517,25 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.indent()
 	v.output("func ")
+	if ms.IsMethod {
+		v.output("(this *")
+		v.ident(ms.Scope.Parent.ClassStmt)
+		v.output(") ")
+	}
 	v.ident(ms)
 	v.output("(")
-	for i, param := range ms.Params {
-		if i > 0 {
-			v.output(", ")
-		}
-		param.Visit(v)
+	v.outputParameterList(ms.Params)
+	v.output(")")
+	if ms.IsConstructor {
+		v.output(" *")
+		v.ident(ms.Scope.Parent.ClassStmt)
 	}
-	v.output(") {\n")
+	v.output(" {\n")
 	ms.Block.Visit(v)
+	if ms.IsConstructor {
+		v.indent()
+		v.output("\treturn this\n")
+	}
 	v.indent()
 	v.output("}\n")
 
@@ -529,14 +557,14 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {}
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.indent()
 	v.output("func ")
+	if fs.IsMethod {
+		v.output("(this *")
+		v.ident(fs.Scope.Parent.ClassStmt)
+		v.output(") ")
+	}
 	v.ident(fs)
 	v.output("(")
-	for i, param := range fs.Params {
-		if i > 0 {
-			v.output(", ")
-		}
-		param.Visit(v)
-	}
+	v.outputParameterList(fs.Params)
 	v.output(") ")
 	v.typeName(fs.Type)
 	v.output("{\n")
@@ -550,8 +578,127 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {}
 
 func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	// This gets super, super weird.
+	// First, emit the interface def.
+	v.output("type I")
+	v.output(cs.Name)
+	v.output(" interface {\n")
+	if cs.Extends != "" {
+		v.output("\tI")
+		v.output(cs.Extends)
+		v.output("\n")
+	}
+	for _, stmt := range cs.Block.Statements {
+		switch stmt := stmt.(type) {
+		case *ast.ModuleStmt:
+			if stmt.IsConstructor {
+				continue
+			}
+			v.output("\t")
+			v.ident(stmt)
+			v.output("(")
+			v.outputParameterList(stmt.Params)
+			v.output(")\n")
+		case *ast.FunctionStmt:
+			v.output("\t")
+			v.ident(stmt)
+			v.output("(")
+			v.outputParameterList(stmt.Params)
+			v.output(") ")
+			v.typeName(stmt.Type)
+			v.output("\n")
+		}
+	}
+	v.output("}\n")
+
+	// Next, emit the struct def.
+	v.output("type ")
+	v.ident(cs)
+	v.output(" struct {\n")
+
+	if cs.Extends != "" {
+		v.output("\t")
+		v.output(cs.Extends)
+		v.output("_\n")
+	}
+
+	v.output("\tface I")
+	v.output(cs.Name)
+	v.output("\n")
+	for _, stmt := range cs.Block.Statements {
+		switch stmt := stmt.(type) {
+		case *ast.DeclareStmt:
+			for _, decl := range stmt.Decls {
+				v.output("\t")
+				v.ident(decl)
+				v.output(" ")
+				v.typeName(decl.Type)
+				v.output("\n")
+			}
+		}
+	}
+	v.output("}\n")
+
+	if cs.Extends == "" {
+		if err := rootTmpl.Execute(v.out, struct {
+			Shape string
+		}{
+			Shape: cs.Name,
+		}); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := subTmpl.Execute(v.out, struct {
+			Shape  string
+			Circle string
+		}{
+			Shape:  cs.Extends,
+			Circle: cs.Name,
+		}); err != nil {
+			panic(err)
+		}
+	}
+
+	// Emit method bodies
+	for _, stmt := range cs.Block.Statements {
+		switch stmt := stmt.(type) {
+		case *ast.ModuleStmt, *ast.FunctionStmt:
+			stmt.Visit(v)
+		}
+	}
+
 	return false
 }
+
+var rootTmpl = template.Must(template.New("").Parse(`
+func New{{.Shape}}() *{{.Shape}}_ {
+	this := &{{.Shape}}_{}
+	this.face = this
+	return this
+}
+
+func Super{{.Shape}}(face I{{.Shape}}) {{.Shape}}_ {
+	return {{.Shape}}_{face: face}
+}
+
+`))
+
+var subTmpl = template.Must(template.New("").Parse(`
+func New{{.Circle}}() *{{.Circle}}_ {
+	this := &{{.Circle}}_{}
+	this.{{.Shape}}_ = Super{{.Shape}}(this)
+	this.face = this
+	return this
+}
+
+func Super{{.Circle}}(face I{{.Circle}}) {{.Circle}}_ {
+	return {{.Circle}}_{
+		{{.Shape}}_: Super{{.Shape}}(face),
+		face:   face,
+	}
+}
+
+`))
 
 func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {}
 
@@ -637,13 +784,18 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 
 func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	v.varRef(ve, false) // if we get here, we need a value
-	return true
+	return false
 }
 
 func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	if ce.Qualifier != nil {
+		ce.Qualifier.Visit(v)
+		v.output(".face.")
+	}
+
 	if ce.Ref.IsExternal {
 		if ce.Ref.Name == "append" {
 			v.output("appendString") // special case append vice builtin append
@@ -653,7 +805,9 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 	} else {
 		v.ident(ce.Ref)
 	}
-	v.outputArguments(ce.Args, ce.Ref.Params)
+	v.output("(")
+	v.outputArgumentList(ce.Args, ce.Ref.Params)
+	v.output(")")
 	return false
 }
 
@@ -678,10 +832,25 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
 
 func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
+	v.output("New")
+	v.output(ne.Name)
+	v.output("().")
+	v.ident(ne.Ctor)
+	v.output("(")
+	v.outputArgumentList(ne.Args, ne.Ctor.Params)
+	v.output(")")
 	return false
 }
 
 func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+}
+
+func (v *Visitor) PreVisitThisRef(ref *ast.ThisRef) bool {
+	v.output("this")
+	return false
+}
+
+func (v *Visitor) PostVisitThisRef(ref *ast.ThisRef) {
 }
 
 func (v *Visitor) outputArrayInitializer(t *ast.ArrayType, dims []int, exprs []ast.Expression) []ast.Expression {
@@ -756,6 +925,12 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 		v.output("Integer(")
 		exp.Visit(v)
 		v.output(")")
+	} else if ast.IsSubclass(dstType, exp.GetType()) {
+		v.output("(&")
+		exp.Visit(v)
+		v.output(".")
+		v.ident(dstType.AsClassType())
+		v.output(")")
 	} else {
 		exp.Visit(v)
 	}
@@ -764,7 +939,7 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 	switch ve := expr.(type) {
 	case *ast.VariableExpr:
-		v.varRefDecl(ve.Ref, needRef)
+		v.varRefDecl(ve.Qualifier, ve.Ref, needRef)
 	case *ast.ArrayRef:
 		if needRef {
 			v.output("&")
@@ -775,7 +950,7 @@ func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 	}
 }
 
-func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
+func (v *Visitor) varRefDecl(qual ast.Expression, decl *ast.VarDecl, needRef bool) {
 	isRef := decl.IsRef
 	if decl.IsConst {
 		if isRef || needRef {
@@ -799,26 +974,31 @@ func (v *Visitor) varRefDecl(decl *ast.VarDecl, needRef bool) {
 		return
 	} else {
 		// Local
+		needClose := false
 		if decl.IsRef == needRef {
 			// if we have a ref and need a ref, or we have a val and need a val, we good
-			v.ident(decl)
 		} else if needRef {
 			v.output("(")
 			v.output("&")
-			v.ident(decl)
-			v.output(")")
+			needClose = true
 		} else {
 			// Take the value (it's a reference) then dereference it.
 			v.output("(")
 			v.output("*")
-			v.ident(decl)
+			needClose = true
+		}
+		if qual != nil {
+			qual.Visit(v)
+			v.output(".")
+		}
+		v.ident(decl)
+		if needClose {
 			v.output(")")
 		}
 	}
 }
 
-func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) {
-	v.output("(")
+func (v *Visitor) outputArgumentList(args []ast.Expression, params []*ast.VarDecl) {
 	for i, arg := range args {
 		if i > 0 {
 			v.output(", ")
@@ -835,13 +1015,26 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 			v.maybeCast(param.Type, arg)
 		}
 	}
-	v.output(")")
+}
+
+func (v *Visitor) outputParameterList(params []*ast.VarDecl) {
+	for i, param := range params {
+		if i > 0 {
+			v.output(", ")
+		}
+		param.Visit(v)
+	}
 }
 
 func (v *Visitor) typeName(t ast.Type) {
 	if t.IsArrayType() {
 		v.output("[]")
 		v.typeName(t.AsArrayType().ElementType)
+		return
+	}
+	if t.IsClassType() {
+		v.output("*")
+		v.ident(t.AsClassType())
 		return
 	}
 	if !t.IsPrimitive() && !t.IsFileType() {

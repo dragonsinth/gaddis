@@ -102,18 +102,14 @@ Should cover the whole language by May 2025.
 - `Rename "oldname" "newname"`
 
 - Classes
-  - `Class Classname ... End Class`
-  - `Private String value`
-  - `Public Module ...` / `Public Function ...`
-  - `Set phone = New Phone()`
-  - variables are always references (pointers) like Java
-  - `Call phone.setNumber()` / `phone.getNumber()`
-  - `Public Module Phone([...args])` / default constructor.. assign zero values?
-  - `Class FinalExam extends GradedActivity...`
-  - Private members are not inherited
-  - Internal polymorphism is not defined!!!
-  - gogen:  define iface/struct hybrid for methods vs. fields
+  - Enforce `Public` / `Private` in type checking
+  - Pointers from Element -> Enclosing Type -> Scope; stop global lookup nonsense
+  - default constructor...?
+  - Class variable initializers
+    - gogen:  need to initialize vars / arrays in New
+    - asmgen: init block to zero values at least?
   - asmgen: define class / super / vtable representation
+  - Internal polymorphism is not defined!!!
 
 ## Errata / Differences from the Book
 
