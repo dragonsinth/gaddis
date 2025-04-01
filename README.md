@@ -70,7 +70,7 @@ reading from stdin to create input and output files for subsequent test runs.
 
 ## Status
 
-Implemented up through Chapter 12; supports:
+Implemented up through Chapter 14; supports:
 
 - Basic statements, expressions, operations, variables, constants, control structures.
 - `Integer`, `Real`, `String`, `Character`, `Boolean`
@@ -80,6 +80,7 @@ Implemented up through Chapter 12; supports:
 - Indexing `String` as `Character`
 - External function library
 - File I/O
+- Classes
 
 Should cover the whole language by May 2025.
 
@@ -97,23 +98,18 @@ Should cover the whole language by May 2025.
   - argument lists
   - Display/Read/Write
 
+- Classes
+  - Enforce `Public` / `Private` in type checking
+  - Class field initializers
+    - Zero-initialize new objects in asmgen.
+    - Zero-initialize fields containing arrays in gogen.
+  - test nil field ref / method call errors
+  - default constructor...?
+  - implicit/required constructor calls?
+
 ### Not yet supported
 - `Delete "filename"`
 - `Rename "oldname" "newname"`
-
-- Classes
-  - `Class Classname ... End Class`
-  - `Private String value`
-  - `Public Module ...` / `Public Function ...`
-  - `Set phone = New Phone()`
-  - variables are always references (pointers) like Java
-  - `Call phone.setNumber()` / `phone.getNumber()`
-  - `Public Module Phone([...args])` / default constructor.. assign zero values?
-  - `Class FinalExam extends GradedActivity...`
-  - Private members are not inherited
-  - Internal polymorphism is not defined!!!
-  - gogen:  define iface/struct hybrid for methods vs. fields
-  - asmgen: define class / super / vtable representation
 
 ## Errata / Differences from the Book
 

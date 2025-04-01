@@ -148,14 +148,18 @@ func (bo *BinaryOperation) ConstEval() any {
 
 type VariableExpr struct {
 	SourceInfo
-	Name string
-	Ref  *VarDecl // resolve symbols
-	Type Type     // type checking
+	Name      string
+	Qualifier Expression
+	Ref       *VarDecl // resolve symbols
+	Type      Type     // type checking
 }
 
 func (ve *VariableExpr) Visit(v Visitor) {
 	if !v.PreVisitVariableExpr(ve) {
 		return
+	}
+	if ve.Qualifier != nil {
+		ve.Qualifier.Visit(v)
 	}
 	v.PostVisitVariableExpr(ve)
 }
@@ -187,8 +191,9 @@ func (*VariableExpr) isExpression() {}
 type CallExpr struct {
 	SourceInfo
 	baseExpression
-	Name string
-	Args []Expression
+	Name      string
+	Qualifier Expression
+	Args      []Expression
 
 	Ref  *FunctionStmt // resolve
 	Type Type          // type checking
@@ -197,6 +202,9 @@ type CallExpr struct {
 func (ce *CallExpr) Visit(v Visitor) {
 	if !v.PreVisitCallExpr(ce) {
 		return
+	}
+	if ce.Qualifier != nil {
+		ce.Qualifier.Visit(v)
 	}
 	for _, arg := range ce.Args {
 		arg.Visit(v)
@@ -211,7 +219,7 @@ func (ce *CallExpr) GetType() Type {
 type ArrayRef struct {
 	SourceInfo
 	baseExpression
-	RefExpr   Expression
+	Qualifier Expression
 	IndexExpr Expression
 	Type      Type
 }
@@ -220,7 +228,7 @@ func (ar *ArrayRef) Visit(v Visitor) {
 	if !v.PreVisitArrayRef(ar) {
 		return
 	}
-	ar.RefExpr.Visit(v)
+	ar.Qualifier.Visit(v)
 	ar.IndexExpr.Visit(v)
 	v.PostVisitArrayRef(ar)
 }
@@ -253,4 +261,28 @@ func (ai *ArrayInitializer) Visit(v Visitor) {
 
 func (ai *ArrayInitializer) GetType() Type {
 	return ai.Type
+}
+
+type NewExpr struct {
+	SourceInfo
+	baseExpression
+	Name string
+	Args []Expression
+
+	Ctor *ModuleStmt // resolve
+	Type Type        // type checking
+}
+
+func (ne *NewExpr) Visit(v Visitor) {
+	if !v.PreVisitNewExpr(ne) {
+		return
+	}
+	for _, arg := range ne.Args {
+		arg.Visit(v)
+	}
+	v.PostVisitNewExpr(ne)
+}
+
+func (ne *NewExpr) GetType() Type {
+	return ne.Type
 }

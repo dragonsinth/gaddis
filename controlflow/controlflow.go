@@ -15,11 +15,9 @@ func ControlFlow(prog *ast.Program) []ast.Error {
 		panic("here")
 	}
 
-	av := &AssignmentVisitor{
-		// Explicitly don't analyze global variables.
-		// read-before-write on globals too difficult.
-		currScope: nil,
-	}
+	av := &AssignmentVisitor{}
+	// Explicitly don't analyze global variables.
+	// read-before-write on globals too difficult.
 	prog.Block.Visit(av)
 
 	return append(cv.Errors, av.Errors...)
@@ -224,6 +222,11 @@ func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
 		v.Errorf(fs, "not all control paths return a value")
 	}
 	v.push(fs, CONTINUE)
+}
+
+func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {
+	v.pop(cs.Block)
+	v.push(cs, CONTINUE)
 }
 
 func (v *Visitor) push(stmt ast.Statement, flow Flow) {

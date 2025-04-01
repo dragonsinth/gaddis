@@ -112,6 +112,8 @@ func (l *Lexer) Lex() Result {
 			return Result{l.advance(), RBRACKET, "]", nil}
 		case ':':
 			return Result{l.advance(), COLON, ":", nil}
+		case '.':
+			return Result{l.advance(), DOT, ".", nil}
 		case '"':
 			return l.parseStringLiteral()
 		case '\'':

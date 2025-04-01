@@ -13,9 +13,19 @@ type Scope struct {
 	IsEval       bool
 	ModuleStmt   *ModuleStmt   // if true, enclosing module
 	FunctionStmt *FunctionStmt // if true, enclosing function
+	ClassStmt    *ClassStmt    // if true, enclosing class
 	Decls        map[string]*Decl
+	Classes      []*ClassStmt // only for global scope
+	Methods      []Callable   // only for class scope
+	Fields       []*VarDecl   // only for class scope
 	Params       []*VarDecl
-	Locals       []*VarDecl
+	Locals       []*VarDecl // in a class scope, this represents fields
+}
+
+type Field struct {
+	Name string
+	Id   int
+	Decl *VarDecl
 }
 
 func (s *Scope) Desc() string {
@@ -29,6 +39,8 @@ func (s *Scope) Desc() string {
 		return fmt.Sprintf("%s()", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
 		return fmt.Sprintf("%s()", s.FunctionStmt.Name)
+	} else if s.ClassStmt != nil {
+		return s.ClassStmt.Name
 	} else {
 		panic("unset")
 	}
@@ -45,6 +57,8 @@ func (s *Scope) String() string {
 		return fmt.Sprintf("Module %s", s.ModuleStmt.Name)
 	} else if s.FunctionStmt != nil {
 		return fmt.Sprintf("Function %s %s", s.FunctionStmt.Type, s.FunctionStmt.Name)
+	} else if s.ClassStmt != nil {
+		return fmt.Sprintf("Class %s", s.ClassStmt.Name)
 	} else {
 		panic("unset")
 	}
@@ -53,6 +67,7 @@ func (s *Scope) String() string {
 type Decl struct {
 	ModuleStmt   *ModuleStmt
 	FunctionStmt *FunctionStmt
+	ClassStmt    *ClassStmt
 	VarDecl      *VarDecl
 }
 
@@ -65,6 +80,8 @@ func (d *Decl) String() string {
 		} else {
 			return fmt.Sprintf("Function %s %s", d.FunctionStmt.Type, d.FunctionStmt.Name)
 		}
+	} else if d.ClassStmt != nil {
+		return fmt.Sprintf("Class %s", d.ClassStmt.Name)
 	} else if d.VarDecl != nil {
 		if d.VarDecl.IsParam {
 			if d.VarDecl.IsRef {
@@ -98,6 +115,12 @@ func (s *Scope) AddModule(ms *ModuleStmt) {
 		panic(name)
 	}
 	s.Decls[name] = &Decl{ModuleStmt: ms}
+
+	if ms.Enclosing != nil {
+		if ms.Enclosing != s.ClassStmt.Type {
+			panic(ms)
+		}
+	}
 }
 
 func (s *Scope) AddFunction(fs *FunctionStmt) {
@@ -106,6 +129,25 @@ func (s *Scope) AddFunction(fs *FunctionStmt) {
 		panic(name)
 	}
 	s.Decls[name] = &Decl{FunctionStmt: fs}
+
+	if fs.Enclosing != nil {
+		if fs.Enclosing != s.ClassStmt.Type {
+			panic(fs)
+		}
+	}
+}
+
+func (s *Scope) AddClass(cs *ClassStmt) {
+	if !s.IsGlobal {
+		panic("not global scope")
+	}
+	name := cs.Name
+	if s.Decls[name] != nil {
+		panic(name)
+	}
+	cs.Id = len(s.Classes)
+	s.Classes = append(s.Classes, cs)
+	s.Decls[name] = &Decl{ClassStmt: cs}
 }
 
 func (s *Scope) AddVariable(vd *VarDecl) {
@@ -113,7 +155,7 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	if s.Decls[name] != nil {
 		panic(name)
 	}
-	if !vd.IsConst {
+	if !vd.IsConst && vd.Enclosing == nil {
 		if vd.IsParam {
 			vd.Id = len(s.Params)
 			s.Params = append(s.Params, vd)
@@ -124,6 +166,16 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	}
 	s.Decls[name] = &Decl{VarDecl: vd}
 	vd.Scope = s
+}
+
+func (s *Scope) EnclosingClass() *ClassStmt {
+	for s != nil {
+		if s.ClassStmt != nil {
+			return s.ClassStmt
+		}
+		s = s.Parent
+	}
+	return nil
 }
 
 func NewGlobalScope(bl *Block) *Scope {
@@ -150,6 +202,15 @@ func NewFunctionScope(fs *FunctionStmt, parent *Scope) *Scope {
 		Parent:       parent,
 		FunctionStmt: fs,
 		Decls:        map[string]*Decl{},
+	}
+}
+
+func NewClassScope(cs *ClassStmt, parent *Scope) *Scope {
+	return &Scope{
+		SourceInfo: cs.Block.SourceInfo,
+		Parent:     parent,
+		ClassStmt:  cs,
+		Decls:      map[string]*Decl{},
 	}
 }
 

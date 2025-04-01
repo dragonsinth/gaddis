@@ -7,6 +7,7 @@ import (
 )
 
 type IShape interface {
+	SetColor_(color_ string)
 	CalculateArea_() float64
 }
 
@@ -27,9 +28,13 @@ func SuperShape(face IShape) Shape_ {
 	return Shape_{face: face}
 }
 
-func ShapeConstructor(this *Shape_, color_ string) *Shape_ {
+func (this *Shape_) Shape_(color_ string) *Shape_ {
 	this.color_ = color_
 	return this
+}
+
+func (this *Shape_) SetColor_(color_ string) {
+	this.color_ = color_
 }
 
 func (this *Shape_) CalculateArea_() float64 {
@@ -63,7 +68,7 @@ func SuperCircle(face ICircle) Circle_ {
 }
 
 func CircleConstructor(this *Circle_, color_ string, radius_ float64) *Circle_ {
-	ShapeConstructor(&this.Shape_, color_)
+	this.Shape_.Shape_(color_)
 	this.radius_ = radius_
 	return this
 }
@@ -99,8 +104,8 @@ func NewRectangle() *Rectangle_ {
 	return this
 }
 
-func RectangleConstructor(this *Rectangle_, color_ string, width_, height_ float64) *Rectangle_ {
-	ShapeConstructor(&this.Shape_, color_)
+func (this *Rectangle_) Rectangle_(color_ string, width_, height_ float64) *Rectangle_ {
+	this.Shape_.Shape_(color_)
 	this.width_ = width_
 	this.height_ = height_
 	return this
@@ -136,12 +141,12 @@ func SuperSquare(face ISquare) Square_ {
 }
 
 func SquareConstructor(this *Square_, color_ string, side_ float64) *Square_ {
-	RectangleConstructor(&this.Rectangle_, color_, side_, side_)
+	this.Rectangle_.Rectangle_(color_, side_, side_)
 	return this
 }
 
 func Example() {
-	var rect_ *Rectangle_ = RectangleConstructor(NewRectangle(), "red", 1.0, 1.0)
+	var rect_ *Rectangle_ = NewRectangle().Rectangle_("red", 1.0, 1.0)
 	var circle_ *Circle_ = CircleConstructor(NewCircle(), "blue", 1.0)
 	var square_ *Square_ = SquareConstructor(NewSquare(), "green", 4.0)
 

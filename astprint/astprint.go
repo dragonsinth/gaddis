@@ -89,6 +89,10 @@ func (v *Visitor) PreVisitDeclareStmt(ds *ast.DeclareStmt) bool {
 
 	if ds.IsConst {
 		v.output("Constant ")
+	} else if ds.IsPrivate {
+		v.output("Private ")
+	} else if ds.IsField {
+		v.output("Public ")
 	} else {
 		v.output("Declare ")
 	}
@@ -365,6 +369,10 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	defer v.eol(cs.End)
 
 	v.output("Call ")
+	if shouldPrintQualifier(cs.Qualifier) {
+		cs.Qualifier.Visit(v)
+		v.output(".")
+	}
 	v.output(cs.Name)
 	v.output("(")
 	v.outputArguments("", cs.Args)
@@ -377,6 +385,12 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.bol(ms.Start)
 	defer v.eol(ms.End)
+
+	if ms.IsPrivate {
+		v.output("Private ")
+	} else if ms.Enclosing != nil {
+		v.output("Public ")
+	}
 
 	v.output("Module ")
 	v.output(ms.Name)
@@ -391,6 +405,8 @@ func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.output("End Module")
 	return false
 }
+
+func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
 
 func (v *Visitor) PreVisitReturnStmt(rs *ast.ReturnStmt) bool {
 	v.bol(rs.Start)
@@ -410,6 +426,12 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.bol(fs.Start)
 	defer v.eol(fs.End)
 
+	if fs.IsPrivate {
+		v.output("Private ")
+	} else if fs.Enclosing != nil {
+		v.output("Public ")
+	}
+
 	v.output("Function ")
 	v.output(fs.Type.String())
 	v.output(" ")
@@ -426,7 +448,26 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	return false
 }
 
-func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {}
+func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	v.bol(cs.Start)
+	defer v.eol(cs.End)
+
+	v.output("Class ")
+	v.output(cs.Name)
+	if cs.Extends != "" {
+		v.output(" Extends ")
+		v.output(cs.Extends)
+	}
+	v.eol(cs.Start)
+
+	cs.Block.Visit(v)
+
+	v.bol(cs.End)
+	v.output("End Class")
+	return false
+}
+
+func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {}
 
 func (v *Visitor) PreVisitLiteral(l *ast.Literal) bool {
 	if l.IsTabLiteral {
@@ -494,14 +535,22 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
+	if shouldPrintQualifier(ve.Qualifier) {
+		ve.Qualifier.Visit(v)
+		v.output(".")
+	}
 	v.output(ve.Name)
-	return true
+	return false
 }
 
 func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	if shouldPrintQualifier(ce.Qualifier) {
+		ce.Qualifier.Visit(v)
+		v.output(".")
+	}
 	v.output(ce.Name)
 	v.output("(")
 	v.outputArguments("", ce.Args)
@@ -513,7 +562,7 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 }
 
 func (v *Visitor) PreVisitArrayRef(ar *ast.ArrayRef) bool {
-	ar.RefExpr.Visit(v)
+	ar.Qualifier.Visit(v)
 	v.output("[")
 	ar.IndexExpr.Visit(v)
 	v.output("]")
@@ -562,6 +611,25 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 }
 
 func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
+
+func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
+	v.output("New ")
+	v.output(ne.Name)
+	v.output("(")
+	v.outputArguments("", ne.Args)
+	v.output(")")
+	return false
+}
+
+func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
+}
+
+func (v *Visitor) PreVisitThisRef(ref *ast.ThisRef) bool {
+	panic("implement me")
+}
+
+func (v *Visitor) PostVisitThisRef(ref *ast.ThisRef) {
+}
 
 func (v *Visitor) outputArguments(hdr string, exprs []ast.Expression) {
 	if len(exprs) == 0 {
@@ -662,4 +730,14 @@ func commentText(comment ast.Comment) string {
 	text = strings.TrimPrefix(text, "//")
 	text = strings.TrimSpace(text)
 	return text
+}
+
+func shouldPrintQualifier(qualifier ast.Expression) bool {
+	if qualifier == nil {
+		return false
+	}
+	if _, ok := qualifier.(*ast.ThisRef); ok {
+		return false
+	}
+	return true
 }

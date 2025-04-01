@@ -10,6 +10,8 @@ type Type interface {
 	AsPrimitive() PrimitiveType
 	IsArrayType() bool
 	AsArrayType() *ArrayType
+	IsClassType() bool
+	AsClassType() *ClassType
 	IsFileType() bool
 	AsFileType() FileType
 	BaseType() Type
@@ -46,6 +48,10 @@ func (t PrimitiveType) IsArrayType() bool { return false }
 
 func (t PrimitiveType) AsArrayType() *ArrayType { return nil }
 
+func (t PrimitiveType) IsClassType() bool { return false }
+
+func (t PrimitiveType) AsClassType() *ClassType { return nil }
+
 func (t PrimitiveType) IsFileType() bool { return false }
 
 func (t PrimitiveType) AsFileType() FileType { return InvalidFileType }
@@ -80,6 +86,10 @@ func (t *ArrayType) IsArrayType() bool { return true }
 
 func (t *ArrayType) AsArrayType() *ArrayType { return t }
 
+func (t *ArrayType) IsClassType() bool { return false }
+
+func (t *ArrayType) AsClassType() *ClassType { return nil }
+
 func (t *ArrayType) IsFileType() bool { return false }
 
 func (t *ArrayType) AsFileType() FileType { return InvalidFileType }
@@ -89,31 +99,44 @@ func (t *ArrayType) BaseType() Type { return t.Base }
 func (t *ArrayType) isType() {
 }
 
-func CanCoerce(dst Type, src Type) bool {
-	if dst == src {
-		return true
-	}
-	if dst == Real && src == Integer {
-		return true // promote
-	}
-	return false
+type ClassType struct {
+	TypeKey TypeKey
+	Extends *ClassType
+	Class   *ClassStmt
+	Scope   *Scope
 }
 
-func AreComparableTypes(a Type, b Type) Type {
-	if a == b {
-		return a
-	}
-	if a.IsNumeric() && b.IsNumeric() {
-		return Real // promote
-	}
-	return UnresolvedType
+func (t *ClassType) Key() TypeKey {
+	return t.TypeKey
 }
 
-func IsOrderedType(typ Type) bool {
-	if typ == UnresolvedType || typ == Boolean {
-		return false // cannot order booleans
-	}
-	return typ.IsPrimitive() // the other primitive types are ordered
+func (t *ClassType) String() string {
+	return string(t.TypeKey)
+}
+
+func (t *ClassType) IsPrimitive() bool { return false }
+
+func (t *ClassType) AsPrimitive() PrimitiveType { return UnresolvedType }
+
+func (t *ClassType) IsNumeric() bool { return false }
+
+func (t *ClassType) IsArrayType() bool { return false }
+
+func (t *ClassType) AsArrayType() *ArrayType { return nil }
+
+func (t *ClassType) IsClassType() bool { return true }
+
+func (t *ClassType) AsClassType() *ClassType { return t }
+
+func (t *ClassType) IsFileType() bool { return false }
+
+func (t *ClassType) AsFileType() FileType { return InvalidFileType }
+
+func (t *ClassType) BaseType() Type { return t }
+
+func (t *ClassType) GetName() string { return string(t.TypeKey) }
+
+func (t *ClassType) isType() {
 }
 
 const (
@@ -148,6 +171,10 @@ func (t FileType) IsArrayType() bool { return false }
 
 func (t FileType) AsArrayType() *ArrayType { return nil }
 
+func (t FileType) IsClassType() bool { return false }
+
+func (t FileType) AsClassType() *ClassType { return nil }
+
 func (t FileType) IsFileType() bool { return true }
 
 func (t FileType) AsFileType() FileType { return t }
@@ -155,4 +182,50 @@ func (t FileType) AsFileType() FileType { return t }
 func (t FileType) BaseType() Type { return t }
 
 func (t FileType) isType() {
+}
+
+func CanCoerce(dst Type, src Type) bool {
+	if dst == src {
+		return true
+	}
+	if dst == Real && src == Integer {
+		return true // promote
+	}
+	if IsSubclass(dst, src) {
+		return true
+	}
+	return false
+}
+
+func IsSubclass(dst Type, src Type) bool {
+	if dst == src {
+		return false
+	}
+	if !dst.IsClassType() || !src.IsClassType() {
+		return false
+	}
+	for p := src.AsClassType(); p != nil; p = p.Extends {
+		if dst == p {
+			return true
+		}
+	}
+	return false
+}
+
+func AreComparableTypes(a Type, b Type) Type {
+	if a == b {
+		return a
+	}
+	if a.IsNumeric() && b.IsNumeric() {
+		return Real // promote
+	}
+	// TODO: class types
+	return UnresolvedType
+}
+
+func IsOrderedType(typ Type) bool {
+	if typ == UnresolvedType || typ == Boolean {
+		return false // cannot order booleans
+	}
+	return typ.IsPrimitive() // the other primitive types are ordered
 }

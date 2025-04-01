@@ -5,7 +5,6 @@ import (
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/parse"
-	"github.com/dragonsinth/gaddis/resolve"
 	"github.com/dragonsinth/gaddis/typecheck"
 )
 
@@ -15,12 +14,7 @@ func (ds *Session) evaluateExprInFrame(fr *asm.Frame, exprStr string) (any, ast.
 		return nil, nil, errors.New("syntax error")
 	}
 
-	errs := resolve.Resolve(expr, fr.Scope)
-	if len(errs) > 0 {
-		return nil, nil, errors.New(errs[0].Desc)
-	}
-
-	errs = typecheck.TypeCheck(expr)
+	errs := typecheck.TypeCheck(expr, fr.Scope)
 	if len(errs) > 0 {
 		return nil, nil, errors.New(errs[0].Desc)
 	}

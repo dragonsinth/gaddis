@@ -5,8 +5,6 @@ import (
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/lex"
 	"slices"
-	"strconv"
-	"strings"
 )
 
 // TODO: only allow modules and functions in the global block?
@@ -162,11 +160,11 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 	case lex.CONSTANT:
 		typ := p.parseType()
 		var decls []*ast.VarDecl
-		lastDecl := p.parseVarDecl(typ, true)
+		lastDecl := p.parseVarDecl(typ, varDeclOpts{isConst: true})
 		decls = append(decls, lastDecl)
 		for p.hasTok(lex.COMMA) {
 			p.parseTok(lex.COMMA)
-			lastDecl = p.parseVarDecl(typ, true)
+			lastDecl = p.parseVarDecl(typ, varDeclOpts{isConst: true})
 			decls = append(decls, lastDecl)
 		}
 		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: true, Decls: decls}
@@ -179,11 +177,11 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		}
 
 		var decls []*ast.VarDecl
-		lastDecl := p.parseVarDecl(typ, false)
+		lastDecl := p.parseVarDecl(typ, varDeclOpts{})
 		decls = append(decls, lastDecl)
 		for p.hasTok(lex.COMMA) {
 			p.parseTok(lex.COMMA)
-			lastDecl = p.parseVarDecl(typ, false)
+			lastDecl = p.parseVarDecl(typ, varDeclOpts{})
 			decls = append(decls, lastDecl)
 		}
 		return &ast.DeclareStmt{SourceInfo: spanAst(r, lastDecl), Type: typ, IsConst: false, Decls: decls}
@@ -310,34 +308,19 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			return &ast.ForStmt{SourceInfo: spanResult(r, rEnd), Ref: refExpr, StartExpr: startExpr, StopExpr: stopExpr, StepExpr: stepExpr, Block: block}
 		}
 	case lex.CALL:
-		rNext := p.parseTok(lex.IDENT)
-		name := rNext.Text
-		p.parseTok(lex.LPAREN)
-		args := p.parseCommaExpressions(lex.RPAREN)
-		rEnd := p.parseTok(lex.RPAREN)
-		return &ast.CallStmt{SourceInfo: spanResult(r, rEnd), Name: name, Args: args}
+		expr := p.parseExpression()
+		// Better be a call expressions...
+		callExpr, ok := expr.(*ast.CallExpr)
+		if !ok {
+			panic(p.Errorf(r, "Expected call expression, got %T", expr))
+		}
+		// Promote to a call statement
+		return &ast.CallStmt{SourceInfo: spanAst(r, callExpr), Name: callExpr.Name, Qualifier: callExpr.Qualifier, Args: callExpr.Args}
 	case lex.MODULE:
 		if !isGlobalBlock {
 			panic(p.Errorf(r, "Module may only be declared in the global scope"))
 		}
-		rNext := p.parseTok(lex.IDENT)
-		name := rNext.Text
-
-		var params []*ast.VarDecl
-		p.parseTok(lex.LPAREN)
-		if !p.hasTok(lex.RPAREN) {
-			params = append(params, p.parseParamDecl())
-		}
-		for p.hasTok(lex.COMMA) {
-			p.parseTok(lex.COMMA)
-			params = append(params, p.parseParamDecl())
-		}
-		p.parseTok(lex.RPAREN)
-		p.parseEol()
-		block := p.parseBlock(lex.END)
-		p.parseTok(lex.END)
-		rEnd := p.parseTok(lex.MODULE)
-		return &ast.ModuleStmt{SourceInfo: spanResult(r, rEnd), Name: name, Params: params, Block: block}
+		return p.parseModuleStmt(r)
 	case lex.RETURN:
 		expr := p.parseExpression()
 		return &ast.ReturnStmt{SourceInfo: spanAst(r, expr), Expr: expr}
@@ -346,26 +329,7 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		if !isGlobalBlock {
 			panic(p.Errorf(r, "Function may only be declared in the global scope"))
 		}
-
-		returnType := p.parseType()
-		rNext := p.parseTok(lex.IDENT)
-		name := rNext.Text
-
-		var params []*ast.VarDecl
-		p.parseTok(lex.LPAREN)
-		if !p.hasTok(lex.RPAREN) {
-			params = append(params, p.parseParamDecl())
-		}
-		for p.hasTok(lex.COMMA) {
-			p.parseTok(lex.COMMA)
-			params = append(params, p.parseParamDecl())
-		}
-		p.parseTok(lex.RPAREN)
-		p.parseEol()
-		block := p.parseBlock(lex.END)
-		p.parseTok(lex.END)
-		rEnd := p.parseTok(lex.FUNCTION)
-		return &ast.FunctionStmt{SourceInfo: spanResult(r, rEnd), Name: name, Type: returnType, Params: params, Block: block}
+		return p.parseFunctionStmt(r)
 	case lex.OPEN:
 		return &ast.OpenStmt{SourceInfo: toSourceInfo(r), File: p.parseExpression(), Name: p.parseExpression()}
 	case lex.CLOSE:
@@ -388,51 +352,14 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			si = mergeSourceInfo(si, exprs[len(exprs)-1])
 		}
 		return &ast.WriteStmt{SourceInfo: si, File: file, Exprs: exprs}
+	case lex.CLASS:
+		if !isGlobalBlock {
+			panic(p.Errorf(r, "Class may only be declared in the global scope"))
+		}
+		return p.parseClassBody(r)
 	default:
 		panic(p.Errorf(r, "expected statement, got %s %q", r.Token, r.Text))
 	}
-}
-
-func (p *Parser) parseVarDecl(typ ast.Type, isConst bool) *ast.VarDecl {
-	isFileType := typ.IsFileType()
-
-	r := p.parseTok(lex.IDENT)
-	rEnd := r
-
-	if isConst && isFileType {
-		panic(p.Errorf(r, "file types cannot be constant"))
-	}
-
-	var dims []ast.Expression
-	if !isConst {
-		baseType := typ
-		for p.hasTok(lex.LBRACKET) {
-			p.parseTok(lex.LBRACKET)
-			dims = append(dims, p.parseExpression())
-			rEnd = p.parseTok(lex.RBRACKET)
-			typ = p.makeArrayType(baseType, len(dims), typ)
-		}
-	}
-
-	si := spanResult(r, rEnd)
-	var expr ast.Expression
-
-	if p.hasTok(lex.ASSIGN) {
-		if isFileType {
-			panic(p.Errorf(r, "file types cannot have initializers"))
-		}
-		rAssign := p.parseTok(lex.ASSIGN)
-		if len(dims) > 0 {
-			expr = p.parseArrayInitializer(rAssign, typ.(*ast.ArrayType))
-		} else {
-			expr = p.parseExpression()
-		}
-		si = spanAst(r, expr)
-	} else if isConst {
-		r := p.Peek()
-		panic(p.Errorf(r, "expected constant initializer, got %s %q", r.Token, r.Text))
-	}
-	return &ast.VarDecl{SourceInfo: si, Name: r.Text, Type: typ, DimExprs: dims, Expr: expr, IsConst: isConst}
 }
 
 func (p *Parser) parseParamDecl() *ast.VarDecl {
@@ -466,143 +393,6 @@ func (p *Parser) parseIfCondBlock(start lex.Position) *ast.CondBlock {
 	return &ast.CondBlock{SourceInfo: ast.SourceInfo{Start: toPos(start), End: block.End}, Expr: expr, Block: block}
 }
 
-func (p *Parser) parseType() ast.Type {
-	r := p.Next()
-	switch r.Token {
-	case lex.INTEGER:
-		return ast.Integer
-	case lex.REAL:
-		return ast.Real
-	case lex.STRING:
-		return ast.String
-	case lex.CHARACTER:
-		return ast.Character
-	case lex.BOOLEAN:
-		return ast.Boolean
-	case lex.OUTPUTFILE:
-		return ast.OutputFile
-	case lex.INPUTFILE:
-		return ast.InputFile
-	default:
-		panic(p.Errorf(r, "expected type, got %s, %q", r.Token, r.Text))
-	}
-}
-
-func (p *Parser) parseCommaExpressions(endTokens ...lex.Token) []ast.Expression {
-	var exprs []ast.Expression
-	if peek := p.Peek(); peek.Token != lex.EOF && !slices.Contains(endTokens, peek.Token) {
-		for {
-			expr := p.parseExpression()
-			exprs = append(exprs, expr)
-			if p.hasTok(lex.COMMA) {
-				p.parseTok(lex.COMMA)
-			} else {
-				break
-			}
-		}
-	}
-	return exprs
-}
-
-func (p *Parser) parseExpression() ast.Expression {
-	return p.parseBinaryOperations(binaryLevels)
-}
-
-func (p *Parser) parseBinaryOperations(level int) ast.Expression {
-	if level < 0 {
-		return p.parseTrailingArrayRefs()
-	}
-	ops := binaryPrecedence[level]
-	ret := p.parseBinaryOperations(level - 1)
-	for {
-		r := p.Peek()
-		op, ok := binaryOpMap[r.Token]
-		if ok && slices.Contains(ops, op) {
-			// generate a new operation and continue
-			p.Next()
-			rhs := p.parseBinaryOperations(level - 1)
-			ret = &ast.BinaryOperation{SourceInfo: mergeSourceInfo(ret, rhs), Op: op, Type: ast.UnresolvedType, Lhs: ret, Rhs: rhs}
-		} else {
-			return ret
-		}
-	}
-}
-
-func (p *Parser) parseTrailingArrayRefs() ast.Expression {
-	expr := p.parseTerminal()
-	for p.hasTok(lex.LBRACKET) {
-		r := p.parseTok(lex.LBRACKET)
-		indexExpr := p.parseExpression()
-		rEnd := p.parseTok(lex.RBRACKET)
-		expr = &ast.ArrayRef{SourceInfo: spanResult(r, rEnd), Type: ast.UnresolvedType, RefExpr: expr, IndexExpr: indexExpr}
-	}
-	return expr
-}
-
-func (p *Parser) parseTerminal() ast.Expression {
-	r := p.Next()
-	switch r.Token {
-	case lex.IDENT:
-		// If the next token is a '(', this is actually a CallExpr.
-		if p.hasTok(lex.LPAREN) {
-			// This is actually a call expression.
-			p.parseTok(lex.LPAREN)
-			args := p.parseCommaExpressions(lex.RPAREN)
-			rEnd := p.parseTok(lex.RPAREN)
-			return &ast.CallExpr{SourceInfo: spanResult(r, rEnd), Name: r.Text, Args: args}
-		} else {
-			return &ast.VariableExpr{SourceInfo: toSourceInfo(r), Name: r.Text}
-		}
-	case lex.INT_LIT:
-		return p.parseLiteral(r, ast.Integer)
-	case lex.REAL_LIT:
-		return p.parseLiteral(r, ast.Real)
-	case lex.STR_LIT, lex.TAB_LIT:
-		return p.parseLiteral(r, ast.String)
-	case lex.CHR_LIT:
-		return p.parseLiteral(r, ast.Character)
-	case lex.NOT:
-		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NOT, Type: ast.Boolean, Expr: expr}
-	case lex.SUB:
-		expr := p.parseExpression()
-		return &ast.UnaryOperation{SourceInfo: spanAst(r, expr), Op: ast.NEG, Type: ast.UnresolvedType, Expr: expr}
-	case lex.TRUE, lex.FALSE:
-		return p.parseLiteral(r, ast.Boolean)
-	case lex.LPAREN:
-		expr := p.parseExpression()
-		rEnd := p.parseTok(lex.RPAREN)
-		return &ast.ParenExpr{SourceInfo: spanResult(r, rEnd), Expr: expr}
-	default:
-		panic(p.Errorf(r, "expected expression, got %s %q", r.Token, r.Text))
-	}
-}
-
-func (p *Parser) parseLiteral(r lex.Result, typ ast.PrimitiveType) *ast.Literal {
-	lit := ParseLiteral(r.Text, toSourceInfo(r), typ)
-	if lit == nil {
-		// should not happen; lexer should catch such things
-		panic(p.Errorf(r, "invalid %s literal %s", typ.String(), r.Text))
-	}
-	return lit
-}
-
-func (p *Parser) parseArrayInitializer(r lex.Result, typ *ast.ArrayType) ast.Expression {
-	for p.hasTok(lex.EOL) {
-		p.parseTok(lex.EOL)
-	}
-	args := []ast.Expression{p.parseExpression()}
-	for p.hasTok(lex.COMMA) {
-		p.parseTok(lex.COMMA)
-		for p.hasTok(lex.EOL) {
-			p.parseTok(lex.EOL)
-		}
-		args = append(args, p.parseExpression())
-	}
-	si := spanAst(r, args[len(args)-1])
-	return &ast.ArrayInitializer{SourceInfo: si, Args: args, Type: typ}
-}
-
 func (p *Parser) parseEol() {
 	if !p.hasTok(lex.EOF) {
 		p.parseTok(lex.EOL)
@@ -629,71 +419,9 @@ func (p *Parser) errCheck(r lex.Result) lex.Result {
 	return r
 }
 
-func (p *Parser) makeArrayType(baseType ast.Type, nDims int, elementType ast.Type) ast.Type {
-	key := elementType.Key() + "[]"
-	typ := &ast.ArrayType{
-		Base:        baseType,
-		NDims:       nDims,
-		ElementType: elementType,
-		TypeKey:     key,
-	}
-	if existing, ok := p.types[key]; ok {
-		return existing
-	}
-	if p.types == nil {
-		p.types = map[ast.TypeKey]ast.Type{}
-	}
-	p.types[key] = typ
-	return typ
-}
-
 func (p *Parser) Errorf(r lex.Result, fmtStr string, args ...any) ast.Error {
 	return ast.Error{
 		SourceInfo: toSourceInfo(r),
 		Desc:       fmt.Sprintf("syntax error: "+fmtStr, args...),
-	}
-}
-
-func ParseLiteral(input string, si ast.SourceInfo, typ ast.PrimitiveType) *ast.Literal {
-	switch typ {
-	case ast.Integer:
-		v, err := strconv.ParseInt(input, 0, 64)
-		if err != nil {
-			return nil
-		}
-		return &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: v}
-	case ast.Real:
-		v, err := strconv.ParseFloat(input, 64)
-		if err != nil {
-			return nil
-		}
-		return &ast.Literal{SourceInfo: si, Type: ast.Real, Val: v}
-	case ast.String:
-		if input == "Tab" {
-			return &ast.Literal{SourceInfo: si, Type: ast.String, Val: "\t", IsTabLiteral: true}
-		}
-		v, err := strconv.Unquote(input)
-		if err != nil {
-			return nil
-		}
-		return &ast.Literal{SourceInfo: si, Type: ast.String, Val: v}
-	case ast.Character:
-		v, err := strconv.Unquote(input)
-		if err != nil || len(v) > 1 {
-			return nil
-		}
-		return &ast.Literal{SourceInfo: si, Type: ast.Character, Val: v[0]}
-	case ast.Boolean:
-		// ToLower only to support dynamic eval; lexer would not suppport.
-		switch strings.ToLower(input) {
-		case "true":
-			return &ast.Literal{SourceInfo: si, Type: ast.Boolean, Val: true}
-		case "false":
-			return &ast.Literal{SourceInfo: si, Type: ast.Boolean, Val: false}
-		default:
-			return nil
-		}
-	default:
-		panic(typ)
 	}
 }

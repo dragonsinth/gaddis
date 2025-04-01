@@ -62,6 +62,9 @@ type Visitor interface {
 	PreVisitFunctionStmt(fs *FunctionStmt) bool
 	PostVisitFunctionStmt(fs *FunctionStmt)
 
+	PreVisitClassStmt(cs *ClassStmt) bool
+	PostVisitClassStmt(cs *ClassStmt)
+
 	PreVisitLiteral(l *Literal) bool
 	PostVisitLiteral(l *Literal)
 
@@ -85,4 +88,17 @@ type Visitor interface {
 
 	PreVisitArrayInitializer(ai *ArrayInitializer) bool
 	PostArrayInitializer(ai *ArrayInitializer)
+
+	PreVisitNewExpr(ne *NewExpr) bool
+	PostVisitNewExpr(ne *NewExpr)
+
+	PreVisitThisRef(ref *ThisRef) bool
+	PostVisitThisRef(ref *ThisRef)
+}
+
+type ScopeVisitor interface {
+	Visitor
+	PushScope(*Scope)
+	PopScope()
+	Scope() *Scope
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/dragonsinth/gaddis/collect"
 	"github.com/dragonsinth/gaddis/controlflow"
 	"github.com/dragonsinth/gaddis/parse"
-	"github.com/dragonsinth/gaddis/resolve"
 	"github.com/dragonsinth/gaddis/typecheck"
 )
 
@@ -18,13 +17,18 @@ func Compile(src string) (*ast.Program, []ast.Comment, []ast.Error) {
 
 	// report collection and resolution errors together
 	errs = collect.Collect(prog)
-	errs = append(errs, resolve.Resolve(prog, prog.Scope)...)
+	if len(errs) > 0 {
+		return prog, comments, errs
+	}
+
+	// errors related to inheritance
+	errs = typecheck.SuperCheck(prog)
 	if len(errs) > 0 {
 		return prog, comments, errs
 	}
 
 	// resolves types, report type checking errors
-	errs = typecheck.TypeCheck(prog)
+	errs = typecheck.TypeCheck(prog, prog.Scope)
 	if len(errs) > 0 {
 		return prog, comments, errs
 	}

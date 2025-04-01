@@ -8,7 +8,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.languages.setLanguageConfiguration('gaddis', {
             indentationRules: {
-                increaseIndentPattern: /^\s*(While|Do|For|Select|Case|Default|If|Else|Module|Function|Class).*$/,
+                increaseIndentPattern: /^\s*(While|Do|For|Select|Case|Default|If|Else|(Public\s+|Private\s+)(Module|Function)|Class).*$/,
                 decreaseIndentPattern: /^\s*((End|Until|Else|Case)\b)/
             }
         }),

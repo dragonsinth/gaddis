@@ -7,7 +7,6 @@ import (
 
 type TempVisitor struct {
 	base.Visitor
-	currScope *ast.Scope
 }
 
 var _ ast.Visitor = &TempVisitor{}
@@ -24,24 +23,33 @@ func (v *TempVisitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 	}
 	// pre-assign the index to -1
 	vd.Expr = &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: int64(0)}
-	v.currScope.AddVariable(vd)
+	v.Scope().AddVariable(vd)
 	fs.Index = vd
 }
 
 func (v *TempVisitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
-	v.currScope = ms.Scope
+	v.PushScope(ms.Scope)
 	return true
 }
 
 func (v *TempVisitor) PostVisitModuleStmt(_ *ast.ModuleStmt) {
-	v.currScope = v.currScope.Parent
+	v.PopScope()
 }
 
 func (v *TempVisitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
-	v.currScope = fs.Scope
+	v.PushScope(fs.Scope)
 	return true
 }
 
 func (v *TempVisitor) PostVisitFunctionStmt(_ *ast.FunctionStmt) {
-	v.currScope = v.currScope.Parent
+	v.PopScope()
+}
+
+func (v *TempVisitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
+	v.PushScope(cs.Scope)
+	return true
+}
+
+func (v *TempVisitor) PostVisitClassStmt(cs *ast.ClassStmt) {
+	v.PopScope()
 }

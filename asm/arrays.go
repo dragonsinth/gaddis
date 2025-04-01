@@ -10,19 +10,18 @@ type OffsetType int
 const (
 	OffsetTypeString OffsetType = iota
 	OffsetTypeArray
-	OffsetTypeObject
 )
 
-type OffsetRef struct {
+type ArrayRef struct {
 	baseInst
 	OffsetType OffsetType
 }
 
-func (i OffsetRef) Exec(p *Execution) {
+func (i ArrayRef) Exec(p *Execution) {
 	idx := p.Pop().(int64)
 
 	switch i.OffsetType {
-	case OffsetTypeArray, OffsetTypeObject:
+	case OffsetTypeArray:
 		arr := p.Pop().([]any)
 		p.Push(&arr[idx])
 	default:
@@ -30,30 +29,28 @@ func (i OffsetRef) Exec(p *Execution) {
 	}
 }
 
-func (i OffsetRef) String() string {
+func (i ArrayRef) String() string {
 	switch i.OffsetType {
 	case OffsetTypeArray:
-		return "&offset arr"
-	case OffsetTypeObject:
-		return "&offset obj"
+		return "&array"
 	default:
 		panic(i.OffsetType)
 	}
 }
 
-type OffsetVal struct {
+type ArrayVal struct {
 	baseInst
 	OffsetType OffsetType
 }
 
-func (i OffsetVal) Exec(p *Execution) {
+func (i ArrayVal) Exec(p *Execution) {
 	idx := p.Pop().(int64)
 
 	switch i.OffsetType {
 	case OffsetTypeString:
 		str := p.Pop().(string)
 		p.Push(str[idx])
-	case OffsetTypeArray, OffsetTypeObject:
+	case OffsetTypeArray:
 		arr := p.Pop().([]any)
 		p.Push(arr[idx])
 	default:
@@ -61,14 +58,12 @@ func (i OffsetVal) Exec(p *Execution) {
 	}
 }
 
-func (i OffsetVal) String() string {
+func (i ArrayVal) String() string {
 	switch i.OffsetType {
 	case OffsetTypeString:
-		return "offset str"
+		return "string"
 	case OffsetTypeArray:
-		return "offset arr"
-	case OffsetTypeObject:
-		return "offset obj"
+		return "array"
 	default:
 		panic(i.OffsetType)
 	}

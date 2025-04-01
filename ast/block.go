@@ -10,6 +10,9 @@ func (p *Program) GetSourceInfo() SourceInfo {
 }
 
 func (p *Program) Visit(v Visitor) {
+	if sv, ok := v.(ScopeVisitor); ok {
+		sv.PushScope(p.Scope)
+	}
 	p.Block.Visit(v)
 }
 

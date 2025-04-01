@@ -211,14 +211,11 @@ func DebugStringVal(typ ast.Type, arg any) string {
 	if arg == nil {
 		return "<nil>"
 	}
-	if reflect.TypeOf(arg).Kind() == reflect.Pointer {
-		return "<ref>"
-	}
+
 	if arg == lib.TabDisplay {
 		return "Tab"
 	}
 
-	var sb strings.Builder
 	switch typedArg := arg.(type) {
 	case bool:
 		if typedArg {
@@ -229,9 +226,9 @@ func DebugStringVal(typ ast.Type, arg any) string {
 	case []byte:
 		panic(typedArg) // should be impossible
 	case string:
-		_, _ = fmt.Fprintf(&sb, "%#v", typedArg)
+		return fmt.Sprintf("%#v", typedArg)
 	case byte:
-		_, _ = fmt.Fprintf(&sb, "%#v", rune(typedArg))
+		return fmt.Sprintf("%#v", rune(typedArg))
 	case []any:
 		if typ == ast.UnresolvedType {
 			return "<array>"
@@ -239,12 +236,34 @@ func DebugStringVal(typ ast.Type, arg any) string {
 			at := typ.AsArrayType()
 			return at.Base.String() + arrayTypeSized(at.NDims, len(typedArg))
 		} else {
+			return "<unknown>"
+		}
+	case *class:
+		if typedArg == nil {
+			return "<nil>"
+		}
+		if typ == ast.UnresolvedType {
 			return "<object>"
+		} else if typ.IsClassType() {
+			ct := typ.AsClassType()
+			return ct.GetName()
+		} else {
+			return "<unknown>"
+		}
+	case *any:
+		if typ == ast.UnresolvedType {
+			return "<ref>"
+		} else if typedArg == nil {
+			return "*<nil>"
+		} else {
+			return "*" + DebugStringVal(typ, *typedArg)
 		}
 	default:
-		_, _ = fmt.Fprint(&sb, arg)
+		if reflect.TypeOf(arg).Kind() == reflect.Pointer {
+			return "<ref>"
+		}
+		return fmt.Sprint(arg)
 	}
-	return sb.String()
 }
 
 func zeroValue(typ ast.Type) any {
@@ -266,6 +285,9 @@ func zeroValue(typ ast.Type) any {
 	case ast.InputFile:
 		return lib.InputFile{}
 	default:
+		if typ.IsClassType() {
+			return (*class)(nil)
+		}
 		panic(typ)
 	}
 }

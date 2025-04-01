@@ -7,9 +7,11 @@ type Statement interface {
 
 type DeclareStmt struct {
 	SourceInfo
-	Type    Type
-	IsConst bool
-	Decls   []*VarDecl
+	Type      Type
+	IsConst   bool
+	IsField   bool
+	IsPrivate bool
+	Decls     []*VarDecl
 }
 
 func (ds *DeclareStmt) Visit(v Visitor) {
@@ -238,8 +240,9 @@ func (*ForEachStmt) isStatement() {
 
 type CallStmt struct {
 	SourceInfo
-	Name string
-	Args []Expression
+	Name      string
+	Qualifier Expression
+	Args      []Expression
 
 	Ref *ModuleStmt // resolve
 }
@@ -248,41 +251,15 @@ func (cs *CallStmt) Visit(v Visitor) {
 	if !v.PreVisitCallStmt(cs) {
 		return
 	}
+	if cs.Qualifier != nil {
+		cs.Qualifier.Visit(v)
+	}
 	for _, arg := range cs.Args {
 		arg.Visit(v)
 	}
 	v.PostVisitCallStmt(cs)
 }
 func (*CallStmt) isStatement() {
-}
-
-type ModuleStmt struct {
-	SourceInfo
-	Name   string
-	Params []*VarDecl
-	Block  *Block
-
-	IsExternal bool
-
-	Scope *Scope // collect
-}
-
-func (ms *ModuleStmt) Visit(v Visitor) {
-	if !v.PreVisitModuleStmt(ms) {
-		return
-	}
-	for _, param := range ms.Params {
-		param.Visit(v)
-	}
-	ms.Block.Visit(v)
-	v.PostVisitModuleStmt(ms)
-}
-
-func (ms *ModuleStmt) GetName() string {
-	return ms.Name
-}
-
-func (*ModuleStmt) isStatement() {
 }
 
 type ReturnStmt struct {
@@ -301,34 +278,4 @@ func (rs *ReturnStmt) Visit(v Visitor) {
 }
 
 func (*ReturnStmt) isStatement() {
-}
-
-type FunctionStmt struct {
-	SourceInfo
-	Name   string
-	Type   Type
-	Params []*VarDecl
-	Block  *Block
-
-	IsExternal bool
-
-	Scope *Scope // collect
-}
-
-func (fs *FunctionStmt) Visit(v Visitor) {
-	if !v.PreVisitFunctionStmt(fs) {
-		return
-	}
-	for _, param := range fs.Params {
-		param.Visit(v)
-	}
-	fs.Block.Visit(v)
-	v.PostVisitFunctionStmt(fs)
-}
-
-func (fs *FunctionStmt) GetName() string {
-	return fs.Name
-}
-
-func (*FunctionStmt) isStatement() {
 }

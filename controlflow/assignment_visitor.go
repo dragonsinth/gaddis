@@ -8,7 +8,6 @@ import (
 type AssignmentVisitor struct {
 	base.Visitor
 
-	currScope     *ast.Scope
 	written       []bool
 	pendingWrites map[*ast.VariableExpr]bool
 }
@@ -118,13 +117,13 @@ func (v *AssignmentVisitor) PostVisitCallStmt(cs *ast.CallStmt) {
 
 func (v *AssignmentVisitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.written = make([]bool, len(ms.Scope.Locals))
-	v.currScope = ms.Scope
+	v.PushScope(ms.Scope)
 	v.pendingWrites = map[*ast.VariableExpr]bool{}
 	return true
 }
 
 func (v *AssignmentVisitor) PostVisitModuleStmt(_ *ast.ModuleStmt) {
-	v.currScope = nil
+	v.PopScope()
 	if len(v.pendingWrites) != 0 {
 		panic("here")
 	}
@@ -132,13 +131,13 @@ func (v *AssignmentVisitor) PostVisitModuleStmt(_ *ast.ModuleStmt) {
 
 func (v *AssignmentVisitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.written = make([]bool, len(fs.Scope.Locals))
-	v.currScope = fs.Scope
+	v.PushScope(fs.Scope)
 	v.pendingWrites = map[*ast.VariableExpr]bool{}
 	return true
 }
 
 func (v *AssignmentVisitor) PostVisitFunctionStmt(_ *ast.FunctionStmt) {
-	v.currScope = nil
+	v.PopScope()
 	if len(v.pendingWrites) != 0 {
 		panic("here")
 	}
@@ -192,5 +191,5 @@ func (v *AssignmentVisitor) isLocalRef(expr ast.Expression) *ast.VariableExpr {
 }
 
 func (v *AssignmentVisitor) isLocal(ref *ast.VarDecl) bool {
-	return ref.Scope == v.currScope && !ref.IsParam && !ref.IsConst
+	return ref.Scope == v.Scope() && !ref.IsParam && !ref.IsConst && ref.Enclosing == nil
 }
