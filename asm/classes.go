@@ -62,7 +62,11 @@ type FieldVal struct {
 
 func (i FieldVal) Exec(p *Execution) {
 	ref := p.Pop().(*class)
-	p.Push(ref.fields[i.Index])
+	val := ref.fields[i.Index]
+	if val == nil {
+		panic(fmt.Sprintf("field %s read before assignment", i.Name)) // TODO: zero-init classes
+	}
+	p.Push(val)
 }
 
 func (i FieldVal) String() string {
