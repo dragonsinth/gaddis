@@ -11,21 +11,28 @@ func Assemble(prog *ast.Program) *Assembly {
 	prog.Visit(tv)
 
 	v := &Visitor{}
+	nClasses := len(prog.Scope.Classes)
+	v.vtables = make([]vtable, nClasses)
 
 	// Map the global scope up front.
 	for _, stmt := range prog.Block.Statements {
 		switch stmt := stmt.(type) {
-		case *ast.ModuleStmt:
-			v.newLabel(stmt.Name)
-		case *ast.FunctionStmt:
-			v.newLabel(stmt.Name)
+		case ast.Callable:
+			v.newLabel(stmt)
+		case *ast.ClassStmt:
+			for _, cs := range stmt.Block.Statements {
+				switch cs := cs.(type) {
+				case ast.Callable:
+					v.newLabel(cs)
+				}
+			}
 		default:
 			// nothing
 		}
 	}
 
 	// Emit the global block's begin statement.
-	globalLabel := v.newLabel("global!")
+	globalLabel := &Label{Name: "global$"}
 	v.code = append(v.code, Begin{
 		baseInst: baseInst{prog.Block.SourceInfo},
 		Scope:    prog.Scope,
@@ -37,8 +44,7 @@ func Assemble(prog *ast.Program) *Assembly {
 	// Emit all global block non-decls.
 	for _, stmt := range prog.Block.Statements {
 		switch stmt := stmt.(type) {
-		case *ast.ModuleStmt, *ast.FunctionStmt:
-			// nothing
+		case *ast.ModuleStmt, *ast.FunctionStmt, *ast.ClassStmt:
 		default:
 			stmt.Visit(v)
 		}
@@ -51,7 +57,7 @@ func Assemble(prog *ast.Program) *Assembly {
 		scope := ref.ModuleStmt.Scope
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ref.ModuleStmt.SourceInfo.Head()},
-			Label:    v.refLabel("main"),
+			Label:    v.refLabel(ref.ModuleStmt),
 			NArgs:    len(scope.Params),
 		})
 		finalReturnSi = ref.ModuleStmt.SourceInfo.Head()
@@ -68,6 +74,13 @@ func Assemble(prog *ast.Program) *Assembly {
 		switch stmt := stmt.(type) {
 		case *ast.ModuleStmt, *ast.FunctionStmt:
 			stmt.Visit(v)
+		case *ast.ClassStmt:
+			for _, cs := range stmt.Block.Statements {
+				switch cs := cs.(type) {
+				case ast.Callable:
+					cs.Visit(v)
+				}
+			}
 		default:
 			// nothing
 		}
@@ -78,11 +91,25 @@ func Assemble(prog *ast.Program) *Assembly {
 		strings[i] = s
 	}
 
+	// compute vtables now that all the labels are known
+	lblTables := make([][]*Label, nClasses)
+	classes := make([]string, nClasses)
+	for i, c := range prog.Scope.Classes {
+		classes[i] = c.Name
+		for _, call := range c.Scope.Methods {
+			lbl := v.refLabel(call)
+			lblTables[i] = append(lblTables[i], lbl)
+			v.vtables[i] = append(v.vtables[i], lbl.PC)
+		}
+	}
+
 	return &Assembly{
 		GlobalScope: prog.Scope,
 		Code:        v.code,
 		Labels:      v.labels,
 		Strings:     strings,
+		Classes:     classes,
+		Vtables:     lblTables,
 	}
 }
 
@@ -91,6 +118,7 @@ type Visitor struct {
 	code    []Inst
 	labels  map[string]*Label
 	strings map[string]int
+	vtables []vtable
 }
 
 var _ ast.Visitor = &Visitor{}
@@ -126,7 +154,7 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	} else {
 		return false // no initializer
 	}
-	v.varRefDecl(vd, vd, true)
+	v.varRefDecl(vd, nil, vd, true)
 	v.store(vd)
 	return false
 }
@@ -405,7 +433,8 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	// post loop increment+jump
 	si := fs.SourceInfo.Tail()
 
-	v.varRefDecl(si, fs.Ref.(*ast.VariableExpr).Ref, true)
+	ve := fs.Ref.(*ast.VariableExpr)
+	v.varRefDecl(si, ve.Qualifier, ve.Ref, true)
 	switch refType {
 	case ast.Integer:
 		v.code = append(v.code, IncrInt{baseInst: baseInst{si}, Val: intVal})
@@ -430,7 +459,7 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 
 	// test
 	startLabel := &Label{Name: "for", PC: len(v.code)}
-	v.varRefDecl(si, fs.Index, false)
+	v.varRefDecl(si, nil, fs.Index, false)
 	fs.ArrayExpr.Visit(v)
 	v.code = append(v.code, ArrayLen{baseInst: baseInst{si}})
 	v.code = append(v.code, BinOpInt{baseInst: baseInst{si}, Op: ast.LT})
@@ -440,8 +469,8 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 	// ref = arr[idx]
 	// arr, idx, array ref, ref, store
 	fs.ArrayExpr.Visit(v)
-	v.varRefDecl(si, fs.Index, false)
-	v.code = append(v.code, OffsetVal{baseInst: baseInst{si}, OffsetType: OffsetTypeArray})
+	v.varRefDecl(si, nil, fs.Index, false)
+	v.code = append(v.code, ArrayVal{baseInst: baseInst{si}, OffsetType: OffsetTypeArray})
 	v.varRef(fs.Ref, true)
 	v.code = append(v.code, Store{baseInst{si}})
 
@@ -449,7 +478,7 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 
 	// post loop increment+jump
 	si = fs.SourceInfo.Tail()
-	v.varRefDecl(si, fs.Index, true)
+	v.varRefDecl(si, nil, fs.Index, true)
 	v.code = append(v.code, IncrInt{baseInst: baseInst{si}, Val: 1})
 	v.code = append(v.code, Jump{baseInst: baseInst{si}, Label: startLabel})
 	endLabel.PC = len(v.code)
@@ -465,6 +494,11 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
 }
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	nArg := len(cs.Args)
+	if cs.Qualifier != nil {
+		cs.Qualifier.Visit(v)
+		nArg++
+	}
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	if cs.Ref.IsExternal {
 		name := cs.Name
@@ -473,61 +507,67 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 			Name:     name,
 			Type:     ast.UnresolvedType,
 			Index:    lib.IndexOf(name),
-			NArg:     len(cs.Args),
+			NArg:     nArg,
 		})
 		if name == "delete" || name == "insert" {
 			// special case!
 			v.varRef(cs.Args[0], true)
 			v.store(cs)
 		}
+	} else if cs.Qualifier != nil && !cs.Ref.IsConstructor {
+		v.code = append(v.code, VCall{
+			baseInst: baseInst{cs.SourceInfo},
+			Class:    cs.Ref.Enclosing.GetName(),
+			Name:     cs.Name,
+			Index:    cs.Ref.Id,
+			NArgs:    nArg,
+		})
 	} else {
 		v.code = append(v.code, Call{
 			baseInst: baseInst{cs.SourceInfo},
-			Label:    v.refLabel(cs.Ref.Name),
-			NArgs:    len(cs.Args),
+			Label:    v.refLabel(cs.Ref),
+			NArgs:    nArg,
 		})
 	}
 	return false
 }
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
-	lbl := v.refLabel(ms.Name)
-	lbl.PC = len(v.code)
-	v.code = append(v.code, Begin{
-		baseInst: baseInst{ms.SourceInfo},
-		Scope:    ms.Scope,
-		Label:    lbl,
-		NParams:  len(ms.Scope.Params),
-		NLocals:  len(ms.Scope.Locals),
-	})
-	return true
+	return v.preVisitCallable(ms)
 }
 
 func (v *Visitor) PostVisitModuleStmt(ms *ast.ModuleStmt) {
-	v.code = append(v.code, End{
-		baseInst: baseInst{ms.SourceInfo.Tail()},
-		Label:    v.refLabel(ms.Name),
-	})
+	v.postVisitCallable(ms)
 }
 
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
-	lbl := v.refLabel(fs.Name)
+	return v.preVisitCallable(fs)
+}
+
+func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+	v.postVisitCallable(fs)
+}
+
+func (v *Visitor) preVisitCallable(callable ast.Callable) bool {
+	lbl := v.refLabel(callable)
 	lbl.PC = len(v.code)
+	scope := callable.GetScope()
 	v.code = append(v.code, Begin{
-		baseInst: baseInst{fs.SourceInfo},
-		Scope:    fs.Scope,
+		baseInst: baseInst{callable.GetSourceInfo()},
+		Scope:    scope,
 		Label:    lbl,
-		NParams:  len(fs.Scope.Params),
-		NLocals:  len(fs.Scope.Locals),
+		NParams:  len(scope.Params),
+		NLocals:  len(scope.Locals),
 	})
 	return true
 }
 
-func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+func (v *Visitor) postVisitCallable(callable ast.Callable) bool {
 	v.code = append(v.code, End{
-		baseInst: baseInst{fs.SourceInfo.Tail()},
-		Label:    v.refLabel(fs.Name),
+		baseInst: baseInst{callable.GetSourceInfo().Tail()},
+		Label:    v.refLabel(callable),
 	})
+	return true
 }
 
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {
@@ -573,11 +613,17 @@ func (v *Visitor) PostVisitUnaryOperation(l *ast.UnaryOperation) {
 	}
 }
 
-func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
+func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
 	v.varRef(ve, false) // if we get here, we need a value
+	return false
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
+	nArg := len(ce.Args)
+	if ce.Qualifier != nil {
+		ce.Qualifier.Visit(v)
+		nArg++
+	}
 	v.outputArguments(ce.Args, ce.Ref.Params)
 	if ce.Ref.IsExternal {
 		v.code = append(v.code, LibCall{
@@ -585,13 +631,21 @@ func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
 			Name:     ce.Name,
 			Type:     ce.Type.AsPrimitive(),
 			Index:    lib.IndexOf(ce.Name),
-			NArg:     len(ce.Args),
+			NArg:     nArg,
+		})
+	} else if ce.Qualifier != nil {
+		v.code = append(v.code, VCall{
+			baseInst: baseInst{ce.SourceInfo},
+			Class:    ce.Ref.Enclosing.GetName(),
+			Name:     ce.Name,
+			Index:    ce.Ref.Id,
+			NArgs:    nArg,
 		})
 	} else {
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ce.SourceInfo},
-			Label:    v.refLabel(ce.Ref.Name),
-			NArgs:    len(ce.Args),
+			Label:    v.refLabel(ce.Ref),
+			NArgs:    nArg,
 		})
 	}
 	return false
@@ -606,8 +660,8 @@ func (v *Visitor) PreVisitArrayRef(arr *ast.ArrayRef) bool {
 	}
 
 	// if we get here we need a value
-	v.code = append(v.code, OffsetVal{
-		baseInst:   baseInst{arr.GetSourceInfo()},
+	v.code = append(v.code, ArrayVal{
+		baseInst:   baseInst{arr.SourceInfo},
 		OffsetType: typ,
 	})
 	return false
@@ -619,6 +673,35 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 		si = ai.Args[len(ai.Args)-1].GetSourceInfo()
 	}
 	v.outputArrayInitializer(si, ai.Type, ai.Dims, ai.Args)
+	return false
+}
+
+func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
+	ctor := ne.Ctor
+	v.code = append(v.code, ObjNew{
+		baseInst: baseInst{ne.SourceInfo},
+		Name:     ne.Name,
+		Vtable:   &v.vtables[ne.Ctor.Enclosing.Class.Id],
+		NFields:  len(ctor.Enclosing.Scope.Fields),
+	})
+	// duplicate the `this` pointer so it remains on the stack when the ctor returns
+	v.code = append(v.code, Dup{baseInst{ne.SourceInfo}})
+
+	v.outputArguments(ne.Args, ctor.Params)
+	v.code = append(v.code, Call{
+		baseInst: baseInst{ne.SourceInfo},
+		Label:    v.refLabel(ctor),
+		NArgs:    len(ctor.Params) + 1,
+	})
+	return false
+}
+
+func (v *Visitor) PreVisitThisRef(ref *ast.ThisRef) bool {
+	v.code = append(v.code, ParamVal{
+		baseInst: baseInst{ref.SourceInfo},
+		Name:     "this",
+		Index:    0,
+	})
 	return false
 }
 
@@ -659,7 +742,7 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 	switch exp := expr.(type) {
 	case *ast.VariableExpr:
-		v.varRefDecl(expr, exp.Ref, needRef)
+		v.varRefDecl(expr, exp.Qualifier, exp.Ref, needRef)
 	case *ast.ArrayRef:
 		typ := OffsetTypeArray
 		if exp.Qualifier.GetType() == ast.String {
@@ -668,12 +751,12 @@ func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 		exp.Qualifier.Visit(v)
 		exp.IndexExpr.Visit(v)
 		if needRef {
-			v.code = append(v.code, OffsetRef{
+			v.code = append(v.code, ArrayRef{
 				baseInst:   baseInst{exp.GetSourceInfo()},
 				OffsetType: typ,
 			})
 		} else {
-			v.code = append(v.code, OffsetVal{
+			v.code = append(v.code, ArrayVal{
 				baseInst:   baseInst{exp.GetSourceInfo()},
 				OffsetType: typ,
 			})
@@ -683,7 +766,7 @@ func (v *Visitor) varRef(expr ast.Expression, needRef bool) {
 	}
 }
 
-func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bool) {
+func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, qual ast.Expression, decl *ast.VarDecl, needRef bool) {
 	isRef := decl.IsRef
 	if decl.IsConst {
 		if isRef || needRef {
@@ -739,6 +822,25 @@ func (v *Visitor) varRefDecl(hs ast.HasSourceInfo, decl *ast.VarDecl, needRef bo
 				Index:    decl.Id,
 			})
 		}
+	} else if qual != nil {
+		// Field
+		if isRef {
+			panic("here")
+		}
+		qual.Visit(v)
+		if needRef {
+			v.code = append(v.code, FieldRef{
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    decl.Id,
+			})
+		} else {
+			v.code = append(v.code, FieldVal{
+				baseInst: baseInst{hs.GetSourceInfo()},
+				Name:     decl.Name,
+				Index:    decl.Id,
+			})
+		}
 	} else {
 		// Local
 		if isRef {
@@ -765,6 +867,9 @@ func (v *Visitor) store(hs ast.HasSourceInfo) {
 }
 
 func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) {
+	if len(args) != len(params) {
+		panic("argument count mismatch")
+	}
 	for i, arg := range args {
 		param := params[i]
 		if param.IsRef {
@@ -783,7 +888,11 @@ func (v *Visitor) outputArguments(args []ast.Expression, params []*ast.VarDecl) 
 	}
 }
 
-func (v *Visitor) newLabel(name string) *Label {
+func (v *Visitor) newLabel(callable ast.Callable) *Label {
+	name := callable.GetName()
+	if enc := callable.GetEnclosing(); enc != nil {
+		name = enc.GetName() + "$" + name
+	}
 	if v.labels == nil {
 		v.labels = map[string]*Label{}
 	}
@@ -795,7 +904,11 @@ func (v *Visitor) newLabel(name string) *Label {
 	return l
 }
 
-func (v *Visitor) refLabel(name string) *Label {
+func (v *Visitor) refLabel(callable ast.Callable) *Label {
+	name := callable.GetName()
+	if enc := callable.GetEnclosing(); enc != nil {
+		name = enc.GetName() + "$" + name
+	}
 	if _, ok := v.labels[name]; !ok {
 		panic(name)
 	}

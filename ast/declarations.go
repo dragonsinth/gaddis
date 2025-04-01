@@ -14,7 +14,7 @@ type VarDecl struct {
 	IsPrivate bool
 	IsParam   bool
 	IsRef     bool
-	IsField   *ClassType
+	Enclosing *ClassType
 
 	Scope *Scope // collect
 	Id    int
@@ -38,6 +38,14 @@ func (vd *VarDecl) GetName() string {
 	return vd.Name
 }
 
+type Callable interface {
+	Statement
+	HasName
+	GetEnclosing() *ClassType
+	GetParams() []*VarDecl
+	GetScope() *Scope
+}
+
 type ModuleStmt struct {
 	SourceInfo
 	Name   string
@@ -47,9 +55,10 @@ type ModuleStmt struct {
 	IsExternal    bool
 	IsPrivate     bool
 	IsConstructor bool
-	IsMethod      *ClassType
+	Enclosing     *ClassType
 
 	Scope *Scope // collect
+	Id    int    // only if method
 }
 
 func (ms *ModuleStmt) Visit(v Visitor) {
@@ -67,6 +76,18 @@ func (ms *ModuleStmt) GetName() string {
 	return ms.Name
 }
 
+func (ms *ModuleStmt) GetEnclosing() *ClassType {
+	return ms.Enclosing
+}
+
+func (ms *ModuleStmt) GetParams() []*VarDecl {
+	return ms.Params
+}
+
+func (ms *ModuleStmt) GetScope() *Scope {
+	return ms.Scope
+}
+
 func (*ModuleStmt) isStatement() {
 }
 
@@ -79,9 +100,10 @@ type FunctionStmt struct {
 
 	IsExternal bool
 	IsPrivate  bool
-	IsMethod   *ClassType
+	Enclosing  *ClassType
 
 	Scope *Scope // collect
+	Id    int    // only if method
 }
 
 func (fs *FunctionStmt) Visit(v Visitor) {
@@ -97,6 +119,18 @@ func (fs *FunctionStmt) Visit(v Visitor) {
 
 func (fs *FunctionStmt) GetName() string {
 	return fs.Name
+}
+
+func (fs *FunctionStmt) GetEnclosing() *ClassType {
+	return fs.Enclosing
+}
+
+func (fs *FunctionStmt) GetParams() []*VarDecl {
+	return fs.Params
+}
+
+func (fs *FunctionStmt) GetScope() *Scope {
+	return fs.Scope
 }
 
 func (*FunctionStmt) isStatement() {

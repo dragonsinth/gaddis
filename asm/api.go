@@ -7,6 +7,8 @@ type Assembly struct {
 	Code        []Inst
 	Labels      map[string]*Label
 	Strings     []string
+	Classes     []string
+	Vtables     [][]*Label
 }
 
 type Inst interface {

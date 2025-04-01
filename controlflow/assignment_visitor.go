@@ -191,5 +191,5 @@ func (v *AssignmentVisitor) isLocalRef(expr ast.Expression) *ast.VariableExpr {
 }
 
 func (v *AssignmentVisitor) isLocal(ref *ast.VarDecl) bool {
-	return ref.Scope == v.Scope() && !ref.IsParam && !ref.IsConst
+	return ref.Scope == v.Scope() && !ref.IsParam && !ref.IsConst && ref.Enclosing == nil
 }

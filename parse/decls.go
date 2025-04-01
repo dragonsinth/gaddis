@@ -57,7 +57,7 @@ func (p *Parser) parseVarDecl(typ ast.Type, opts varDeclOpts) *ast.VarDecl {
 		DimExprs:   dims,
 		Expr:       expr,
 		IsConst:    opts.isConst,
-		IsField:    opts.isField,
+		Enclosing:  opts.isField,
 		IsPrivate:  opts.isPrivate,
 	}
 }

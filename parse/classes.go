@@ -91,13 +91,13 @@ func (p *Parser) parseClassElement(enclosing *ast.ClassType) ast.Statement {
 	case lex.MODULE:
 		p.Next()
 		ms := p.parseModuleStmt(r)
-		ms.IsMethod = enclosing
+		ms.Enclosing = enclosing
 		ms.IsPrivate = isPrivate
 		return ms
 	case lex.FUNCTION:
 		p.Next()
 		fs := p.parseFunctionStmt(r)
-		fs.IsMethod = enclosing
+		fs.Enclosing = enclosing
 		fs.IsPrivate = isPrivate
 		return fs
 	default:

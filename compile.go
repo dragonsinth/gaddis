@@ -17,6 +17,15 @@ func Compile(src string) (*ast.Program, []ast.Comment, []ast.Error) {
 
 	// report collection and resolution errors together
 	errs = collect.Collect(prog)
+	if len(errs) > 0 {
+		return prog, comments, errs
+	}
+
+	// errors related to inheritance
+	errs = typecheck.SuperCheck(prog)
+	if len(errs) > 0 {
+		return prog, comments, errs
+	}
 
 	// resolves types, report type checking errors
 	errs = typecheck.TypeCheck(prog, prog.Scope)

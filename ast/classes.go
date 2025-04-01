@@ -8,6 +8,7 @@ type ClassStmt struct {
 	Block   *Block
 
 	Scope *Scope // collect
+	Id    int
 }
 
 func (cs *ClassStmt) Visit(v Visitor) {

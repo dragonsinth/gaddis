@@ -484,7 +484,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
 	if cs.Qualifier != nil {
 		if cs.Ref.IsConstructor {
-			v.maybeCast(cs.Ref.IsMethod, cs.Qualifier)
+			v.maybeCast(cs.Ref.Enclosing, cs.Qualifier)
 		} else {
 			cs.Qualifier.Visit(v)
 		}
@@ -516,7 +516,7 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
 	v.indent()
 	v.output("func ")
-	if enc := ms.IsMethod; enc != nil {
+	if enc := ms.Enclosing; enc != nil {
 		v.output("(this *")
 		v.ident(enc)
 		v.output(") ")
@@ -556,7 +556,7 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {}
 func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 	v.indent()
 	v.output("func ")
-	if enc := fs.IsMethod; enc != nil {
+	if enc := fs.Enclosing; enc != nil {
 		v.output("(this *")
 		v.ident(enc)
 		v.output(") ")
@@ -972,7 +972,7 @@ func (v *Visitor) varRefDecl(qual ast.Expression, decl *ast.VarDecl, needRef boo
 		}
 		return
 	} else {
-		// Local
+		// Local or Field
 		needClose := false
 		if decl.IsRef == needRef {
 			// if we have a ref and need a ref, or we have a val and need a val, we good

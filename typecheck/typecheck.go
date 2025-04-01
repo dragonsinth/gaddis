@@ -5,7 +5,10 @@ import (
 	"github.com/dragonsinth/gaddis/base"
 )
 
-// TODO(scottb): access control checking!!
+// TODO(scottb):
+// - access control checks
+// - super constructor invocation
+// - calling constructor outside of call / super
 
 func TypeCheck(node ast.Node, scope *ast.Scope) []ast.Error {
 	v := &Visitor{}
@@ -270,7 +273,7 @@ func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {
 
 	// check the number and type of each argument
 	cs.Ref = decl.ModuleStmt
-	if decl.ModuleStmt.IsMethod != nil && cs.Qualifier == nil {
+	if decl.ModuleStmt.Enclosing != nil && cs.Qualifier == nil {
 		// synthesize this ref of the immediate enclosing class type
 		cs.Qualifier = &ast.ThisRef{
 			SourceInfo: cs.Head(),
@@ -416,7 +419,7 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 		return
 	}
 
-	if decl.VarDecl.IsField != nil && ve.Qualifier == nil {
+	if decl.VarDecl.Enclosing != nil && ve.Qualifier == nil {
 		// synthesize this ref of the immediate enclosing class type
 		ve.Qualifier = &ast.ThisRef{
 			SourceInfo: ve.Head(),
@@ -451,7 +454,7 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 		return
 	}
 
-	if decl.FunctionStmt.IsMethod != nil && ce.Qualifier == nil {
+	if decl.FunctionStmt.Enclosing != nil && ce.Qualifier == nil {
 		// synthesize this ref of the immediate enclosing class type
 		ce.Qualifier = &ast.ThisRef{
 			SourceInfo: ce.Head(),
