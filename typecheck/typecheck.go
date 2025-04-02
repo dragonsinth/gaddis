@@ -296,6 +296,7 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
 	ref := v.Scope().FunctionStmt
 	if ref == nil {
 		v.Errorf(rs, "return statement without enclosing Function")
+		return
 	} else {
 		rs.Ref = ref
 	}
