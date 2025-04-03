@@ -658,6 +658,24 @@ func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
 		}
 	}
 
+	// emit array initializers
+	for _, field := range cs.Scope.Fields {
+		if field.Enclosing != cs.Type {
+			continue // skip super fields
+		}
+		if !field.Type.IsArrayType() {
+			continue
+		}
+		v.output("\tthis.")
+		v.ident(field)
+		v.output(" = ")
+		v.outputArrayInitializer(field.Type.AsArrayType(), field.Dims, nil)
+		v.output("\n")
+	}
+
+	v.output("\treturn this\n")
+	v.output("}\n")
+
 	// Emit method bodies
 	for _, stmt := range cs.Block.Statements {
 		switch stmt := stmt.(type) {
@@ -670,33 +688,20 @@ func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
 }
 
 var rootTmpl = template.Must(template.New("").Parse(`
-func New{{.Shape}}() *{{.Shape}}_ {
-	this := &{{.Shape}}_{}
-	this.face = this
-	return this
-}
-
-func Super{{.Shape}}(face I{{.Shape}}) {{.Shape}}_ {
-	return {{.Shape}}_{face: face}
-}
-
+func New{{.Shape}}(face I{{.Shape}}) *{{.Shape}}_ {
+	this := &{{.Shape}}_{face: face}
+	if face == nil {
+		this.face = this
+	}
 `))
 
 var subTmpl = template.Must(template.New("").Parse(`
-func New{{.Circle}}() *{{.Circle}}_ {
-	this := &{{.Circle}}_{}
-	this.{{.Shape}}_ = Super{{.Shape}}(this)
-	this.face = this
-	return this
-}
-
-func Super{{.Circle}}(face I{{.Circle}}) {{.Circle}}_ {
-	return {{.Circle}}_{
-		{{.Shape}}_: Super{{.Shape}}(face),
-		face:   face,
+func New{{.Circle}}(face I{{.Circle}}) *{{.Circle}}_ {
+	this := &{{.Circle}}_{face: face}
+	if face == nil {
+		this.face = this
 	}
-}
-
+	this.{{.Shape}}_ = *New{{.Shape}}(this.face)
 `))
 
 func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {}
@@ -833,11 +838,14 @@ func (v *Visitor) PostArrayInitializer(ai *ast.ArrayInitializer) {}
 func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
 	v.output("New")
 	v.output(ne.Name)
-	v.output("().")
-	v.ident(ne.Ctor)
-	v.output("(")
-	v.outputArgumentList(ne.Args, ne.Ctor.Params)
-	v.output(")")
+	v.output("(nil)")
+	if ne.Ctor != nil {
+		v.output(".")
+		v.ident(ne.Ctor)
+		v.output("(")
+		v.outputArgumentList(ne.Args, ne.Ctor.Params)
+		v.output(")")
+	}
 	return false
 }
 

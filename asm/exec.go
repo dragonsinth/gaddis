@@ -238,18 +238,11 @@ func DebugStringVal(typ ast.Type, arg any) string {
 		} else {
 			return "<unknown>"
 		}
-	case *class:
+	case *Object:
 		if typedArg == nil {
 			return "<nil>"
 		}
-		if typ == ast.UnresolvedType {
-			return "<object>"
-		} else if typ.IsClassType() {
-			ct := typ.AsClassType()
-			return ct.GetName()
-		} else {
-			return "<unknown>"
-		}
+		return "<" + typedArg.Type.String() + ">"
 	case *any:
 		if typ == ast.UnresolvedType {
 			return "<ref>"
@@ -286,7 +279,7 @@ func zeroValue(typ ast.Type) any {
 		return lib.InputFile{}
 	default:
 		if typ.IsClassType() {
-			return (*class)(nil)
+			return (*Object)(nil)
 		}
 		panic(typ)
 	}

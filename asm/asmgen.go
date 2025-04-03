@@ -20,6 +20,8 @@ func Assemble(prog *ast.Program) *Assembly {
 		case ast.Callable:
 			v.newLabel(stmt)
 		case *ast.ClassStmt:
+			// synthesize a "New" function
+			v.newLabelName(stmt.Name + "$new$")
 			for _, cs := range stmt.Block.Statements {
 				switch cs := cs.(type) {
 				case ast.Callable:
@@ -75,6 +77,7 @@ func Assemble(prog *ast.Program) *Assembly {
 		case *ast.ModuleStmt, *ast.FunctionStmt:
 			stmt.Visit(v)
 		case *ast.ClassStmt:
+			v.emitNewFunction(stmt)
 			for _, cs := range stmt.Block.Statements {
 				switch cs := cs.(type) {
 				case ast.Callable:
@@ -570,6 +573,71 @@ func (v *Visitor) postVisitCallable(callable ast.Callable) bool {
 	return true
 }
 
+func (v *Visitor) emitNewFunction(cs *ast.ClassStmt) {
+	si := cs.Head()
+	fs := &ast.FunctionStmt{
+		SourceInfo: si,
+		Name:       "new$",
+		Type:       cs.Type,
+		Block:      &ast.Block{SourceInfo: si},
+		Enclosing:  cs.Type,
+	}
+	fs.Scope = ast.NewFunctionScope(fs, cs.Scope)
+	vd := &ast.VarDecl{
+		SourceInfo: si,
+		Name:       "this",
+		Type:       cs.Type,
+	}
+	fs.Scope.AddVariable(vd)
+
+	v.preVisitCallable(fs)
+
+	// this = New Thing()
+	v.code = append(v.code, ObjNew{
+		baseInst: baseInst{si},
+		Type:     cs.Type,
+		Vtable:   &v.vtables[cs.Type.Class.Id],
+		NFields:  len(cs.Type.Scope.Fields),
+	})
+	v.code = append(v.code, LocalRef{
+		baseInst: baseInst{si},
+		Name:     "this",
+		Index:    0,
+	})
+	v.store(si)
+
+	// emit initializers
+	for _, field := range cs.Scope.Fields {
+		if field.Type.IsArrayType() {
+			v.outputArrayInitializer(si, field.Type.AsArrayType(), field.Dims, nil)
+		} else {
+			v.zero(si, field.Type)
+		}
+		v.code = append(v.code, LocalVal{
+			baseInst: baseInst{si},
+			Name:     "this",
+			Index:    0,
+		})
+		v.code = append(v.code, FieldRef{
+			baseInst: baseInst{si},
+			Name:     field.Name,
+			Index:    field.Id,
+		})
+		v.store(si)
+	}
+
+	v.code = append(v.code, LocalVal{
+		baseInst: baseInst{si},
+		Name:     "this",
+		Index:    0,
+	})
+	v.code = append(v.code, Return{
+		baseInst: baseInst{si},
+		NVal:     1,
+	})
+	v.postVisitCallable(fs)
+}
+
 func (v *Visitor) PostVisitLiteral(l *ast.Literal) {
 	var id int
 	if l.Type == ast.String && !l.IsTabLiteral {
@@ -677,22 +745,24 @@ func (v *Visitor) PreVisitArrayInitializer(ai *ast.ArrayInitializer) bool {
 }
 
 func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
-	ctor := ne.Ctor
-	v.code = append(v.code, ObjNew{
-		baseInst: baseInst{ne.SourceInfo},
-		Name:     ne.Name,
-		Vtable:   &v.vtables[ne.Ctor.Enclosing.Class.Id],
-		NFields:  len(ctor.Enclosing.Scope.Fields),
-	})
-	// duplicate the `this` pointer so it remains on the stack when the ctor returns
-	v.code = append(v.code, Dup{baseInst{ne.SourceInfo}})
-
-	v.outputArguments(ne.Args, ctor.Params)
+	// Call the new function
 	v.code = append(v.code, Call{
 		baseInst: baseInst{ne.SourceInfo},
-		Label:    v.refLabel(ctor),
-		NArgs:    len(ctor.Params) + 1,
+		Label:    v.refLabelName(ne.Name + "$new$"),
+		NArgs:    0,
 	})
+
+	// Maybe call constructor.
+	if ctor := ne.Ctor; ctor != nil {
+		// duplicate the `this` pointer so it remains on the stack when the ctor returns
+		v.code = append(v.code, Dup{baseInst{ne.SourceInfo}})
+		v.outputArguments(ne.Args, ctor.Params)
+		v.code = append(v.code, Call{
+			baseInst: baseInst{ne.SourceInfo},
+			Label:    v.refLabel(ctor),
+			NArgs:    len(ctor.Params) + 1,
+		})
+	}
 	return false
 }
 
@@ -893,6 +963,10 @@ func (v *Visitor) newLabel(callable ast.Callable) *Label {
 	if enc := callable.GetEnclosing(); enc != nil {
 		name = enc.GetName() + "$" + name
 	}
+	return v.newLabelName(name)
+}
+
+func (v *Visitor) newLabelName(name string) *Label {
 	if v.labels == nil {
 		v.labels = map[string]*Label{}
 	}
@@ -909,6 +983,10 @@ func (v *Visitor) refLabel(callable ast.Callable) *Label {
 	if enc := callable.GetEnclosing(); enc != nil {
 		name = enc.GetName() + "$" + name
 	}
+	return v.refLabelName(name)
+}
+
+func (v *Visitor) refLabelName(name string) *Label {
 	if _, ok := v.labels[name]; !ok {
 		panic(name)
 	}

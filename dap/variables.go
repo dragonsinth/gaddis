@@ -26,42 +26,45 @@ func (h *Session) createVariable(name string, typ ast.Type, ref *any) api.Variab
 			EvaluateName: name,
 		}
 	}
-	if !typ.IsArrayType() {
-		return api.Variable{
-			Name:         name,
-			Value:        asm.DebugStringVal(typ, *ref),
-			Type:         typ.String(),
-			EvaluateName: name,
-		}
+
+	ret := api.Variable{
+		Name:         name,
+		Value:        asm.DebugStringVal(typ, *ref),
+		Type:         typ.String(),
+		EvaluateName: name,
 	}
 
-	val := (*ref).([]any)
+	if typ.IsArrayType() || typ.IsClassType() {
+		v, ok := h.variablesByPtr[ref]
+		if !ok {
+			if h.variablesByPtr == nil {
+				h.variablesByPtr = map[*any]variable{}
+			}
+			if h.variablesById == nil {
+				h.variablesById = map[int]variable{}
+			}
+			v = variable{
+				name: name,
+				typ:  typ,
+				ref:  ref,
+				id:   len(h.variablesByPtr) + 1,
+			}
+			h.variablesByPtr[ref] = v
+			h.variablesById[v.id] = v
+		}
+		ret.VariablesReference = v.id
+	}
 
-	v, ok := h.variablesByPtr[ref]
-	if !ok {
-		if h.variablesByPtr == nil {
-			h.variablesByPtr = map[*any]variable{}
-		}
-		if h.variablesById == nil {
-			h.variablesById = map[int]variable{}
-		}
-		v = variable{
-			name: name,
-			typ:  typ,
-			ref:  ref,
-			id:   len(h.variablesByPtr) + 1,
-		}
-		h.variablesByPtr[ref] = v
-		h.variablesById[v.id] = v
+	if typ.IsArrayType() {
+		val := (*ref).([]any)
+		ret.IndexedVariables = len(val)
 	}
-	return api.Variable{
-		Name:               name,
-		Value:              asm.DebugStringVal(typ, *ref),
-		Type:               typ.String(),
-		EvaluateName:       name,
-		VariablesReference: v.id,
-		IndexedVariables:   len(val),
+	if typ.IsClassType() {
+		val := (*ref).(*asm.Object)
+		ret.Type = val.Type.String() // use the concrete type
+		ret.NamedVariables = len(val.Fields)
 	}
+	return ret
 }
 
 func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
@@ -84,6 +87,15 @@ func (h *Session) onVariablesRequest(request *api.VariablesRequest) {
 			val := (*v.ref).([]any)
 			for i := range val {
 				response.Body.Variables = append(response.Body.Variables, h.createVariable(strconv.Itoa(i), elementType, &val[i]))
+			}
+		} else if v.typ.IsClassType() {
+			val := (*v.ref).(*asm.Object)
+			fields := val.Type.Scope.Fields
+			if len(fields) != len(val.Fields) {
+				fmt.Println("len(fields) != len(val.Fields)", len(fields), len(val.Fields))
+			}
+			for i := range val.Fields {
+				response.Body.Variables = append(response.Body.Variables, h.createVariable(fields[i].Name, fields[i].Type, &val.Fields[i]))
 			}
 		} else {
 			panic("dunno what this is")

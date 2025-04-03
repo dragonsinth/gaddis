@@ -1,0 +1,14 @@
+Class Shape
+	Public String color[4]
+End Class
+
+Class Circle Extends Shape
+	Public Integer size[4]
+End Class
+
+Declare Shape x = New Shape()
+Display x.color[0]
+
+Declare Circle y = New Circle()
+Display y.color[0]
+Display y.size[0]

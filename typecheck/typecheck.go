@@ -508,20 +508,19 @@ func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
 		v.Errorf(ne, "expected Class type, got %s", classDecl)
 		return
 	}
+	ne.Type = cls.Type
+
 	// find the actual constructor
-	modDecl := cls.Scope.Decls[ne.Name]
-	if modDecl == nil {
+	if modDecl := cls.Scope.Decls[ne.Name]; modDecl != nil {
+		ctor := modDecl.ModuleStmt
+		ne.Ctor = ctor
+		v.checkArgumentList(ne, ne.Args, ctor.Params)
+	} else {
 		// There's no constructor; assume a default constructor
 		if len(ne.Args) > 0 {
 			v.Errorf(ne, "expected 0 args, got %d", len(ne.Args))
 		}
-		return
 	}
-
-	ne.Type = cls.Type
-	ctor := modDecl.ModuleStmt
-	ne.Ctor = ctor
-	v.checkArgumentList(ne, ne.Args, ctor.Params)
 }
 
 func (v *Visitor) qualifiedLookup(qual ast.Expression, name string) *ast.Decl {

@@ -2,36 +2,39 @@ package asm
 
 import (
 	"fmt"
+	"github.com/dragonsinth/gaddis/ast"
 	"slices"
 )
 
-type class struct {
-	vtable *vtable
-	fields []any
+type Object struct {
+	Type   *ast.ClassType
+	Vtable *vtable
+	Fields []any
 }
 
 type vtable []int
 
 type ObjNew struct {
 	baseInst
-	Name    string
+	Type    *ast.ClassType
 	Vtable  *vtable
 	NFields int
 }
 
 func (i ObjNew) Exec(p *Execution) {
-	p.Push(&class{
-		vtable: i.Vtable,
-		fields: make([]any, i.NFields),
+	p.Push(&Object{
+		Type:   i.Type,
+		Vtable: i.Vtable,
+		Fields: make([]any, i.NFields),
 	})
 }
 
 func (i ObjNew) String() string {
-	return fmt.Sprintf("object new %s", i.Name)
+	return fmt.Sprintf("object new %s", i.Type)
 }
 
 func (i ObjNew) Sym() string {
-	return i.Name
+	return i.Type.String()
 }
 
 type FieldRef struct {
@@ -41,8 +44,8 @@ type FieldRef struct {
 }
 
 func (i FieldRef) Exec(p *Execution) {
-	ref := p.Pop().(*class)
-	p.Push(&ref.fields[i.Index])
+	ref := p.Pop().(*Object)
+	p.Push(&ref.Fields[i.Index])
 }
 
 func (i FieldRef) String() string {
@@ -61,8 +64,8 @@ type FieldVal struct {
 }
 
 func (i FieldVal) Exec(p *Execution) {
-	ref := p.Pop().(*class)
-	val := ref.fields[i.Index]
+	ref := p.Pop().(*Object)
+	val := ref.Fields[i.Index]
 	if val == nil {
 		panic(fmt.Sprintf("field %s read before assignment", i.Name)) // TODO: zero-init classes
 	}
@@ -91,8 +94,8 @@ func (i VCall) Exec(p *Execution) {
 	}
 
 	args := slices.Clone(p.PopN(i.NArgs))
-	this := args[0].(*class)
-	pc := (*this.vtable)[i.Index]
+	this := args[0].(*Object)
+	pc := (*this.Vtable)[i.Index]
 
 	inst := p.Code[pc]
 	be := inst.(Begin)

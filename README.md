@@ -101,12 +101,8 @@ Should cover the whole language by May 2025.
 - Classes
   - Enforce `Public` / `Private` in type checking
   - Prevent certain types of class super/sub name collisions?
-  - Class field initializers
-    - Zero-initialize new objects in asmgen.
-    - Zero-initialize fields containing arrays in gogen.
   - test nil field ref / method call errors
-  - default constructor...?
-  - implicit/required constructor calls?
+  - implicit/required constructor calls...?
   - Debugger support for classes.
 
 ### Not yet supported
