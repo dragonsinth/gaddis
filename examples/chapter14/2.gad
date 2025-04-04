@@ -4,6 +4,7 @@ End Class
 
 Class Circle Extends Shape
 	Public Integer size[4]
+	Public Integer count
 End Class
 
 Declare Shape x = New Shape()
@@ -17,3 +18,21 @@ Display toString(y)
 
 Declare Circle z[1]
 Display toString(z[0])
+
+Function Integer SideEffect(Integer i)
+	Display "SideEffect"
+	Return i
+End Function
+
+Function Circle SideEffectCircle(Circle c)
+	Display "SideEffectCircle"
+	Return c
+End Function
+
+For y.size[SideEffect(0)] = 1 To 3
+	Display y.size[0]
+End For
+
+For SideEffectCircle(y).count = 1 To 3
+	Display y.count
+End For

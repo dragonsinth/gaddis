@@ -447,13 +447,15 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 	// store
 	v.varRef(fs.Ref, true)
+	// leave an extra ref so we can test after
+	v.code = append(v.code, Dup{baseInst{fs.Ref.GetSourceInfo()}, 0})
 	v.maybeCast(refType, fs.StartExpr)
 	v.store(fs.StartExpr)
 
 	startLabel := &Label{Name: "for", PC: len(v.code)}
 
 	// test
-	v.varRef(fs.Ref, false)
+	v.code = append(v.code, Deref{baseInst{fs.Ref.GetSourceInfo()}})
 	v.maybeCast(refType, fs.StopExpr)
 	switch refType {
 	case ast.Integer:
@@ -468,10 +470,11 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	fs.Block.Visit(v)
 
 	// post loop increment+jump
-	si := fs.SourceInfo.Tail()
+	si := fs.Ref.GetSourceInfo()
 
-	ve := fs.Ref.(*ast.VariableExpr)
-	v.varRefDecl(si, ve.Qualifier, ve.Ref, true)
+	// leave an extra ref so we can test after
+	v.varRef(fs.Ref, true)
+	v.code = append(v.code, Dup{baseInst{fs.Ref.GetSourceInfo()}, 0})
 	switch refType {
 	case ast.Integer:
 		v.code = append(v.code, IncrInt{baseInst: baseInst{si}, Val: intVal})

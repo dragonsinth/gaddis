@@ -54,6 +54,8 @@ type Visitor struct {
 var _ ast.Visitor = &Visitor{}
 
 func (v *Visitor) PostVisitVarDecl(vd *ast.VarDecl) {
+	v.checkUnresolved(vd, vd.Type)
+
 	if existing := v.Scope().Decls[vd.Name]; existing != nil {
 		v.Errorf(vd, "symbol %s redeclared in this scope; previous declaration: %s", vd.Name, existing.String())
 	} else if nameMatchesClass(vd, vd.Enclosing) {
@@ -104,6 +106,8 @@ func (v *Visitor) PreVisitFunctionStmt(fs *ast.FunctionStmt) bool {
 }
 
 func (v *Visitor) PostVisitFunctionStmt(fs *ast.FunctionStmt) {
+	v.checkUnresolved(fs, fs.Type)
+
 	v.PopScope()
 	if existing := v.Scope().Decls[fs.Name]; existing != nil {
 		v.Errorf(fs, "symbol %s redeclared in this scope; previous declaration: %s", fs.Name, existing)
@@ -120,11 +124,29 @@ func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
 }
 
 func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {
+	if cs.Type.Extends != nil {
+		v.checkUnresolved(cs, cs.Type.Extends)
+	}
+
 	v.PopScope()
 	if existing := v.Scope().Decls[cs.Name]; existing != nil {
 		v.Errorf(cs, "symbol %s redeclared in this scope; previous declaration: %s", cs.Name, existing)
 	} else {
 		v.Scope().AddClass(cs)
+	}
+}
+
+func (v *Visitor) checkUnresolved(hs ast.HasSourceInfo, typ ast.Type) {
+	if typ == nil || typ.IsPrimitive() {
+		return
+	}
+	if typ.IsClassType() {
+		ct := typ.AsClassType()
+		if ct.Class == nil || ct.Scope == nil {
+			v.Errorf(hs.GetSourceInfo(), "undefined type %s", ct.GetName())
+		}
+	} else if typ.IsArrayType() {
+		v.checkUnresolved(hs, typ.BaseType())
 	}
 }
 

@@ -47,22 +47,24 @@ func ExpReal(base, exp Real) Real {
 	return math.Pow(base, exp)
 }
 
-func StepInteger(ref *Integer, stop, step Integer) Boolean {
-	*ref += step
-	if step < 0 {
-		return *ref >= stop
-	} else {
-		return *ref <= stop
-	}
+func ForInteger(ref *Integer, start Integer) Integer {
+	*ref = start
+	return *ref
 }
 
-func StepReal(ref *Real, stop, step Real) Boolean {
+func StepInteger(ref *Integer, step Integer) Integer {
 	*ref += step
-	if step < 0 {
-		return *ref >= stop
-	} else {
-		return *ref <= stop
-	}
+	return *ref
+}
+
+func ForReal(ref *Real, start Real) Real {
+	*ref = start
+	return *ref
+}
+
+func StepReal(ref *Real, step Real) Real {
+	*ref += step
+	return *ref
 }
 
 func Clone[T any](slice []T) []T {

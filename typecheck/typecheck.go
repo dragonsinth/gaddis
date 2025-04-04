@@ -175,12 +175,12 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 	// early out erroring if the loop var is jacked
 	refType := fs.Ref.GetType()
-	if _, ok := fs.Ref.(*ast.VariableExpr); !ok {
-		v.Errorf(fs.Ref, "loop counter must be a plain variable")
+	if !fs.Ref.CanReference() {
+		v.Errorf(fs.Ref, "loop variable must be a reference")
 		return
 	}
 	if !refType.IsNumeric() {
-		v.Errorf(fs.Ref, "loop counter must be a number, got %s", refType)
+		v.Errorf(fs.Ref, "loop variable must be a number, got %s", refType)
 		return
 	}
 	// check start/stop/step
@@ -233,8 +233,8 @@ func (v *Visitor) PostVisitForStmt(fs *ast.ForStmt) {
 
 func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 	refType := fs.Ref.GetType()
-	if _, ok := fs.Ref.(*ast.VariableExpr); !ok {
-		v.Errorf(fs.Ref, "loop counter must be a plain variable")
+	if !fs.Ref.CanReference() {
+		v.Errorf(fs.Ref, "loop variable must be a reference")
 		return
 	}
 

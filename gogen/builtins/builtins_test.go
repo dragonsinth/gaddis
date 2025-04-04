@@ -32,40 +32,6 @@ func TestExpReal(t *testing.T) {
 	// TODO: zero, negative behavior spec?
 }
 
-func TestStepInteger(t *testing.T) {
-	var i int64
-	assertEqual(t, true, StepInteger(&i, 2, 1))
-	assertEqual(t, 1, i)
-	assertEqual(t, true, StepInteger(&i, 2, 1))
-	assertEqual(t, 2, i)
-	assertEqual(t, false, StepInteger(&i, 2, 1))
-	assertEqual(t, 3, i)
-
-	assertEqual(t, true, StepInteger(&i, 1, -1))
-	assertEqual(t, 2, i)
-	assertEqual(t, true, StepInteger(&i, 1, -1))
-	assertEqual(t, 1, i)
-	assertEqual(t, false, StepInteger(&i, 1, -1))
-	assertEqual(t, 0, i)
-}
-
-func TestStepReal(t *testing.T) {
-	var i float64
-	assertEqual(t, true, StepReal(&i, 2, 1))
-	assertEqual(t, 1, i)
-	assertEqual(t, true, StepReal(&i, 2, 1))
-	assertEqual(t, 2, i)
-	assertEqual(t, false, StepReal(&i, 2, 1))
-	assertEqual(t, 3, i)
-
-	assertEqual(t, true, StepReal(&i, 1, -1))
-	assertEqual(t, 2, i)
-	assertEqual(t, true, StepReal(&i, 1, -1))
-	assertEqual(t, 1, i)
-	assertEqual(t, false, StepReal(&i, 1, -1))
-	assertEqual(t, 0, i)
-}
-
 func assertEqual[T comparable](t *testing.T, want T, got T) {
 	if want != got {
 		t.Errorf("want=%v, got=%v", want, got)

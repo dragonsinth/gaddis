@@ -123,10 +123,8 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - This behavior is left unspecified.
   - This could be supported in the future with some default string conversion rules.
 
-- `For` and `For Each` loop variables must be simple variable references, not field or array element references.
-  - This is implied by the book but not explicitly stated.
-  - Avoids unspecified potential re-evaluations of complex reference expressions.
-  - Could be changed in the future with a temp reference variable.
+- `For` loop variable expression is evaluated once on loop start, and again once per iteration.
+  - This behavior is left unspecified.
 
 - `For` loop stop expression is re-evaluated on every iteration.
   - This behavior is left unspecified.

@@ -430,6 +430,17 @@ func (v *Visitor) PostVisitWhileStmt(ws *ast.WhileStmt) {
 }
 
 func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
+	/*
+		if ForInteger(&count_, 1) <= 10 {
+			for {
+				Display(count_)
+				if !StepInteger(&count_, 1) <= 10 {
+					break
+				}
+			}
+		}
+	*/
+
 	isNegative := false
 	if fs.StepExpr != nil {
 		stepLit := fs.StepExpr.ConstEval()
@@ -445,26 +456,97 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 
 	refType := fs.Ref.GetType()
 	v.indent()
-	v.output("for ")
+	v.output("if For")
+	v.output(refType.String())
+	v.output("(")
+	v.varRef(fs.Ref, true)
+	v.output(", ")
+	fs.StartExpr.Visit(v)
+	if isNegative {
+		v.output(") >= ")
+	} else {
+		v.output(") <= ")
+	}
+	v.maybeCast(refType, fs.StopExpr)
+	v.output(" {\n")
+
+	v.ind += "\t"
+	v.indent()
+	v.output("for {\n")
+	fs.Block.Visit(v)
+
+	v.ind += "\t"
+
+	v.indent()
+	v.output("if Step")
+	v.output(refType.String())
+	v.output("(")
+	v.varRef(fs.Ref, true)
+	v.output(", ")
+	if fs.StepExpr != nil {
+		v.maybeCast(refType, fs.StepExpr)
+	} else {
+		v.output("1")
+	}
+	if isNegative {
+		v.output(") < ")
+	} else {
+		v.output(") > ")
+	}
+	v.maybeCast(refType, fs.StopExpr)
+	v.output(" {\n")
+	v.indent()
+	v.output("\tbreak\n")
+	v.indent()
+	v.output("}\n")
+	v.ind = v.ind[:len(v.ind)-1]
+	v.indent()
+	v.output("}\n")
+
+	v.ind = v.ind[:len(v.ind)-1]
+	v.indent()
+	v.output("}\n")
+	return false
+}
+
+func (v *Visitor) PreVisitForStmt2(fs *ast.ForStmt) bool {
+	isNegative := false
+	if fs.StepExpr != nil {
+		stepLit := fs.StepExpr.ConstEval()
+		switch val := stepLit.(type) {
+		case int64:
+			isNegative = val < 0
+		case float64:
+			isNegative = val < 0
+		default:
+			panic(stepLit)
+		}
+	}
+
+	refType := fs.Ref.GetType()
+	v.indent()
 	v.varRef(fs.Ref, false)
 	v.output(" = ")
 	v.maybeCast(refType, fs.StartExpr)
-	v.output("; ")
-	v.varRef(fs.Ref, false)
-	if isNegative {
-		v.output(" >= ")
-	} else {
-		v.output(" <= ")
-	}
-	v.maybeCast(refType, fs.StopExpr)
-	v.output("; ")
-	v.varRef(fs.Ref, false)
+	v.output("\n")
+
+	v.indent()
+	v.output("for Step")
+	v.typeName(fs.Ref.GetType())
+	v.output("(")
+	v.varRef(fs.Ref, true)
+	v.output(", ")
 	if fs.StepExpr != nil {
-		v.output(" += ")
 		v.maybeCast(refType, fs.StepExpr)
 	} else {
-		v.output("++")
+		v.output("1")
 	}
+	if isNegative {
+		v.output(") >= ")
+	} else {
+		v.output(") <= ")
+	}
+	v.maybeCast(refType, fs.StopExpr)
 	v.output(" {\n")
 	fs.Block.Visit(v)
 	v.indent()
