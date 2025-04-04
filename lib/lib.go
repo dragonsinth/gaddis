@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -36,14 +37,44 @@ func toReal(x int64) float64 {
 	return float64(x)
 }
 
-// not specced
-func integerToString(x int64) string {
-	return strconv.FormatInt(x, 10)
-}
-
-// not specced
-func realToString(x float64) string {
-	return string(strconv.FormatFloat(x, 'f', -1, 64))
+// not specced!
+func toString(arg any) string {
+	if arg == nil {
+		return "<nil>"
+	}
+	switch x := arg.(type) {
+	case int64:
+		return strconv.FormatInt(x, 10)
+	case float64:
+		return strconv.FormatFloat(x, 'f', -1, 64)
+	case bool:
+		if x {
+			return "True"
+		} else {
+			return "False"
+		}
+	case tabDisplay:
+		return "\t"
+	case []byte:
+		panic("should not get")
+	case string:
+		return x
+	case byte:
+		return string([]byte{x})
+	case []any:
+		var sb strings.Builder
+		sb.WriteByte('[')
+		for i, e := range x {
+			if i > 0 {
+				sb.WriteByte(',')
+			}
+			sb.WriteString(toString(e))
+		}
+		sb.WriteByte(']')
+		return sb.String()
+	default:
+		return fmt.Sprint(arg)
+	}
 }
 
 func currencyFormat(amount float64) string {

@@ -72,6 +72,8 @@ func translateType(inType reflect.Type) (Type, bool) {
 }
 
 var reverseTypeMap = map[string]Type{
+	"interface {}": UnresolvedType,
+
 	"int64":   Integer,
 	"float64": Real,
 	"string":  String,

@@ -136,9 +136,8 @@ func getEntries() []entry {
 		{"isUpper", isUpper},
 		{"isWhitespace", isWhitespace},
 
-		// NB: these two are NOT part of Gaddis book, but seem like glaring omissions.
-		{"integerToString", integerToString},
-		{"realToString", realToString},
+		// NB: NOT part of Gaddis book, but seem like a glaring omission?
+		{"toString", toString},
 
 		// code gen helpers
 		{"$stringWithCharUpdate", stringWithCharUpdate},

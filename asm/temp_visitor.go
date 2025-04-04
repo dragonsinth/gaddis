@@ -25,6 +25,13 @@ func (v *TempVisitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 	vd.Expr = &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: int64(0)}
 	v.Scope().AddVariable(vd)
 	fs.Index = vd
+	fs.IndexExpr = &ast.VariableExpr{
+		SourceInfo: si,
+		Name:       vd.Name,
+		Qualifier:  nil,
+		Ref:        vd,
+		Type:       vd.Type,
+	}
 }
 
 func (v *TempVisitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {

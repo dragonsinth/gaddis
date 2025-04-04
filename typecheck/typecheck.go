@@ -466,6 +466,11 @@ func (v *Visitor) PostVisitCallExpr(ce *ast.CallExpr) {
 	// Assign the return type, check the number and type of each argument
 	ce.Ref = decl.FunctionStmt
 	ce.Type = ce.Ref.Type
+
+	if ce.Ref.IsExternal && ce.Ref.Name == "toString" {
+		return // accepts any value
+	}
+
 	v.checkArgumentList(ce, ce.Args, ce.Ref.Params)
 }
 

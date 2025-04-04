@@ -12,6 +12,14 @@ type Object struct {
 	Fields []any
 }
 
+// For toString() debug.
+func (obj *Object) String() string {
+	if obj == nil {
+		return "<nil>"
+	}
+	return "<" + obj.Type.String() + ">"
+}
+
 type vtable []int
 
 type ObjNew struct {

@@ -314,9 +314,7 @@ func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
 		v.store(rs)
 	}
 	// remove the original file var
-	v.code = append(v.code, Pop{
-		baseInst: baseInst{rs.GetSourceInfo()},
-	})
+	v.code = append(v.code, Pop{baseInst: baseInst{rs.GetSourceInfo()}})
 	return false
 }
 
@@ -496,19 +494,23 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 	// initialize the index expression
 	fs.Index.Visit(v)
 
-	// test
 	startLabel := &Label{Name: "for", PC: len(v.code)}
-	v.varRefDecl(si, nil, fs.Index, false)
+
+	// Push the pieces we'll need for ref = arr[idx] onto the stack.
+	v.varRef(fs.Ref, true)
 	fs.ArrayExpr.Visit(v)
+	fs.IndexExpr.Visit(v)
+	// dup idx, arr for array length check
+	v.code = append(v.code, Dup{baseInst{si}, 0})
+	v.code = append(v.code, Dup{baseInst{si}, 2})
+	// stack: ref, arr, idx, idx, arr
+	// if idx < len(arr) goto end
 	v.code = append(v.code, ArrayLen{baseInst: baseInst{si}})
 	v.code = append(v.code, BinOpInt{baseInst: baseInst{si}, Op: ast.LT})
 	v.code = append(v.code, JumpFalse{baseInst: baseInst{si}, Label: endLabel})
 
 	// assign current element value
 	// ref = arr[idx]
-	v.varRef(fs.Ref, true)
-	fs.ArrayExpr.Visit(v)
-	v.varRefDecl(si, nil, fs.Index, false)
 	v.code = append(v.code, ArrayVal{baseInst: baseInst{si}, OffsetType: OffsetTypeArray})
 	v.store(si)
 
@@ -521,6 +523,10 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 	v.code = append(v.code, Jump{baseInst: baseInst{si}, Label: startLabel})
 	endLabel.PC = len(v.code)
 
+	// on the last iteration, we left 3 values on the stack
+	v.code = append(v.code, Pop{baseInst{si}})
+	v.code = append(v.code, Pop{baseInst{si}})
+	v.code = append(v.code, Pop{baseInst{si}})
 	return false
 }
 

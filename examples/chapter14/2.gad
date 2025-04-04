@@ -8,7 +8,12 @@ End Class
 
 Declare Shape x = New Shape()
 Display x.color[0]
+Display toString(x)
 
 Declare Circle y = New Circle()
 Display y.color[0]
 Display y.size[0]
+Display toString(y)
+
+Declare Circle z[1]
+Display toString(z[0])

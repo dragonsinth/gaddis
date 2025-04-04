@@ -699,6 +699,15 @@ func (v *Visitor) PreVisitClassStmt(cs *ast.ClassStmt) bool {
 	v.output("\treturn this\n")
 	v.output("}\n")
 
+	// Emit toString()
+	if err := toStringTmpl.Execute(v.out, struct {
+		Shape string
+	}{
+		Shape: cs.Name,
+	}); err != nil {
+		panic(err)
+	}
+
 	// Emit method bodies
 	for _, stmt := range cs.Block.Statements {
 		switch stmt := stmt.(type) {
@@ -725,6 +734,13 @@ func New{{.Circle}}(face I{{.Circle}}) *{{.Circle}}_ {
 		this.face = this
 	}
 	this.{{.Shape}}_ = *New{{.Shape}}(this.face)
+`))
+
+var toStringTmpl = template.Must(template.New("").Parse(`
+func (this *{{.Shape}}_) String() string {
+	if this == nil { return "<nil>" }
+	return "<{{.Shape}}>"
+}
 `))
 
 func (v *Visitor) PostVisitClassStmt(cs *ast.ClassStmt) {}

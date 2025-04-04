@@ -222,7 +222,8 @@ type ForEachStmt struct {
 	ArrayExpr Expression
 	Block     *Block
 
-	Index *VarDecl // filled in later
+	Index     *VarDecl // filled in later
+	IndexExpr *VariableExpr
 }
 
 func (fs *ForEachStmt) Visit(v Visitor) {

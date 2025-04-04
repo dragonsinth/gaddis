@@ -3,7 +3,6 @@ package lib
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,26 +24,13 @@ func (ctx ioContext) Display(args ...any) {
 	tabCount := 0
 	for _, arg := range args {
 		switch typedArg := arg.(type) {
-		case bool:
-			if typedArg {
-				sb.WriteString("True")
-			} else {
-				sb.WriteString("False")
-			}
 		case tabDisplay:
 			tabCount++
 			for sb.Len() < 8*tabCount {
 				sb.WriteByte(' ')
 			}
-		case []byte:
-			panic("should not get")
-		case string:
-			sb.WriteString(typedArg)
-		case byte:
-			sb.WriteByte(typedArg)
 		default:
-			// TODO: special formatting for floats maybe?
-			_, _ = fmt.Fprint(&sb, arg)
+			sb.WriteString(toString(typedArg))
 		}
 	}
 	sb.WriteRune('\n')
@@ -133,7 +119,7 @@ func (ctx ioContext) OpenAppendFile(file OutputFile, name string) OutputFile {
 	if err != nil {
 		panic(err)
 	}
-	return OutputFile{File: f}
+	return OutputFile{File: f, IsAppend: true}
 }
 
 func (ctx ioContext) OpenInputFile(file InputFile, name string) InputFile {
@@ -285,7 +271,19 @@ type tabDisplay struct{}
 var TabDisplay = tabDisplay{}
 
 type OutputFile struct {
-	File *os.File
+	File     *os.File
+	IsAppend bool
+}
+
+func (of *OutputFile) String() string {
+	if of == nil {
+		return "<nil>"
+	}
+	if of.IsAppend {
+		return "<OutputFile AppendMode>"
+	} else {
+		return "<OutputFile>"
+	}
 }
 
 type AppendFile = OutputFile
@@ -293,6 +291,13 @@ type AppendFile = OutputFile
 type InputFile struct {
 	File   *os.File
 	Reader *bufio.Reader
+}
+
+func (of *InputFile) String() string {
+	if of == nil {
+		return "<nil>"
+	}
+	return "<InputFile>"
 }
 
 // BELOW: Used only by the gogen runtime.

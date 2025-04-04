@@ -86,11 +86,6 @@ Should cover the whole language by May 2025.
 
 ### TODO
 
-- Resolve questions around type -> string conversions:
-  - `String characterToString(Character c)`?
-  - `String booleanToString(Boolean b)`?
-  - Or should append(s, ?) take any type?
-
 - Consider enforcing field vs. record separators in file I/O.
 
 - Consider extending multi-line parsing/printing to all comma-delimited lists:
@@ -146,14 +141,11 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - This behavior is left unspecified.
   - Could be changed in the future with a temp array reference variable.
 
-- New library functions to convert number to String in an expression context.
-  - `String integerToString(Integer n)`
-  - `String realToString(Real n)`
-  - Opposite of `stringToInteger`, `stringToReal`
+- New library functions: `toString()` to any value to String in an expression context.
   - In the book, this conversion only happens when invoking a `Display` statement, but it
     seems like an obvious oversight for useful string processing and formatting.
 
-- Nested `Module` and `Function` declarations are not currently supported, but could be.
+- Nested `Module` and `Function` declarations are not supported (but could be).
   - This is implied by the book but not explicitly stated.
 
 - Programs with a `Module main()` are still allowed to execute arbitrary statements in the global block.
