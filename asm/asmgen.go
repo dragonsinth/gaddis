@@ -130,7 +130,19 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 	if vd.IsConst || vd.IsParam {
 		return false
 	}
-	// emit an assignment
+	if needInitializer(vd) {
+		v.varRefDecl(vd, nil, vd, true)
+		v.emitInitializer(vd)
+		v.store(vd)
+	}
+	return false
+}
+
+func needInitializer(vd *ast.VarDecl) bool {
+	return vd.Expr != nil || len(vd.Dims) > 0 || vd.Type.IsFileType()
+}
+
+func (v *Visitor) emitInitializer(vd *ast.VarDecl) {
 	if vd.Expr != nil {
 		v.maybeCast(vd.Type, vd.Expr)
 	} else if len(vd.Dims) > 0 {
@@ -155,11 +167,8 @@ func (v *Visitor) PreVisitVarDecl(vd *ast.VarDecl) bool {
 			panic(vd.Type)
 		}
 	} else {
-		return false // no initializer
+		panic(vd)
 	}
-	v.varRefDecl(vd, nil, vd, true)
-	v.store(vd)
-	return false
 }
 
 func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
@@ -185,31 +194,42 @@ func (v *Visitor) PreVisitDisplayStmt(d *ast.DisplayStmt) bool {
 }
 
 func (v *Visitor) PreVisitInputStmt(i *ast.InputStmt) bool {
-	typ := i.Ref.GetType().AsPrimitive()
-	name := "Input" + typ.String()
-	v.code = append(v.code, LibCall{
-		baseInst: baseInst{i.SourceInfo},
-		Name:     name,
-		Type:     typ,
-		Index:    lib.IndexOf(name),
-		NArg:     0,
+	v.emitAssignment(i.SourceInfo, i.Ref, func() {
+		typ := i.Ref.GetType().AsPrimitive()
+		name := "Input" + typ.String()
+		v.code = append(v.code, LibCall{
+			baseInst: baseInst{i.SourceInfo},
+			Name:     name,
+			Type:     typ,
+			Index:    lib.IndexOf(name),
+			NArg:     0,
+		})
 	})
-	v.emitAssignment(i.SourceInfo, i.Ref)
 	return false
 }
 
 func (v *Visitor) PreVisitSetStmt(i *ast.SetStmt) bool {
-	v.maybeCast(i.Ref.GetType(), i.Expr)
-	v.emitAssignment(i.SourceInfo, i.Ref)
+	v.emitAssignment(i.SourceInfo, i.Ref, func() {
+		v.maybeCast(i.Ref.GetType(), i.Expr)
+	})
 	return false
 }
 
-func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression) {
-	if ar, ok := lhs.(*ast.ArrayRef); ok && lhs.GetType() == ast.Character {
-		// stringWithCharUpdate(c byte, idx int64, str string) string
-		// the character (arg 0) was already emitted
+func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression, emitRhs func()) {
+	if isStringCharAssignment(lhs) {
+		ar := lhs.(*ast.ArrayRef)
+		if ar.Qualifier.CanReference() {
+			// str = stringWithCharUpdate(str string, idx int64, c byte)
+			v.varRef(ar.Qualifier, true)
+			// duplicate and deref as argument 0
+			v.code = append(v.code, Dup{baseInst{si}, 0})
+			v.code = append(v.code, Deref{baseInst{si}})
+		} else {
+			// eval and ignore: stringWithCharUpdate(str string, idx int64, c byte)
+			ar.Qualifier.Visit(v)
+		}
 		ar.IndexExpr.Visit(v)
-		ar.Qualifier.Visit(v)
+		emitRhs()
 		v.code = append(v.code, LibCall{
 			baseInst: baseInst{si},
 			Name:     "$stringWithCharUpdate",
@@ -218,18 +238,28 @@ func (v *Visitor) emitAssignment(si ast.SourceInfo, lhs ast.Expression) {
 			NArg:     3,
 		})
 		if ar.Qualifier.CanReference() {
-			v.varRef(ar.Qualifier, true)
+			// store the final result
 			v.store(si)
 		} else {
 			v.code = append(v.code, Pop{baseInst{si}})
 		}
 	} else {
 		v.varRef(lhs, true)
+		emitRhs()
 		v.store(si)
 	}
 }
 
+func isStringCharAssignment(expr ast.Expression) bool {
+	ar, ok := expr.(*ast.ArrayRef)
+	if !ok {
+		return false
+	}
+	return ar.Qualifier.GetType() == ast.String
+}
+
 func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
+	v.varRef(os.File, true)
 	os.File.Visit(v)
 	os.Name.Visit(v)
 	name := "Open" + os.File.GetType().String()
@@ -240,7 +270,6 @@ func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
 		Index:    lib.IndexOf(name),
 		NArg:     2,
 	})
-	v.varRef(os.File, true)
 	v.store(os)
 	return false
 }
@@ -264,8 +293,16 @@ func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool {
 }
 
 func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
+	rs.File.Visit(v) // evaluate the file once
 	for _, arg := range rs.Exprs {
-		rs.File.Visit(v)
+		v.varRef(arg, true)
+
+		// dup the file
+		v.code = append(v.code, Dup{
+			baseInst: baseInst{rs.GetSourceInfo()},
+			Skip:     1,
+		})
+
 		name := "Read" + arg.GetType().String()
 		v.code = append(v.code, LibCall{
 			baseInst: baseInst{rs.GetSourceInfo()},
@@ -274,13 +311,14 @@ func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
 			Index:    lib.IndexOf(name),
 			NArg:     1,
 		})
-		v.varRef(arg, true)
 		v.store(rs)
 	}
+	// remove the original file var
+	v.code = append(v.code, Pop{
+		baseInst: baseInst{rs.GetSourceInfo()},
+	})
 	return false
 }
-
-func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {}
 
 func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
 	ws.File.Visit(v)
@@ -296,8 +334,6 @@ func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
 	})
 	return false
 }
-
-func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {}
 
 func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	endLabel := &Label{Name: "endif"}
@@ -412,9 +448,9 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	endLabel := &Label{Name: "fend", PC: 0}
 
 	// store
-	v.maybeCast(refType, fs.StartExpr)
 	v.varRef(fs.Ref, true)
-	v.code = append(v.code, Store{baseInst{fs.StartExpr.GetSourceInfo()}})
+	v.maybeCast(refType, fs.StartExpr)
+	v.store(fs.StartExpr)
 
 	startLabel := &Label{Name: "for", PC: len(v.code)}
 
@@ -470,12 +506,11 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 
 	// assign current element value
 	// ref = arr[idx]
-	// arr, idx, array ref, ref, store
+	v.varRef(fs.Ref, true)
 	fs.ArrayExpr.Visit(v)
 	v.varRefDecl(si, nil, fs.Index, false)
 	v.code = append(v.code, ArrayVal{baseInst: baseInst{si}, OffsetType: OffsetTypeArray})
-	v.varRef(fs.Ref, true)
-	v.code = append(v.code, Store{baseInst{si}})
+	v.store(si)
 
 	fs.Block.Visit(v)
 
@@ -497,6 +532,28 @@ func (v *Visitor) PostVisitReturnStmt(rs *ast.ReturnStmt) {
 }
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
+	si := cs.SourceInfo
+	if isExternalDeleteInsert(cs) {
+		// special case this, e.g.: s := insertString(s, pos, add)
+		// str = stringWithCharUpdate(str string, idx int64, c byte)
+		v.varRef(cs.Args[0], true)
+		// duplicate and deref as argument 0
+		v.code = append(v.code, Dup{baseInst{si}, 0})
+		v.code = append(v.code, Deref{baseInst{si}})
+		// emit the rest of the args
+		v.outputArguments(cs.Args[1:], cs.Ref.Params[1:])
+		v.code = append(v.code, LibCall{
+			baseInst: baseInst{si},
+			Name:     cs.Name,
+			Type:     ast.String,
+			Index:    lib.IndexOf(cs.Name),
+			NArg:     len(cs.Args),
+		})
+		// store the result
+		v.store(si)
+		return false
+	}
+
 	nArg := len(cs.Args)
 	if cs.Qualifier != nil {
 		cs.Qualifier.Visit(v)
@@ -504,22 +561,16 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	}
 	v.outputArguments(cs.Args, cs.Ref.Params)
 	if cs.Ref.IsExternal {
-		name := cs.Name
 		v.code = append(v.code, LibCall{
-			baseInst: baseInst{cs.SourceInfo},
-			Name:     name,
+			baseInst: baseInst{si},
+			Name:     cs.Name,
 			Type:     ast.UnresolvedType,
-			Index:    lib.IndexOf(name),
+			Index:    lib.IndexOf(cs.Name),
 			NArg:     nArg,
 		})
-		if name == "delete" || name == "insert" {
-			// special case!
-			v.varRef(cs.Args[0], true)
-			v.store(cs)
-		}
 	} else if cs.Qualifier != nil && !cs.Ref.IsConstructor {
 		v.code = append(v.code, VCall{
-			baseInst: baseInst{cs.SourceInfo},
+			baseInst: baseInst{si},
 			Class:    cs.Ref.Enclosing.GetName(),
 			Name:     cs.Name,
 			Index:    cs.Ref.Id,
@@ -527,12 +578,16 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 		})
 	} else {
 		v.code = append(v.code, Call{
-			baseInst: baseInst{cs.SourceInfo},
+			baseInst: baseInst{si},
 			Label:    v.refLabel(cs.Ref),
 			NArgs:    nArg,
 		})
 	}
 	return false
+}
+
+func isExternalDeleteInsert(cs *ast.CallStmt) bool {
+	return cs.Ref.IsExternal && (cs.Name == "delete" || cs.Name == "insert")
 }
 
 func (v *Visitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {
@@ -593,26 +648,21 @@ func (v *Visitor) emitNewFunction(cs *ast.ClassStmt) {
 	v.preVisitCallable(fs)
 
 	// this = New Thing()
+	v.code = append(v.code, LocalRef{
+		baseInst: baseInst{si},
+		Name:     "this",
+		Index:    0,
+	})
 	v.code = append(v.code, ObjNew{
 		baseInst: baseInst{si},
 		Type:     cs.Type,
 		Vtable:   &v.vtables[cs.Type.Class.Id],
 		NFields:  len(cs.Type.Scope.Fields),
 	})
-	v.code = append(v.code, LocalRef{
-		baseInst: baseInst{si},
-		Name:     "this",
-		Index:    0,
-	})
 	v.store(si)
 
 	// emit initializers
 	for _, field := range cs.Scope.Fields {
-		if field.Type.IsArrayType() {
-			v.outputArrayInitializer(si, field.Type.AsArrayType(), field.Dims, nil)
-		} else {
-			v.zero(si, field.Type)
-		}
 		v.code = append(v.code, LocalVal{
 			baseInst: baseInst{si},
 			Name:     "this",
@@ -623,6 +673,12 @@ func (v *Visitor) emitNewFunction(cs *ast.ClassStmt) {
 			Name:     field.Name,
 			Index:    field.Id,
 		})
+		if needInitializer(field) {
+			v.emitInitializer(field)
+		} else {
+			// always zero-init fields regardless
+			v.zero(si, field.Type)
+		}
 		v.store(si)
 	}
 
@@ -755,7 +811,7 @@ func (v *Visitor) PreVisitNewExpr(ne *ast.NewExpr) bool {
 	// Maybe call constructor.
 	if ctor := ne.Ctor; ctor != nil {
 		// duplicate the `this` pointer so it remains on the stack when the ctor returns
-		v.code = append(v.code, Dup{baseInst{ne.SourceInfo}})
+		v.code = append(v.code, Dup{baseInst{ne.SourceInfo}, 0})
 		v.outputArguments(ne.Args, ctor.Params)
 		v.code = append(v.code, Call{
 			baseInst: baseInst{ne.SourceInfo},

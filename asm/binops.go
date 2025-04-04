@@ -10,8 +10,8 @@ type Store struct {
 }
 
 func (i Store) Exec(p *Execution) {
-	ref := p.Pop().(*any)
 	val := p.Pop()
+	ref := p.Pop().(*any)
 	*ref = val
 }
 

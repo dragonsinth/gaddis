@@ -15,12 +15,13 @@ func (l *Label) String() string {
 
 type Dup struct {
 	baseInst
+	Skip int
 }
 
 func (i Dup) Exec(p *Execution) {
-	v := p.Pop()
-	p.Push(v)
-	p.Push(v)
+	tip := len(p.Frame.Eval) - 1
+	val := p.Frame.Eval[tip-i.Skip]
+	p.Push(val)
 }
 
 func (i Dup) String() string {
@@ -37,4 +38,17 @@ func (i Pop) Exec(p *Execution) {
 
 func (i Pop) String() string {
 	return "pop"
+}
+
+type Deref struct {
+	baseInst
+}
+
+func (i Deref) Exec(p *Execution) {
+	ref := p.Pop().(*any)
+	p.Push(*ref)
+}
+
+func (i Deref) String() string {
+	return "deref"
 }

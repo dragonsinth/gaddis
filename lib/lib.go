@@ -162,7 +162,7 @@ func isWhitespace(c byte) bool {
 	return unicode.IsSpace(rune(c))
 }
 
-func stringWithCharUpdate(c byte, idx int64, str string) string {
+func stringWithCharUpdate(str string, idx int64, c byte) string {
 	buf := []byte(str)
 	buf[idx] = c
 	return string(buf)
@@ -170,10 +170,26 @@ func stringWithCharUpdate(c byte, idx int64, str string) string {
 
 // BELOW: Used only by the gogen runtime.
 
+func stringWithCharUpdateRef(s *string, idx int64, c byte) {
+	*s = stringWithCharUpdate(*s, idx, c)
+}
+
+func insertStringRef(s *string, pos int64, add string) {
+	*s = insertString(*s, pos, add)
+}
+
+func deleteStringRef(s *string, start int64, end int64) {
+	*s = deleteString(*s, start, end)
+}
+
 var (
 	randCtx = &RandContext{
 		Rng: rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 
 	random = randCtx.random
+
+	_ = stringWithCharUpdateRef
+	_ = deleteStringRef
+	_ = insertStringRef
 )

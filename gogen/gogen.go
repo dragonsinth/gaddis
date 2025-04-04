@@ -224,25 +224,36 @@ func (v *Visitor) PreVisitSetStmt(s *ast.SetStmt) bool {
 }
 
 func (v *Visitor) emitAssignment(lhs ast.Expression, emitRhs func()) {
-	if ar, ok := lhs.(*ast.ArrayRef); ok && lhs.GetType() == ast.Character {
+	if isStringCharAssignment(lhs) {
+		ar := lhs.(*ast.ArrayRef)
 		// special case string index assignment
 		if ar.Qualifier.CanReference() {
-			v.varRef(ar.Qualifier, false)
-			v.output(" = ")
+			// stringWithCharUpdateRef(str *string, idx int64, c byte)
+			v.output("stringWithCharUpdateRef(")
+			v.varRef(ar.Qualifier, true)
+		} else {
+			// eval and ignore: stringWithCharUpdate(str string, idx int64, c byte)
+			v.output("stringWithCharUpdate(")
+			ar.Qualifier.Visit(v)
 		}
-		// stringWithCharUpdate(c byte, idx int64, str string) string
-		v.output("stringWithCharUpdate(")
-		emitRhs()
 		v.output(", ")
 		v.maybeCast(ast.Integer, ar.IndexExpr)
 		v.output(", ")
-		ar.Qualifier.Visit(v)
+		emitRhs()
 		v.output(")")
 	} else {
 		v.varRef(lhs, false) // assignment auto-refs
 		v.output(" = ")
 		emitRhs()
 	}
+}
+
+func isStringCharAssignment(expr ast.Expression) bool {
+	ar, ok := expr.(*ast.ArrayRef)
+	if !ok {
+		return false
+	}
+	return ar.Qualifier.GetType() == ast.String
 }
 
 func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool {
@@ -482,6 +493,20 @@ func (v *Visitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
 
 func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.indent()
+
+	if isExternalDeleteInsert(cs) {
+		// special case
+		v.output(cs.Ref.Name)
+		v.output("StringRef(")
+		// emit arg 0
+		v.varRef(cs.Args[0], true)
+		v.output(", ")
+		// emit the rest of the argument list
+		v.outputArgumentList(cs.Args[1:], cs.Ref.Params[1:])
+		v.output(")\n")
+		return false
+	}
+
 	if cs.Qualifier != nil {
 		if cs.Ref.IsConstructor {
 			v.maybeCast(cs.Ref.Enclosing, cs.Qualifier)
@@ -493,15 +518,9 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 			v.output("face.")
 		}
 	}
+
 	if cs.Ref.IsExternal {
-		name := cs.Ref.Name
-		if name == "delete" || name == "insert" {
-			// special case!
-			name = name + "String"
-			v.varRef(cs.Args[0], false)
-			v.output(" = ")
-		}
-		v.output(name)
+		v.output(cs.Name)
 	} else {
 		v.ident(cs.Ref)
 	}
@@ -509,6 +528,10 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	v.outputArgumentList(cs.Args, cs.Ref.Params)
 	v.output(")\n")
 	return false
+}
+
+func isExternalDeleteInsert(cs *ast.CallStmt) bool {
+	return cs.Ref.IsExternal && (cs.Name == "delete" || cs.Name == "insert")
 }
 
 func (v *Visitor) PostVisitCallStmt(cs *ast.CallStmt) {}

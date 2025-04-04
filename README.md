@@ -121,9 +121,7 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   creates a new `String` and assigns it back into the given reference; no other copies of the
   original `String` are affected.
 
-- All expressions are evaluated left to right, with the exception any type of assignment statement.
-  - In all assignment-like statements, the value (RHS) is evaluated before the reference (LHS)
-  - This includes Set, Input, Read, Open, and other library functions that effectively perform an assignment.
+- All expressions are evaluated left to right, including assignment statements.
   - This behavior is left unspecified.
 
 - `Display` atatements only accept primitive types, not arrays or classes.
