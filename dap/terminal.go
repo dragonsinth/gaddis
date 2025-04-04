@@ -102,6 +102,7 @@ func StartTerminal() (*Terminal, error) {
 			select {
 			case <-t.Done:
 				_ = conn.CloseWrite()
+				return
 			case line, ok := <-output:
 				if !ok {
 					return
