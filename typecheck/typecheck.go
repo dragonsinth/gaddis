@@ -75,7 +75,7 @@ func (v *Visitor) PostVisitDisplayStmt(ds *ast.DisplayStmt) {
 
 func (v *Visitor) PostVisitInputStmt(is *ast.InputStmt) {
 	ref := is.Ref
-	if !ref.CanReference() {
+	if ref == nil || !ref.CanReference() {
 		v.Errorf(ref, "Input argument must be a reference")
 	} else if !ref.GetType().IsPrimitive() {
 		v.Errorf(ref, "Input argument must be a primitive type")

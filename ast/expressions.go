@@ -183,6 +183,9 @@ func (ve *VariableExpr) ConstEval() any {
 }
 
 func (ve *VariableExpr) CanReference() bool {
+	if ve.Ref == nil {
+		return false
+	}
 	return !ve.Ref.IsConst
 }
 

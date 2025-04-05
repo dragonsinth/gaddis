@@ -461,7 +461,7 @@ func (v *Visitor) PreVisitForStmt(fs *ast.ForStmt) bool {
 	v.output("(")
 	v.varRef(fs.Ref, true)
 	v.output(", ")
-	fs.StartExpr.Visit(v)
+	v.maybeCast(refType, fs.StartExpr)
 	if isNegative {
 		v.output(") >= ")
 	} else {

@@ -7,7 +7,6 @@ import (
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
 	"github.com/dragonsinth/gaddis/ast"
-	"github.com/dragonsinth/gaddis/astprint"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
 	"io"
@@ -25,7 +24,7 @@ func RunTestGo(t *testing.T, filename string) error {
 	}
 	src := string(srcBytes)
 
-	prog, comments, errs := gaddis.Compile(src)
+	prog, outSrc, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
 		for _, err := range ast.ErrorSort(errs) {
 			fmt.Println(filename + ":" + err.Error())
@@ -77,9 +76,8 @@ func RunTestGo(t *testing.T, filename string) error {
 		t.Fatalf("wrong output, got=\n%s\nwant=%s", output.String(), string(expectOut))
 	}
 
-	// Also check/update format.
+	// Also check/update format on success
 	inSrc := string(src)
-	outSrc := astprint.Print(prog, comments)
 	if inSrc != outSrc {
 		t.Error("format changed! updating source file...")
 		_ = os.WriteFile(filename, []byte(outSrc), 0666)
@@ -95,7 +93,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 	}
 	src := string(srcBytes)
 
-	prog, comments, errs := gaddis.Compile(src)
+	prog, outSrc, errs := gaddis.Compile(src)
 	if len(errs) > 0 {
 		for _, err := range ast.ErrorSort(errs) {
 			fmt.Println(filename + ":" + err.Error())
@@ -143,9 +141,8 @@ func RunTestInterp(t *testing.T, filename string) error {
 		t.Fatalf("wrong output, got=\n%s\nwant=%s", output.String(), string(expectOut))
 	}
 
-	// Also check/update format.
+	// Also check/update format on success.
 	inSrc := string(src)
-	outSrc := astprint.Print(prog, comments)
 	if inSrc != outSrc {
 		t.Error("format changed! updating source file...")
 		_ = os.WriteFile(filename, []byte(outSrc), 0666)

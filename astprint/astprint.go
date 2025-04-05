@@ -369,7 +369,7 @@ func (v *Visitor) PreVisitCallStmt(cs *ast.CallStmt) bool {
 	defer v.eol(cs.End)
 
 	v.output("Call ")
-	if shouldPrintQualifier(cs.Qualifier) {
+	if cs.Qualifier != nil {
 		cs.Qualifier.Visit(v)
 		v.output(".")
 	}
@@ -535,7 +535,7 @@ func (v *Visitor) PostVisitBinaryOperation(bo *ast.BinaryOperation) {
 }
 
 func (v *Visitor) PreVisitVariableExpr(ve *ast.VariableExpr) bool {
-	if shouldPrintQualifier(ve.Qualifier) {
+	if ve.Qualifier != nil {
 		ve.Qualifier.Visit(v)
 		v.output(".")
 	}
@@ -547,7 +547,7 @@ func (v *Visitor) PostVisitVariableExpr(ve *ast.VariableExpr) {
 }
 
 func (v *Visitor) PreVisitCallExpr(ce *ast.CallExpr) bool {
-	if shouldPrintQualifier(ce.Qualifier) {
+	if ce.Qualifier != nil {
 		ce.Qualifier.Visit(v)
 		v.output(".")
 	}
@@ -625,7 +625,7 @@ func (v *Visitor) PostVisitNewExpr(ne *ast.NewExpr) {
 }
 
 func (v *Visitor) PreVisitThisRef(ref *ast.ThisRef) bool {
-	panic("implement me")
+	panic("should not print after type check")
 }
 
 func (v *Visitor) PostVisitThisRef(ref *ast.ThisRef) {
@@ -730,14 +730,4 @@ func commentText(comment ast.Comment) string {
 	text = strings.TrimPrefix(text, "//")
 	text = strings.TrimSpace(text)
 	return text
-}
-
-func shouldPrintQualifier(qualifier ast.Expression) bool {
-	if qualifier == nil {
-		return false
-	}
-	if _, ok := qualifier.(*ast.ThisRef); ok {
-		return false
-	}
-	return true
 }

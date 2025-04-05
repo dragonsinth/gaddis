@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/dragonsinth/gaddis"
-	"github.com/dragonsinth/gaddis/astprint"
 	"os"
 )
 
@@ -14,14 +13,13 @@ func test(args []string, opts runOpts) error {
 		return err
 	}
 
-	prog, comments, errs := gaddis.Compile(src.src)
+	prog, outSrc, errs := gaddis.Compile(src.src)
 	reportErrors(errs, src.desc(), *fJson, os.Stdout)
 	if len(errs) > 0 {
 		os.Exit(1)
 	}
 
-	// auto format
-	outSrc := astprint.Print(prog, comments)
+	// auto format on success only
 	if !src.isStdin && src.src != outSrc {
 		if err = os.WriteFile(src.filename, []byte(outSrc), 0666); err != nil {
 			return fmt.Errorf("writing to %s: %w", src.filename, err)
