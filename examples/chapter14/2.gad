@@ -36,3 +36,8 @@ End For
 For SideEffectCircle(y).count = 1 To 3
 	Display y.count
 End For
+
+Display
+For Each SideEffectCircle(y).count In SideEffectCircle(y).size
+	Display y.count
+End For

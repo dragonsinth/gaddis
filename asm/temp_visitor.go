@@ -12,26 +12,25 @@ type TempVisitor struct {
 var _ ast.Visitor = &TempVisitor{}
 
 func (v *TempVisitor) PostVisitForEachStmt(fs *ast.ForEachStmt) {
-	// must create a temp local to track index
+	// must create temp locals to track index and array
 	// attribute to top of loop
 	si := fs.SourceInfo.Head()
 	ref := fs.Ref.(*ast.VariableExpr)
-	vd := &ast.VarDecl{
+	fs.IndexTemp = &ast.VarDecl{
 		SourceInfo: si,
 		Name:       ref.Name + "$idx",
 		Type:       ast.Integer,
+		Expr:       &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: int64(0)},
 	}
-	// pre-assign the index to -1
-	vd.Expr = &ast.Literal{SourceInfo: si, Type: ast.Integer, Val: int64(0)}
-	v.Scope().AddVariable(vd)
-	fs.Index = vd
-	fs.IndexExpr = &ast.VariableExpr{
+	v.Scope().AddVariable(fs.IndexTemp)
+
+	fs.ArrayTemp = &ast.VarDecl{
 		SourceInfo: si,
-		Name:       vd.Name,
-		Qualifier:  nil,
-		Ref:        vd,
-		Type:       vd.Type,
+		Name:       ref.Name + "$arr",
+		Type:       fs.ArrayExpr.GetType(),
+		Expr:       fs.ArrayExpr,
 	}
+	v.Scope().AddVariable(fs.ArrayTemp)
 }
 
 func (v *TempVisitor) PreVisitModuleStmt(ms *ast.ModuleStmt) bool {

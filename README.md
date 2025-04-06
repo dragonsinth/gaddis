@@ -134,10 +134,11 @@ and there, or fill in gaps. Here's some possible differences (or clarifications)
   - Avoids complicated and ambiguous code generation where the test expression (`<=` vs `>=`)
     might need to change depending on the value of the step expression.
 
-- `For Each` loop array expression is re-evaluated twice on every iteration; once for the array
-  length bounds check, once to assign the loop variable.
+- `For Each` loop variable reference is evaluated once per loop.
   - This behavior is left unspecified.
-  - Could be changed in the future with a temp array reference variable.
+
+- `For Each` loop array expression is evaluated only once when the loop is initialized.
+  - This behavior is left unspecified.
 
 - New library functions: `toString()` to any value to String in an expression context.
   - In the book, this conversion only happens when invoking a `Display` statement, but it

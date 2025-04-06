@@ -494,26 +494,37 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 	si := fs.SourceInfo.Head()
 	endLabel := &Label{Name: "fend", PC: 0}
 
-	// initialize the index expression
-	fs.Index.Visit(v)
+	// initialize the index and array expressions
+	fs.IndexTemp.Visit(v)
+	fs.ArrayTemp.Visit(v)
 
 	startLabel := &Label{Name: "for", PC: len(v.code)}
 
-	// Push the pieces we'll need for ref = arr[idx] onto the stack.
-	v.varRef(fs.Ref, true)
-	fs.ArrayExpr.Visit(v)
-	fs.IndexExpr.Visit(v)
-	// dup idx, arr for array length check
-	v.code = append(v.code, Dup{baseInst{si}, 0})
-	v.code = append(v.code, Dup{baseInst{si}, 2})
-	// stack: ref, arr, idx, idx, arr
-	// if idx < len(arr) goto end
+	indexTempExpr := &ast.VariableExpr{
+		SourceInfo: si,
+		Name:       fs.IndexTemp.Name,
+		Ref:        fs.IndexTemp,
+		Type:       fs.IndexTemp.Type,
+	}
+
+	arrayTempExpr := &ast.VariableExpr{
+		SourceInfo: si,
+		Name:       fs.ArrayTemp.Name,
+		Ref:        fs.ArrayTemp,
+		Type:       fs.ArrayTemp.Type,
+	}
+
+	// if !(idx < len(arr)) goto end
+	indexTempExpr.Visit(v)
+	arrayTempExpr.Visit(v)
 	v.code = append(v.code, ArrayLen{baseInst: baseInst{si}})
 	v.code = append(v.code, BinOpInt{baseInst: baseInst{si}, Op: ast.LT})
 	v.code = append(v.code, JumpFalse{baseInst: baseInst{si}, Label: endLabel})
 
-	// assign current element value
 	// ref = arr[idx]
+	v.varRef(fs.Ref, true)
+	arrayTempExpr.Visit(v)
+	indexTempExpr.Visit(v)
 	v.code = append(v.code, ArrayVal{baseInst: baseInst{si}, OffsetType: OffsetTypeArray})
 	v.store(si)
 
@@ -521,15 +532,11 @@ func (v *Visitor) PreVisitForEachStmt(fs *ast.ForEachStmt) bool {
 
 	// post loop increment+jump
 	si = fs.SourceInfo.Tail()
-	v.varRefDecl(si, nil, fs.Index, true)
+	v.varRef(indexTempExpr, true)
 	v.code = append(v.code, IncrInt{baseInst: baseInst{si}, Val: 1})
 	v.code = append(v.code, Jump{baseInst: baseInst{si}, Label: startLabel})
 	endLabel.PC = len(v.code)
 
-	// on the last iteration, we left 3 values on the stack
-	v.code = append(v.code, Pop{baseInst{si}})
-	v.code = append(v.code, Pop{baseInst{si}})
-	v.code = append(v.code, Pop{baseInst{si}})
 	return false
 }
 
