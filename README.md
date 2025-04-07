@@ -119,6 +119,10 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 
 - `Display` statements only accept primitive types, not arrays or classes.
 
+- Local variables are never automatically initialized.
+  - Unconditional read before assignment will generate a compile error.
+  - Conditional read before assignment will generate a runtime error.
+
 - `For` loop variable expression is evaluated once on loop start, and again once per iteration.
 
 - `For` loop stop expression is re-evaluated on every iteration.
@@ -184,6 +188,8 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 - When reading and writing records with multiple fields using file I/O, there is no internal
   distinction between field and record separation. Writing or Reading multiple values in a
   single statement is equivalent to multiple sequential Write or Read statements.
+
+- All `Class` fields are zero-initialized before any user constructor starts running.
 
 - Unresolved: what are the rules around calling super constructor methods from a subclass constructor?
   - Should it work like Java?
