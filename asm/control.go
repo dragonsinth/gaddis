@@ -7,7 +7,7 @@ import (
 )
 
 type Begin struct {
-	baseInst
+	ast.SourceInfo
 	Scope   *ast.Scope
 	Label   *Label
 	NParams int
@@ -29,7 +29,7 @@ func (i Begin) Sym() string {
 }
 
 type End struct {
-	baseInst
+	ast.SourceInfo
 	Label *Label
 }
 
@@ -58,6 +58,7 @@ func (i End) Sym() string {
 // Used for expression evaluation.
 type Halt struct {
 	baseInst
+	ast.SourceInfo
 	NVal int
 }
 
@@ -77,7 +78,7 @@ func (i Halt) String() string {
 }
 
 type Jump struct {
-	baseInst
+	ast.SourceInfo
 	Label *Label
 }
 
@@ -89,8 +90,12 @@ func (i Jump) String() string {
 	return fmt.Sprintf("jump %s", PcRef(i.Label.PC))
 }
 
+func (i Jump) Sym() string {
+	return i.Label.Name
+}
+
 type JumpFalse struct {
-	baseInst
+	ast.SourceInfo
 	Label *Label
 }
 
@@ -105,8 +110,12 @@ func (i JumpFalse) String() string {
 	return fmt.Sprintf("jump false %s", PcRef(i.Label.PC))
 }
 
+func (i JumpFalse) Sym() string {
+	return i.Label.Name
+}
+
 type JumpTrue struct {
-	baseInst
+	ast.SourceInfo
 	Label *Label
 }
 
@@ -119,4 +128,8 @@ func (i JumpTrue) Exec(p *Execution) {
 
 func (i JumpTrue) String() string {
 	return fmt.Sprintf("jump true %s", PcRef(i.Label.PC))
+}
+
+func (i JumpTrue) Sym() string {
+	return i.Label.Name
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
+	"github.com/dragonsinth/gaddis/asmgen"
 	"github.com/dragonsinth/gaddis/ast"
 	"os"
 )
@@ -45,7 +46,7 @@ func LoadSource(filename string) (*Source, error) {
 		Program: prog,
 	}
 	if len(errs) == 0 {
-		ret.Assembled = asm.Assemble(prog)
+		ret.Assembled = asmgen.Assemble(prog)
 		ret.Breakpoints = NewBreakpoints(ret.Assembled.Code)
 	}
 

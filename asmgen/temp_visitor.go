@@ -1,4 +1,4 @@
-package asm
+package asmgen
 
 import (
 	"github.com/dragonsinth/gaddis/ast"

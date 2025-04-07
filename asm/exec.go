@@ -259,7 +259,7 @@ func DebugStringVal(typ ast.Type, arg any) string {
 	}
 }
 
-func zeroValue(typ ast.Type) any {
+func ZeroValue(typ ast.Type) any {
 	switch typ {
 	case ast.Integer:
 		return int64(0)

@@ -14,6 +14,7 @@ const (
 
 type ArrayRef struct {
 	baseInst
+	ast.SourceInfo
 	OffsetType OffsetType
 }
 
@@ -40,6 +41,7 @@ func (i ArrayRef) String() string {
 
 type ArrayVal struct {
 	baseInst
+	ast.SourceInfo
 	OffsetType OffsetType
 }
 
@@ -71,6 +73,7 @@ func (i ArrayVal) String() string {
 
 type ArrayNew struct {
 	baseInst
+	ast.SourceInfo
 	Typ  *ast.ArrayType
 	Size int
 }
@@ -88,6 +91,7 @@ func (n ArrayNew) String() string {
 
 type ArrayClone struct {
 	baseInst
+	ast.SourceInfo
 	Typ   *ast.ArrayType
 	NDims int
 }
@@ -126,6 +130,7 @@ func arrayTypeTail(dims int) string {
 
 type ArrayLen struct {
 	baseInst
+	ast.SourceInfo
 }
 
 func (a ArrayLen) Exec(p *Execution) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
+	"github.com/dragonsinth/gaddis/asmgen"
 	"github.com/dragonsinth/gaddis/ast"
 	"math/rand"
 	"os"
@@ -11,7 +12,7 @@ import (
 )
 
 func runInterp(src *source, opts runOpts, isTest bool, streams *procStreams, prog *ast.Program) error {
-	assembled := asm.Assemble(prog)
+	assembled := asmgen.Assemble(prog)
 	if opts.leaveBuildOutputs {
 		asmFile := src.desc() + ".asm"
 		asmDump := assembled.Dump(src.src)

@@ -8,7 +8,7 @@ import (
 
 type Object struct {
 	Type   *ast.ClassType
-	Vtable *vtable
+	Vtable *Vtable
 	Fields []any
 }
 
@@ -20,12 +20,12 @@ func (obj *Object) String() string {
 	return "<" + obj.Type.String() + ">"
 }
 
-type vtable []int
+type Vtable []int
 
 type ObjNew struct {
-	baseInst
+	ast.SourceInfo
 	Type    *ast.ClassType
-	Vtable  *vtable
+	Vtable  *Vtable
 	NFields int
 }
 
@@ -46,7 +46,7 @@ func (i ObjNew) Sym() string {
 }
 
 type FieldRef struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -65,7 +65,7 @@ func (i FieldRef) Sym() string {
 }
 
 type FieldVal struct {
-	baseInst
+	ast.SourceInfo
 	Class string
 	Name  string
 	Index int
@@ -89,7 +89,7 @@ func (i FieldVal) Sym() string {
 }
 
 type VCall struct {
-	baseInst
+	ast.SourceInfo
 	Class string
 	Name  string
 	Index int

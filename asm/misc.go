@@ -2,6 +2,7 @@ package asm
 
 import (
 	"fmt"
+	"github.com/dragonsinth/gaddis/ast"
 )
 
 type Label struct {
@@ -15,6 +16,7 @@ func (l *Label) String() string {
 
 type Dup struct {
 	baseInst
+	ast.SourceInfo
 	Skip int
 }
 
@@ -30,6 +32,7 @@ func (i Dup) String() string {
 
 type Pop struct {
 	baseInst
+	ast.SourceInfo
 }
 
 func (i Pop) Exec(p *Execution) {
@@ -42,6 +45,7 @@ func (i Pop) String() string {
 
 type Deref struct {
 	baseInst
+	ast.SourceInfo
 }
 
 func (i Deref) Exec(p *Execution) {

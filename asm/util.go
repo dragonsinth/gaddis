@@ -1,7 +1,6 @@
 package asm
 
 import (
-	"github.com/dragonsinth/gaddis/ast"
 	"runtime"
 	"strings"
 )
@@ -41,7 +40,6 @@ func toFloat64(val any) float64 {
 }
 
 type baseInst struct {
-	ast.SourceInfo
 }
 
 func (baseInst) Sym() string {

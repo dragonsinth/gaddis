@@ -3,6 +3,7 @@ package debug
 import (
 	"errors"
 	"github.com/dragonsinth/gaddis/asm"
+	"github.com/dragonsinth/gaddis/asmgen"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/parse"
 	"github.com/dragonsinth/gaddis/typecheck"
@@ -20,7 +21,7 @@ func (ds *Session) evaluateExprInFrame(fr *asm.Frame, exprStr string) (any, ast.
 	}
 
 	// generate new instructions
-	evalInst := ds.Source.Assembled.AssembleExpression(expr)
+	evalInst := asmgen.AssembleExpression(ds.Source.Assembled, expr)
 	// copy all the state from the main executor
 	p := *ds.Exec
 	p.PC = len(p.Code) // start at the end

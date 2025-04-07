@@ -8,7 +8,7 @@ import (
 )
 
 type Call struct {
-	baseInst
+	ast.SourceInfo
 	Label *Label
 	NArgs int
 }
@@ -42,6 +42,7 @@ func (i Call) Sym() string {
 
 type Return struct {
 	baseInst
+	ast.SourceInfo
 	NVal int
 }
 
@@ -67,7 +68,7 @@ func (i Return) String() string {
 }
 
 type LibCall struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Type  ast.Type
 	Index int

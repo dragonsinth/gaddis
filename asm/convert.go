@@ -1,7 +1,10 @@
 package asm
 
+import "github.com/dragonsinth/gaddis/ast"
+
 type IntToReal struct {
 	baseInst
+	ast.SourceInfo
 }
 
 func (i IntToReal) Exec(p *Execution) {
@@ -15,6 +18,7 @@ func (i IntToReal) String() string {
 
 type RealToInt struct {
 	baseInst
+	ast.SourceInfo
 }
 
 func (i RealToInt) Exec(p *Execution) {

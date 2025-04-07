@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dragonsinth/gaddis"
 	"github.com/dragonsinth/gaddis/asm"
+	"github.com/dragonsinth/gaddis/asmgen"
 	"github.com/dragonsinth/gaddis/ast"
 	"github.com/dragonsinth/gaddis/goexec"
 	"github.com/dragonsinth/gaddis/gogen"
@@ -101,7 +102,7 @@ func RunTestInterp(t *testing.T, filename string) error {
 		t.Fatalf("%s: failed to compile", filename)
 	}
 
-	cp := asm.Assemble(prog)
+	cp := asmgen.Assemble(prog)
 
 	var input bytes.Buffer
 	var output bytes.Buffer

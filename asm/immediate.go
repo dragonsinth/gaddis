@@ -9,6 +9,7 @@ import (
 
 type Literal struct {
 	baseInst
+	ast.SourceInfo
 	Typ ast.Type
 	Val any
 	Id  int // only for strings
@@ -72,7 +73,7 @@ var litTypes = []string{
 }
 
 type GlobalRef struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -90,7 +91,7 @@ func (i GlobalRef) Sym() string {
 }
 
 type GlobalVal struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -112,7 +113,7 @@ func (i GlobalVal) Sym() string {
 }
 
 type ParamRef struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -130,7 +131,7 @@ func (i ParamRef) Sym() string {
 }
 
 type ParamVal struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -154,7 +155,7 @@ func (i ParamVal) Sym() string {
 }
 
 type ParamPtr struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -183,7 +184,7 @@ func (i ParamPtr) Sym() string {
 }
 
 type LocalRef struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }
@@ -201,7 +202,7 @@ func (i LocalRef) Sym() string {
 }
 
 type LocalVal struct {
-	baseInst
+	ast.SourceInfo
 	Name  string
 	Index int
 }

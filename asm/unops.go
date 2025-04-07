@@ -8,6 +8,7 @@ import (
 
 type UnaryOpInt struct {
 	baseInst
+	ast.SourceInfo
 	Op ast.Operator
 }
 
@@ -27,6 +28,7 @@ func (i UnaryOpInt) String() string {
 
 type UnaryOpFloat struct {
 	baseInst
+	ast.SourceInfo
 	Op ast.Operator
 }
 
@@ -46,6 +48,7 @@ func (i UnaryOpFloat) String() string {
 
 type UnaryOpBool struct {
 	baseInst
+	ast.SourceInfo
 	Op ast.Operator
 }
 
@@ -65,6 +68,7 @@ func (i UnaryOpBool) String() string {
 
 type IncrInt struct {
 	baseInst
+	ast.SourceInfo
 	Val int64
 }
 
@@ -80,6 +84,7 @@ func (i IncrInt) String() string {
 
 type IncrReal struct {
 	baseInst
+	ast.SourceInfo
 	Val float64
 }
 
