@@ -1,7 +1,7 @@
 {
   "name": "gaddis-vscode",
   "displayName": "gaddis-vscode",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "dragonsinth",
   "description": "Provides language definitions for Gaddis Pseudocode.",
   "author": {
