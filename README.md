@@ -119,7 +119,7 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 
 - `Display` statements only accept primitive types, not arrays or classes.
 
-- Local variables are never automatically initialized.
+- Local variables (other than arrays) are never automatically initialized.
   - Unconditional read before assignment will generate a compile error.
   - Conditional read before assignment will generate a runtime error.
 
