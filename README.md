@@ -96,9 +96,7 @@ Should cover the whole language by May 2025.
 - Classes
   - Enforce `Public` / `Private` in type checking
   - Prevent certain types of class super/sub name collisions?
-  - test nil field ref / method call errors
-  - implicit/required constructor calls...?
-  - Debugger support for classes.
+  - implicit/required super constructor calls...?
 
 ### Not yet supported
 - `Delete "filename"`
