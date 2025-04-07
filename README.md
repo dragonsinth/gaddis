@@ -106,88 +106,83 @@ Should cover the whole language by May 2025.
 
 ## Errata / Differences from the Book
 
-Gaddis Pseudocode is a bit underspecified, so I've had to make a few design choices here
-and there, or fill in gaps. Here's some possible differences (or clarifications) from the book:
+Gaddis Pseudocode is a bit underspecified (on purpose), so I've had to make a few choices here
+and there, or fill in gaps. Here's some possible differences (clarifications?) from the book:
 
-- `Character` is an explicit type; character literals are denoted using single-quoted characters: `'X'`
-  - The book only mentions an explicit type in the index without examples; character literals are never defined.
+- `Character` is an explicit type
+  - Character literals are denoted using single-quoted characters: `'X'`
+  - (Character type is listed in the reference but not the main text.)
 
 - `String` values are immutable and copy-on-write under the hood. Updating a string in any way
   creates a new `String` and assigns it back into the given reference; no other copies of the
   original `String` are affected.
 
 - All expressions are evaluated left to right, including assignment statements.
-  - This behavior is left unspecified.
 
-- `Display` atatements only accept primitive types, not arrays or classes.
-  - This behavior is left unspecified.
-  - This could be supported in the future with some default string conversion rules.
+- `Display` statements only accept primitive types, not arrays or classes.
 
 - `For` loop variable expression is evaluated once on loop start, and again once per iteration.
-  - This behavior is left unspecified.
 
 - `For` loop stop expression is re-evaluated on every iteration.
-  - This behavior is left unspecified.
 
 - `For` loop step expression must be a numeric constant.
   - This is implied by the book but not explicitly stated.
-  - Avoids complicated and ambiguous code generation where the test expression (`<=` vs `>=`)
-    might need to change depending on the value of the step expression.
+  - Avoids more complicated code generation where the test expression (`<=` vs `>=`)
+    would need to change each iteration depending on the current value of the step expression.
+  - Contrast with Basic's `downto` keyword.
 
-- `For Each` loop variable reference is evaluated once per loop.
-  - This behavior is left unspecified.
+- `For Each` loop reference expression is evaluated once per iteration.
 
 - `For Each` loop array expression is evaluated only once when the loop is initialized.
-  - This behavior is left unspecified.
 
-- New library functions: `toString()` to any value to String in an expression context.
-  - In the book, this conversion only happens when invoking a `Display` statement, but it
-    seems like an obvious oversight for useful string processing and formatting.
+- New library function: `toString()` convert a value of any type to String.
+  - (In the book, this conversion only happens when invoking a `Display` statement, but it
+    seems like an obvious addition for useful string processing and formatting.)
 
-- Nested `Module` and `Function` declarations are not supported (but could be).
-  - This is implied by the book but not explicitly stated.
+- Nested `Module` and `Function` declarations are not supported.
+  - (This is implied by the book but not explicitly stated.)
 
-- Programs with a `Module main()` are still allowed to execute arbitrary statements in the global block.
+- Programs with a `Module main()` are allowed to first execute arbitrary statements in the global block.
   - Global block statements first execute in lexical order, then `main()` is called afterward.
-  - The book is unclear on whether mixing global statements and `Module main()` is legal.
 
-- We implemented `Input` statements to loop until the user inputs a line that can be correctly
+- `Input` statements internally loop until the user inputs a line that can be correctly
   parsed to the type of the input variable; e.g. a non-numeric input will loop and retry
   if the input variable is an `Integer`.
+  - The variable expression is only evaluated once, regardless.
 
 - By contrast, `Read` statements in an `InputFile` where the record data is the wrong type
   exit the program immediately with an exception.
 
 - Arrays are filled with zero values on initialization when there is no initializer. When too
   few initializer expressions are provided, the remainder of the array is filled with zero values.
-  - This behavior is left unspecified.
+  - (Should too few initializer expressions be an error? It's not clear.)
 
 - Array initializers are currently the _only_ construct that may be parsed across multiple lines.
   - There are explicit examples of this in the book.
-  - All other statements must appear on a single line!
-  - This restriction may be relaxed in the future for other kinds of comma-separated lists.
+  - All other statements always appear on a single line.
+  - (Should we allow line breaks across other comma delimited lists like parameter or argument lists?)
 
 - Arrays are deep copied when passed by value.
-  - This is implied by the book but not explicitly stated.
+  - (Implied by the book, but not explicitly stated.)
 
 - Array variables cannot be reassigned.
-  - This is implied by the book but not explicitly stated.
+  - (Implied by the book, but not explicitly stated.)
 
 - Array elements which are themselves Arrays (ie, part of a multidimensional array) cannot be
   reassigned either.
-  - This is implied by the book but not explicitly stated.
-  - For example, if `Integer table[3][4], row[4]`, you cannot `Set table[0] = row`.
+  - For example, giben `Integer table[3][4], row[4]`, you cannot `Set table[0] = someRow`.
   - However, such elements _may_ be passed as arguments, either by value or reference.
   - For example, `Call printValues(table[3])` is legal.
+  - (Implied by the book, but not explicitly stated.)
  
 - Arrays cannot be the return value of a Function
-  - This is implied by the book but not explicitly stated.
+  - (Implied by the book, but not explicitly stated.)
 
 - Use `Call` to call the external library string modules `insert` and `delete`.
-  - The book omits the `Call` keyword, which makes the syntax incompatible with the rest of the book.
+  - This seems like an oversight / misprint? Otherwise these two modules would have a unique syntax just to themselves.
 
-- `Print` just outputs to stderr; there is no printer support.
+- `Print` outputs to stderr; we didn't implement print support :grin:
 
 - When reading and writing records with multiple fields using file I/O, there is no internal
   distinction between field and record separation. Writing or Reading multiple values in a
-  single statement is equivalent to using multiple Write or Read statements.
+  single statement is equivalent to multiple sequential Write or Read statements.
