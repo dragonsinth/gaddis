@@ -41,3 +41,7 @@ Display
 For Each SideEffectCircle(y).count In SideEffectCircle(y).size
 	Display y.count
 End For
+
+// temp local name collision
+For Each y.count In y.size
+End For

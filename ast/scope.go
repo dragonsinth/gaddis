@@ -168,6 +168,22 @@ func (s *Scope) AddVariable(vd *VarDecl) {
 	vd.Scope = s
 }
 
+func (s *Scope) AddTempLocal(vd *VarDecl) {
+	if vd.IsConst || vd.IsParam || vd.Enclosing != nil {
+		panic("not local")
+	}
+	// mangle the name to avoid accidental collisions
+	vd.Id = len(s.Locals)
+	vd.Name = fmt.Sprintf("%s$%d", vd.Name, vd.Id)
+	name := vd.Name
+	if s.Decls[name] != nil {
+		panic(name)
+	}
+	s.Locals = append(s.Locals, vd)
+	s.Decls[name] = &Decl{VarDecl: vd}
+	vd.Scope = s
+}
+
 func (s *Scope) EnclosingClass() *ClassStmt {
 	for s != nil {
 		if s.ClassStmt != nil {
