@@ -186,3 +186,6 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 - When reading and writing records with multiple fields using file I/O, there is no internal
   distinction between field and record separation. Writing or Reading multiple values in a
   single statement is equivalent to multiple sequential Write or Read statements.
+
+- Unresolved: what are the rules around calling super constructor methods from a subclass constructor?
+  - Should it work like Java?
