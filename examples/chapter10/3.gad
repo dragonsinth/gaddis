@@ -2,3 +2,12 @@ Declare OutputFile x[3]
 Open x[0] "3.gad.dat"
 Write x[0] "hi"
 Close x[0]
+
+Declare InputFile y
+Declare String val
+Rename "3.gad.dat", "3.gad.tmp"
+Open y "3.gad.tmp"
+Read y val
+Display val
+
+Delete "3.gad.tmp"

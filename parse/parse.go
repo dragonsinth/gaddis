@@ -331,9 +331,12 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 		}
 		return p.parseFunctionStmt(r)
 	case lex.OPEN:
-		return &ast.OpenStmt{SourceInfo: toSourceInfo(r), File: p.parseExpression(), Name: p.parseExpression()}
+		file := p.parseExpression()
+		nameExpr := p.parseExpression()
+		return &ast.OpenStmt{SourceInfo: spanAst(r, nameExpr), File: file, Name: nameExpr}
 	case lex.CLOSE:
-		return &ast.CloseStmt{SourceInfo: toSourceInfo(r), File: p.parseExpression()}
+		file := p.parseExpression()
+		return &ast.CloseStmt{SourceInfo: spanAst(r, file), File: file}
 	case lex.READ:
 		file := p.parseExpression()
 
@@ -352,6 +355,14 @@ func (p *Parser) parseStatement(isGlobalBlock bool) ast.Statement {
 			si = mergeSourceInfo(si, exprs[len(exprs)-1])
 		}
 		return &ast.WriteStmt{SourceInfo: si, File: file, Exprs: exprs}
+	case lex.DELETE:
+		file := p.parseExpression()
+		return &ast.DeleteStmt{SourceInfo: spanAst(r, file), File: file}
+	case lex.RENAME:
+		oldFile := p.parseExpression()
+		p.parseTok(lex.COMMA)
+		newFile := p.parseExpression()
+		return &ast.RenameStmt{SourceInfo: spanAst(r, oldFile), OldFile: oldFile, NewFile: newFile}
 	case lex.CLASS:
 		if !isGlobalBlock {
 			panic(p.Errorf(r, "Class may only be declared in the global scope"))

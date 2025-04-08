@@ -343,6 +343,31 @@ func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
 	return false
 }
 
+func (v *Visitor) PreVisitDeleteStmt(ds *ast.DeleteStmt) bool {
+	ds.File.Visit(v)
+	v.code = append(v.code, asm.LibCall{
+		SourceInfo: ds.GetSourceInfo(),
+		Name:       "DeleteFile",
+		Type:       ast.UnresolvedType,
+		Index:      lib.IndexOf("DeleteFile"),
+		NArg:       1,
+	})
+	return false
+}
+
+func (v *Visitor) PreVisitRenameStmt(rs *ast.RenameStmt) bool {
+	rs.OldFile.Visit(v)
+	rs.NewFile.Visit(v)
+	v.code = append(v.code, asm.LibCall{
+		SourceInfo: rs.GetSourceInfo(),
+		Name:       "RenameFile",
+		Type:       ast.UnresolvedType,
+		Index:      lib.IndexOf("RenameFile"),
+		NArg:       2,
+	})
+	return false
+}
+
 func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	endLabel := &asm.Label{Name: "endif"}
 	for _, cb := range is.Cases {

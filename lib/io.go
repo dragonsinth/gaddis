@@ -134,6 +134,23 @@ func (ctx ioContext) OpenInputFile(file InputFile, name string) InputFile {
 	return InputFile{File: f, Reader: bufio.NewReader(f)}
 }
 
+func (ctx ioContext) DeleteFile(name string) {
+	filename := filepath.Join(ctx.provider.Dir(), string(name))
+	err := os.Remove(filename)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (ctx ioContext) RenameFile(oldName string, newName string) {
+	oldFilename := filepath.Join(ctx.provider.Dir(), string(oldName))
+	newFilename := filepath.Join(ctx.provider.Dir(), string(newName))
+	err := os.Rename(oldFilename, newFilename)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func CloseOutputFile(file OutputFile) {
 	if file.File == nil {
 		panic("file not open")
@@ -339,4 +356,6 @@ var (
 	OpenOutputFile = ioCtx.OpenOutputFile
 	OpenAppendFile = ioCtx.OpenAppendFile
 	OpenInputFile  = ioCtx.OpenInputFile
+	DeleteFile     = ioCtx.DeleteFile
+	RenameFile     = ioCtx.RenameFile
 )

@@ -27,3 +27,5 @@ Module readAndPrint(Integer count)
 		Display a, ", ", b, ", ", c
 	End For
 End Module
+
+Delete "1.gad.dat"

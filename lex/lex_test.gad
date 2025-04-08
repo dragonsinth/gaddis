@@ -113,6 +113,8 @@ Module files()
 	Close in
 
 	Print "hi"
+	Rename "1.dat", "1.tmp"
+	Delete "1.tmp"
 End Module
 
 Class Shape

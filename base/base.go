@@ -74,14 +74,18 @@ func (v *Visitor) PreVisitIfStmt(is *ast.IfStmt) bool {
 	return true
 }
 
-func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool   { return true }
-func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt)       {}
-func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool { return true }
-func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt)     {}
-func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool   { return true }
-func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt)       {}
-func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool { return true }
-func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt)     {}
+func (v *Visitor) PreVisitOpenStmt(os *ast.OpenStmt) bool     { return true }
+func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt)         {}
+func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool   { return true }
+func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt)       {}
+func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool     { return true }
+func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt)         {}
+func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool   { return true }
+func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt)       {}
+func (v *Visitor) PreVisitDeleteStmt(ds *ast.DeleteStmt) bool { return true }
+func (v *Visitor) PostVisitDeleteStmt(ds *ast.DeleteStmt)     {}
+func (v *Visitor) PreVisitRenameStmt(rs *ast.RenameStmt) bool { return true }
+func (v *Visitor) PostVisitRenameStmt(rs *ast.RenameStmt)     {}
 
 func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {}
 

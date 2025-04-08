@@ -313,6 +313,30 @@ func (v *Visitor) PreVisitWriteStmt(ws *ast.WriteStmt) bool {
 
 func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {}
 
+func (v *Visitor) PreVisitDeleteStmt(ds *ast.DeleteStmt) bool {
+	v.indent()
+	v.output("DeleteFile(")
+	ds.File.Visit(v)
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitDeleteStmt(ds *ast.DeleteStmt) {
+}
+
+func (v *Visitor) PreVisitRenameStmt(rs *ast.RenameStmt) bool {
+	v.indent()
+	v.output("RenameFile(")
+	rs.OldFile.Visit(v)
+	v.output(", ")
+	rs.NewFile.Visit(v)
+	v.output(")\n")
+	return false
+}
+
+func (v *Visitor) PostVisitRenameStmt(rs *ast.RenameStmt) {
+}
+
 func (v *Visitor) PostVisitSetStmt(s *ast.SetStmt) {
 }
 

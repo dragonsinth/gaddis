@@ -139,6 +139,21 @@ func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {
 	}
 }
 
+func (v *Visitor) PostVisitDeleteStmt(ds *ast.DeleteStmt) {
+	if ds.File.GetType() != ast.String {
+		v.Errorf(ds.File, "expected String type; got %s", ds.File.GetType())
+	}
+}
+
+func (v *Visitor) PostVisitRenameStmt(rs *ast.RenameStmt) {
+	if rs.OldFile.GetType() != ast.String {
+		v.Errorf(rs.OldFile, "expected String type; got %s", rs.OldFile.GetType())
+	}
+	if rs.NewFile.GetType() != ast.String {
+		v.Errorf(rs.NewFile, "expected String type; got %s", rs.NewFile.GetType())
+	}
+}
+
 func (v *Visitor) PostVisitCondBlock(cb *ast.CondBlock) {
 	if cb.Expr != nil && cb.Expr.GetType() != ast.Boolean {
 		v.Errorf(cb.Expr, "expected Boolean, got %s", cb.Expr.GetType())

@@ -27,3 +27,5 @@ Module readAndPrint()
 		Display a, ", ", b, ", ", c
 	End While
 End Module
+
+Delete "2.gad.dat"

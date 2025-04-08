@@ -69,3 +69,35 @@ func (ws *WriteStmt) Visit(v Visitor) {
 }
 
 func (*WriteStmt) isStatement() {}
+
+type DeleteStmt struct {
+	SourceInfo
+	File Expression
+}
+
+func (ds *DeleteStmt) Visit(v Visitor) {
+	if !v.PreVisitDeleteStmt(ds) {
+		return
+	}
+	ds.File.Visit(v)
+	v.PostVisitDeleteStmt(ds)
+}
+
+func (*DeleteStmt) isStatement() {}
+
+type RenameStmt struct {
+	SourceInfo
+	OldFile Expression
+	NewFile Expression
+}
+
+func (rs *RenameStmt) Visit(v Visitor) {
+	if !v.PreVisitRenameStmt(rs) {
+		return
+	}
+	rs.OldFile.Visit(v)
+	rs.NewFile.Visit(v)
+	v.PostVisitRenameStmt(rs)
+}
+
+func (*RenameStmt) isStatement() {}

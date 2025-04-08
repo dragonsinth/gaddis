@@ -70,7 +70,7 @@ reading from stdin to create input and output files for subsequent test runs.
 
 ## Status
 
-Implemented up through Chapter 14; supports:
+All legal language constructs should be supported now.
 
 - Basic statements, expressions, operations, variables, constants, control structures.
 - `Integer`, `Real`, `String`, `Character`, `Boolean`
@@ -82,25 +82,21 @@ Implemented up through Chapter 14; supports:
 - File I/O
 - Classes
 
-Should cover the whole language by May 2025.
+Some semantic checks are still missing (see below), allowing some illegal code to run.
 
 ### TODO
-
-- Consider enforcing field vs. record separators in file I/O.
-
-- Consider extending multi-line parsing/printing to all comma-delimited lists:
-  - parameter lists
-  - argument lists
-  - Display/Read/Write
 
 - Classes
   - Enforce `Public` / `Private` in type checking
   - Prevent certain types of class super/sub name collisions?
   - implicit/required super constructor calls...?
 
-### Not yet supported
-- `Delete "filename"`
-- `Rename "oldname" "newname"`
+- Consider extending multi-line parsing/printing to all comma-delimited lists:
+  - parameter lists
+  - argument lists
+  - Display/Read/Write
+
+- Consider enforcing field vs. record separators in file I/O.
 
 ## Errata / Differences from the Book
 

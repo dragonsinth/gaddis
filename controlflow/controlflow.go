@@ -103,6 +103,14 @@ func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {
 	v.push(ws, CONTINUE)
 }
 
+func (v *Visitor) PostVisitDeleteStmt(ds *ast.DeleteStmt) {
+	v.push(ds, CONTINUE)
+}
+
+func (v *Visitor) PostVisitRenameStmt(rs *ast.RenameStmt) {
+	v.push(rs, CONTINUE)
+}
+
 func (v *Visitor) PostVisitIfStmt(is *ast.IfStmt) {
 	alt := alternatives{}
 	pl := v.popList(len(is.Cases))

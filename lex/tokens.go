@@ -85,6 +85,9 @@ const (
 	WRITE
 	OPEN
 	CLOSE
+	DELETE
+	RENAME
+
 	OUTPUTFILE
 	INPUTFILE
 	APPENDMODE
@@ -176,10 +179,13 @@ var tokens = []string{
 	TRUE:  "TRUE",
 	FALSE: "FALSE",
 
-	READ:       "READ",
-	WRITE:      "WRITE",
-	OPEN:       "OPEN",
-	CLOSE:      "CLOSE",
+	READ:   "READ",
+	WRITE:  "WRITE",
+	OPEN:   "OPEN",
+	CLOSE:  "CLOSE",
+	DELETE: "DELETE",
+	RENAME: "RENAME",
+
 	OUTPUTFILE: "OUTPUTFILE",
 	INPUTFILE:  "INPUTFILE",
 	APPENDMODE: "APPENDMODE",
@@ -234,6 +240,8 @@ var keywords = map[string]Token{
 	"Write":      WRITE,
 	"Open":       OPEN,
 	"Close":      CLOSE,
+	"Delete":     DELETE,
+	"Rename":     RENAME,
 	"OutputFile": OUTPUTFILE,
 	"InputFile":  INPUTFILE,
 	"AppendMode": APPENDMODE,

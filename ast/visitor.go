@@ -27,6 +27,10 @@ type Visitor interface {
 	PostVisitReadStmt(rs *ReadStmt)
 	PreVisitWriteStmt(ws *WriteStmt) bool
 	PostVisitWriteStmt(ws *WriteStmt)
+	PreVisitDeleteStmt(ds *DeleteStmt) bool
+	PostVisitDeleteStmt(ds *DeleteStmt)
+	PreVisitRenameStmt(rs *RenameStmt) bool
+	PostVisitRenameStmt(rs *RenameStmt)
 
 	PreVisitIfStmt(is *IfStmt) bool
 	PostVisitIfStmt(is *IfStmt)
