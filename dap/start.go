@@ -114,6 +114,7 @@ func (h *Session) tryStartSession(args launchArgs, request *api.Request) bool {
 	opts := debug.Opts{
 		Input:       stdin,
 		Output:      stdout,
+		WorkDir:     args.WorkDir,
 		IsTest:      args.TestMode,
 		NoDebug:     args.NoDebug,
 		StopOnEntry: args.StopOnEntry,

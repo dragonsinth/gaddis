@@ -28,6 +28,7 @@ type ErrFrame struct {
 type Opts struct {
 	Input       <-chan string
 	Output      func(string)
+	WorkDir     string
 	IsTest      bool
 	NoDebug     bool
 	StopOnEntry bool

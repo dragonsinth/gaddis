@@ -62,7 +62,7 @@ func New(
 				return inputDelegate()
 			},
 			Out:     opts.Output,
-			WorkDir: ".", // TODO
+			WorkDir: opts.WorkDir,
 		},
 	})
 
