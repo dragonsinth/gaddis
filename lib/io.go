@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type IoProvider interface {
@@ -271,7 +272,7 @@ func scanLine(file InputFile) string {
 	if err != nil {
 		panic(err)
 	}
-	return v[:len(v)-1]
+	return strings.TrimSpace(v)
 }
 
 func eof(file InputFile) bool {
