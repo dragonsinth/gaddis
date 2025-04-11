@@ -158,7 +158,7 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 - Array initializers are currently the _only_ construct that may be parsed across multiple lines.
   - There are explicit examples of this in the book.
   - All other statements always appear on a single line.
-  - (Should we allow line breaks across other comma delimited lists like parameter or argument lists?)
+  - (Should we allow line breaks across other comma-delimited lists like parameter or argument lists?)
 
 - Arrays are deep copied when passed by value.
   - (Implied by the book, but not explicitly stated.)
@@ -177,13 +177,20 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
   - (Implied by the book, but not explicitly stated.)
 
 - Use `Call` to call the external library string modules `insert` and `delete`.
-  - This seems like an oversight / misprint? Otherwise these two modules would have a unique syntax just to themselves.
+  - This seems like an oversight / misprint? Otherwise, these two modules would have a unique syntax just to themselves.
 
 - `Print` outputs to stderr; we didn't implement print support :grin:
 
-- When reading and writing records with multiple fields using file I/O, there is no internal
-  distinction between field and record separation. Writing or Reading multiple values in a
-  single statement is equivalent to multiple sequential Write or Read statements.
+- The `File` abstraction is implemented as a newline separated text file.
+  - Each value a program Writes to (Reads from) a file corresponds to a single line of text.
+  - The output (and input) format is identical to in-code literals, for example:
+    - `True` is a `Boolean` value
+    - `1.3` is a `Real` value
+    - `"hello"` is a `String` value
+  - Reading a file value using the wrong variable type is an error.
+  - The last value in the file must end with a newline character.
+  - There is no internal distinction between field and record separation. A multi-value Read or Write
+    is equivalent to multiple individual Read or Write statements.
 
 - All `Class` fields are zero-initialized before any user constructor starts running.
 
