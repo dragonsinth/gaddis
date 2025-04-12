@@ -92,14 +92,11 @@ func (p *Parser) parseBlock(endTokens ...lex.Token) *ast.Block {
 
 func (p *Parser) doParseBlock(isGlobal bool, endTokens ...lex.Token) *ast.Block {
 	var stmts []ast.Statement
+	start := p.SafePeek()
 	for {
 		peek := p.SafePeek()
 		if peek.Token == lex.EOF || slices.Contains(endTokens, peek.Token) {
-			si := toSourceInfo(peek)
-			if len(stmts) > 0 {
-				si = mergeSourceInfo(stmts[0], stmts[len(stmts)-1])
-			}
-			return &ast.Block{SourceInfo: si, Statements: stmts}
+			return &ast.Block{SourceInfo: spanResult(start, peek), Statements: stmts}
 		}
 
 		st := p.safeParseStatement(isGlobal)

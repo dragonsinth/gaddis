@@ -54,6 +54,14 @@ Module Booleans()
 	End Select
 End Module
 
+Module MoreComments()
+	// Call problemOne()
+	// Call problemTwo()
+	Call problemThree()
+	// Call problemFour()
+	// Call problemFive()
+End Module
+
 Module Loops()
 	Declare Integer count = 1
 	Select count

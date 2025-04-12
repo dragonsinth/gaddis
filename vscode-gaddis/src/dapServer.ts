@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as child_process from 'child_process';
-import * as path from 'path';
 import { gaddisCmd } from './platform';
 
 export let dapServerPort: number = 0;

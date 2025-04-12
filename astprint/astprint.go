@@ -46,6 +46,8 @@ func (v *Visitor) PreVisitBlock(bl *ast.Block) bool {
 }
 
 func (v *Visitor) PostVisitBlock(bl *ast.Block) {
+	// handle any trailing comments
+	v.emitCommentsUpTo(bl.End.Line)
 	v.ind = v.ind[:len(v.ind)-1]
 }
 
