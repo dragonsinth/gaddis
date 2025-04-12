@@ -96,7 +96,9 @@ func (v *Visitor) PostVisitSetStmt(ss *ast.SetStmt) {
 
 func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt) {
 	file := os.File
-	if !file.CanReference() {
+	if file.GetType() == ast.UnresolvedType {
+		// suppress further errors
+	} else if !file.CanReference() {
 		v.Errorf(file, "Open file argument must be a reference")
 	} else if !file.GetType().IsFileType() {
 		v.Errorf(file, "expected file type; got %s", file.GetType())
@@ -108,18 +110,24 @@ func (v *Visitor) PostVisitOpenStmt(os *ast.OpenStmt) {
 
 func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt) {
 	file := cs.File
-	if !file.GetType().IsFileType() {
+	if file.GetType() == ast.UnresolvedType {
+		// suppress further errors
+	} else if !file.GetType().IsFileType() {
 		v.Errorf(file, "expected file type; got %s", file.GetType())
 	}
 }
 
 func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {
 	file := rs.File
-	if !file.GetType().IsFileType() {
+	if file.GetType() == ast.UnresolvedType {
+		// suppress further errors
+	} else if !file.GetType().IsFileType() {
 		v.Errorf(file, "expected file type; got %s", file.GetType())
 	}
 	for _, expr := range rs.Exprs {
-		if !expr.CanReference() {
+		if expr.GetType() == ast.UnresolvedType {
+			// suppress further errors
+		} else if !expr.CanReference() {
 			v.Errorf(expr, "Read data argument must be a reference")
 		} else if !expr.GetType().IsPrimitive() {
 			v.Errorf(expr, "Read data argument must be a primitive type")
@@ -129,11 +137,15 @@ func (v *Visitor) PostVisitReadStmt(rs *ast.ReadStmt) {
 
 func (v *Visitor) PostVisitWriteStmt(ws *ast.WriteStmt) {
 	file := ws.File
-	if !file.GetType().IsFileType() {
+	if file.GetType() == ast.UnresolvedType {
+		// suppress further errors
+	} else if !file.GetType().IsFileType() {
 		v.Errorf(file, "expected file type; got %s", file.GetType())
 	}
 	for _, expr := range ws.Exprs {
-		if !expr.GetType().IsPrimitive() {
+		if expr.GetType() == ast.UnresolvedType {
+			// suppress further errors
+		} else if !expr.GetType().IsPrimitive() {
 			v.Errorf(expr, "Write data argument must be a primitive type")
 		}
 	}

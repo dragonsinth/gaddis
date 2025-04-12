@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
-import * as child_process from 'child_process';
 import * as path from 'path';
-import { gaddisCmd } from './platform';
 import { dapServerPort } from "./dapServer";
 
 export function activateDebug(context: vscode.ExtensionContext) {
@@ -51,6 +49,7 @@ export function activateDebug(context: vscode.ExtensionContext) {
                     name: 'Run File',
                     request: 'launch',
                     program: targetResource.fsPath,
+                    workDir: path.dirname(targetResource.fsPath),
                 },
                     { noDebug: true }
                 );
@@ -67,6 +66,7 @@ export function activateDebug(context: vscode.ExtensionContext) {
                     name: 'Debug File',
                     request: 'launch',
                     program: targetResource.fsPath,
+                    workDir: path.dirname(targetResource.fsPath),
                     stopOnEntry: false,
                 });
             }
@@ -82,6 +82,7 @@ export function activateDebug(context: vscode.ExtensionContext) {
                     name: 'Test File',
                     request: 'launch',
                     program: targetResource.fsPath,
+                    workDir: path.dirname(targetResource.fsPath),
                     testMode: true,
                 },
                     { noDebug: true }
