@@ -304,7 +304,7 @@ func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool {
 
 func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
 	rs.File.Visit(v) // evaluate the file once
-	for _, arg := range rs.Exprs {
+	for i, arg := range rs.Exprs {
 		v.varRef(arg, true)
 
 		// dup the file
@@ -313,13 +313,20 @@ func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
 			Skip:       1,
 		})
 
+		// non-final field sep -> final record sep
+		v.code = append(v.code, asm.Literal{
+			SourceInfo: rs.GetSourceInfo(),
+			Typ:        ast.Boolean,
+			Val:        i < len(rs.Exprs)-1,
+		})
+
 		name := "Read" + arg.GetType().String()
 		v.code = append(v.code, asm.LibCall{
 			SourceInfo: rs.GetSourceInfo(),
 			Name:       name,
 			Type:       ast.UnresolvedType,
 			Index:      lib.IndexOf(name),
-			NArg:       1,
+			NArg:       2,
 		})
 		v.store(rs)
 	}

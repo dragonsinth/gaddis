@@ -168,7 +168,7 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 
 - Array elements which are themselves Arrays (ie, part of a multidimensional array) cannot be
   reassigned either.
-  - For example, giben `Integer table[3][4], row[4]`, you cannot `Set table[0] = someRow`.
+  - For example, given `Integer table[3][4], row[4]`, you cannot `Set table[0] = someRow`.
   - However, such elements _may_ be passed as arguments, either by value or reference.
   - For example, `Call printValues(table[3])` is legal.
   - (Implied by the book, but not explicitly stated.)
@@ -182,15 +182,15 @@ and there, or fill in gaps. Here's some possible differences (clarifications?) f
 - `Print` outputs to stderr; we didn't implement print support :grin:
 
 - The `File` abstraction is implemented as a newline separated text file.
-  - Each value a program Writes to (Reads from) a file corresponds to a single line of text.
-  - The output (and input) format is identical to in-code literals, for example:
+  - Individual values are written (and read) exactly like in-code literals, for example:
     - `True` is a `Boolean` value
     - `1.3` is a `Real` value
     - `"hello"` is a `String` value
-  - Reading a file value using the wrong variable type is an error.
-  - The last value in the file must end with a newline character.
-  - There is no internal distinction between field and record separation. A multi-value Read or Write
-    is equivalent to multiple individual Read or Write statements.
+  - Each line in a file represents a single record (a single `Read` or `Write` statment).
+  - In multi-value records, fields are separated with a single tab character `\t`.
+  - All `Read` operations must specify the correct number and type(s) of fields matching the file data.
+    - Reading the incorrect number or type of fields is an error.
+  - The last record in the file must end with a newline character.
 
 - All `Class` fields are zero-initialized before any user constructor starts running.
 

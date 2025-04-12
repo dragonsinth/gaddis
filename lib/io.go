@@ -3,6 +3,8 @@ package lib
 import (
 	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -180,7 +182,12 @@ func WriteFile(of OutputFile, args ...any) {
 		panic("file not open")
 	}
 	file := of.File
-	for _, arg := range args {
+	for i, arg := range args {
+		if i > 0 {
+			if _, err := file.WriteString("\t"); err != nil {
+				panic(err)
+			}
+		}
 		var err error
 		switch typedArg := arg.(type) {
 		case bool:
@@ -203,18 +210,17 @@ func WriteFile(of OutputFile, args ...any) {
 		if err != nil {
 			panic(err)
 		}
-		_, err = file.WriteString("\n")
-		if err != nil {
-			panic(err)
-		}
+	}
+	if _, err := fmt.Fprintln(file); err != nil {
+		panic(err)
 	}
 }
 
-func ReadInteger(file InputFile) int64 {
+func ReadInteger(file InputFile, field bool) int64 {
 	if file.File == nil {
 		panic("file not open")
 	}
-	input := scanLine(file)
+	input := scanValue(file, field)
 	v, err := strconv.ParseInt(input, 10, 64)
 	if err != nil {
 		panic(err)
@@ -222,11 +228,11 @@ func ReadInteger(file InputFile) int64 {
 	return v
 }
 
-func ReadReal(file InputFile) float64 {
+func ReadReal(file InputFile, field bool) float64 {
 	if file.File == nil {
 		panic("file not open")
 	}
-	input := scanLine(file)
+	input := scanValue(file, field)
 	v, err := strconv.ParseFloat(input, 64)
 	if err != nil {
 		panic(err)
@@ -234,8 +240,8 @@ func ReadReal(file InputFile) float64 {
 	return v
 }
 
-func ReadString(file InputFile) string {
-	input := scanLine(file)
+func ReadString(file InputFile, field bool) string {
+	input := scanValue(file, field)
 	v, err := strconv.Unquote(input)
 	if err != nil {
 		panic(err)
@@ -243,8 +249,8 @@ func ReadString(file InputFile) string {
 	return v
 }
 
-func ReadCharacter(file InputFile) byte {
-	input := scanLine(file)
+func ReadCharacter(file InputFile, field bool) byte {
+	input := scanValue(file, field)
 	v, err := strconv.Unquote(input)
 	if err != nil {
 		panic(err)
@@ -255,8 +261,8 @@ func ReadCharacter(file InputFile) byte {
 	return v[0]
 }
 
-func ReadBoolean(file InputFile) bool {
-	input := scanLine(file)
+func ReadBoolean(file InputFile, field bool) bool {
+	input := scanValue(file, field)
 	v, err := strconv.ParseBool(input)
 	if err != nil {
 		panic(err)
@@ -264,14 +270,25 @@ func ReadBoolean(file InputFile) bool {
 	return v
 }
 
-func scanLine(file InputFile) string {
+func scanValue(file InputFile, field bool) string {
 	if file.File == nil {
 		panic("file not open")
 	}
-	v, err := file.Reader.ReadString('\n')
+	delim := byte('\n')
+	if field {
+		delim = '\t'
+	}
+	v, err := file.Reader.ReadString(delim)
 	if err != nil {
 		panic(err)
 	}
+	if field && strings.ContainsRune(v, '\n') {
+		panic(errors.New("unexpected record separator reading field"))
+	}
+	if !field && strings.ContainsRune(v, '\t') {
+		panic(errors.New("unexpected field separator reading record"))
+	}
+
 	return strings.TrimSpace(v)
 }
 

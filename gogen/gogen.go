@@ -285,13 +285,16 @@ func (v *Visitor) PreVisitCloseStmt(cs *ast.CloseStmt) bool {
 func (v *Visitor) PostVisitCloseStmt(cs *ast.CloseStmt) {}
 
 func (v *Visitor) PreVisitReadStmt(rs *ast.ReadStmt) bool {
-	for _, expr := range rs.Exprs {
+	for i, expr := range rs.Exprs {
 		v.indent()
 		v.varRef(expr, false)
 		v.output(" = Read")
 		v.typeName(expr.GetType().AsPrimitive())
 		v.output("(")
 		rs.File.Visit(v)
+		v.output(", ")
+		// non-final field sep -> final record sep
+		v.output(strconv.FormatBool(i < len(rs.Exprs)-1))
 		v.output(")\n")
 	}
 	return false
