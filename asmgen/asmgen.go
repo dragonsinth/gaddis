@@ -920,6 +920,8 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 		v.code = append(v.code, asm.IntToReal{SourceInfo: exp.GetSourceInfo()})
 	} else if dstType == ast.Integer && exp.GetType() == ast.Real {
 		v.code = append(v.code, asm.RealToInt{SourceInfo: exp.GetSourceInfo()})
+	} else if dstType == ast.String && exp.GetType() == ast.Character {
+		v.code = append(v.code, asm.CharToString{SourceInfo: exp.GetSourceInfo()})
 	}
 }
 

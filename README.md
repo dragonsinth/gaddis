@@ -104,8 +104,9 @@ Gaddis Pseudocode is a bit underspecified (on purpose), so I've had to make a fe
 and there, or fill in gaps. Here's some possible differences (clarifications?) from the book:
 
 - `Character` is an explicit type
-  - Character literals are denoted using single-quoted characters: `'X'`
-  - (Character type is listed in the reference but not the main text.)
+  - `Character` literals are denoted using single-quoted characters: `'X'`
+  - `Character` can be implicitly cast to a String of length 1.
+  - (`Character` type is listed in the reference but not the main text.)
 
 - `String` values are immutable and copy-on-write under the hood. Updating a string in any way
   creates a new `String` and assigns it back into the given reference; no other copies of the

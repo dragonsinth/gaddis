@@ -29,3 +29,17 @@ func (i RealToInt) Exec(p *Execution) {
 func (i RealToInt) String() string {
 	return "conv real int"
 }
+
+type CharToString struct {
+	baseInst
+	ast.SourceInfo
+}
+
+func (i CharToString) Exec(p *Execution) {
+	tip := len(p.Frame.Eval) - 1
+	p.Frame.Eval[tip] = string(p.Frame.Eval[tip].(byte))
+}
+
+func (i CharToString) String() string {
+	return "conv char str"
+}

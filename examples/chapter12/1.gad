@@ -9,3 +9,5 @@ Display str
 
 Set "yes"[2] = 'p'
 Display "yes" // yes
+
+Display toUpper(str[0]) // promote to string

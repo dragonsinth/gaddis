@@ -6,6 +6,7 @@ type Type interface {
 	Key() TypeKey
 	String() string
 	IsNumeric() bool
+	IsStringlike() bool
 	IsPrimitive() bool
 	AsPrimitive() PrimitiveType
 	IsArrayType() bool
@@ -43,6 +44,8 @@ func (t PrimitiveType) IsPrimitive() bool { return true }
 func (t PrimitiveType) AsPrimitive() PrimitiveType { return t }
 
 func (t PrimitiveType) IsNumeric() bool { return t == Integer || t == Real }
+
+func (t PrimitiveType) IsStringlike() bool { return t == String || t == Character }
 
 func (t PrimitiveType) IsArrayType() bool { return false }
 
@@ -82,6 +85,8 @@ func (t *ArrayType) AsPrimitive() PrimitiveType { return UnresolvedType }
 
 func (t *ArrayType) IsNumeric() bool { return false }
 
+func (t *ArrayType) IsStringlike() bool { return false }
+
 func (t *ArrayType) IsArrayType() bool { return true }
 
 func (t *ArrayType) AsArrayType() *ArrayType { return t }
@@ -119,6 +124,8 @@ func (t *ClassType) IsPrimitive() bool { return false }
 func (t *ClassType) AsPrimitive() PrimitiveType { return UnresolvedType }
 
 func (t *ClassType) IsNumeric() bool { return false }
+
+func (t *ClassType) IsStringlike() bool { return false }
 
 func (t *ClassType) IsArrayType() bool { return false }
 
@@ -167,6 +174,8 @@ func (t FileType) AsPrimitive() PrimitiveType { return UnresolvedType }
 
 func (t FileType) IsNumeric() bool { return false }
 
+func (t FileType) IsStringlike() bool { return false }
+
 func (t FileType) IsArrayType() bool { return false }
 
 func (t FileType) AsArrayType() *ArrayType { return nil }
@@ -189,6 +198,9 @@ func CanCoerce(dst Type, src Type) bool {
 		return true
 	}
 	if dst == Real && src == Integer {
+		return true // promote
+	}
+	if dst == String && src == Character {
 		return true // promote
 	}
 	if IsSubclass(dst, src) {
@@ -217,6 +229,9 @@ func AreComparableTypes(a Type, b Type) Type {
 		return a
 	}
 	if a.IsNumeric() && b.IsNumeric() {
+		return Real // promote
+	}
+	if a.IsStringlike() && b.IsStringlike() {
 		return Real // promote
 	}
 	// TODO: class types

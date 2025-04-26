@@ -1080,6 +1080,10 @@ func (v *Visitor) maybeCast(dstType ast.Type, exp ast.Expression) {
 		v.output("Integer(")
 		exp.Visit(v)
 		v.output(")")
+	} else if dstType == ast.String && exp.GetType() == ast.Character {
+		v.output("String(")
+		exp.Visit(v)
+		v.output(")")
 	} else if ast.IsSubclass(dstType, exp.GetType()) {
 		v.output("(&")
 		exp.Visit(v)
