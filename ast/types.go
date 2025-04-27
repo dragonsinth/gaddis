@@ -209,15 +209,15 @@ func CanCoerce(dst Type, src Type) bool {
 	return false
 }
 
-func IsSubclass(dst Type, src Type) bool {
-	if dst == src {
+func IsSubclass(maybeSuper Type, maybeSub Type) bool {
+	if maybeSuper == maybeSub {
 		return false
 	}
-	if !dst.IsClassType() || !src.IsClassType() {
+	if !maybeSuper.IsClassType() || !maybeSub.IsClassType() {
 		return false
 	}
-	for p := src.AsClassType(); p != nil; p = p.Extends {
-		if dst == p {
+	for p := maybeSub.AsClassType(); p != nil; p = p.Extends {
+		if maybeSuper == p {
 			return true
 		}
 	}
@@ -232,9 +232,16 @@ func AreComparableTypes(a Type, b Type) Type {
 		return Real // promote
 	}
 	if a.IsStringlike() && b.IsStringlike() {
-		return Real // promote
+		return String // promote
 	}
-	// TODO: class types
+	if a.IsClassType() && b.IsClassType() {
+		if IsSubclass(a, b) {
+			return a
+		}
+		if IsSubclass(b, a) {
+			return b
+		}
+	}
 	return UnresolvedType
 }
 
